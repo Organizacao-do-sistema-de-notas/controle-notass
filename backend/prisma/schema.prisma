@@ -1,0 +1,56 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StatusPendencia {
+  PENDENTE
+  AGUARDANDO_CLIENTE
+  EM_ATENDIMENTO
+  CONCLUIDO
+}
+
+model Contabilidade {
+  id       Int       @id @default(autoincrement())
+  nome     String
+  clientes Cliente[]
+
+  criadoEm DateTime @default(now())
+}
+
+model Cliente {
+  id              Int            @id @default(autoincrement())
+  nome            String
+  ativo           Boolean        @default(true)
+
+  contabilidadeId Int?
+  contabilidade   Contabilidade? @relation(fields: [contabilidadeId], references: [id])
+
+  pendencias      Pendencia[]
+
+  criadoEm        DateTime       @default(now())
+}
+
+model Pendencia {
+  id           Int             @id @default(autoincrement())
+
+  clienteId    Int
+  cliente      Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  competencia  String
+  status       StatusPendencia @default(PENDENTE)
+
+  responsavel  String?
+  observacao   String?
+
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
+  concluidoEm  DateTime?
+
+  @@unique([clienteId, competencia])
+}

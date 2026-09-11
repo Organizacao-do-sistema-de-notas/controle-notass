@@ -1,0 +1,22 @@
+# Dependências Node
+node_modules/
+
+# Variáveis de ambiente / senhas
+.env
+.env.*
+
+# Permitir arquivo modelo
+!.env.example
+
+# Código gerado
+/generated/prisma
+generated/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Windows
+Thumbs.db
+Desktop.ini
