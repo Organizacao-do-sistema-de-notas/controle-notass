@@ -1,4 +1,7 @@
 import type {
+  Cliente,
+  Contabilidade,
+  HistoricoPendencia,
   MensagemContadorResponse,
   PainelMensal,
   StatusPendencia,
@@ -40,6 +43,46 @@ export function listarCompetencias(): Promise<string[]> {
 
 export function obterPainel(competencia: string): Promise<PainelMensal> {
   return requisicao<PainelMensal>(`/painel?competencia=${encodeURIComponent(competencia)}`);
+}
+
+export function listarClientes(): Promise<Cliente[]> {
+  return requisicao<Cliente[]>("/clientes");
+}
+
+export function criarCliente(nome: string, contabilidadeId: number | null): Promise<Cliente> {
+  return requisicao<Cliente>("/clientes", {
+    method: "POST",
+    body: JSON.stringify({ nome, contabilidadeId }),
+  });
+}
+
+export function listarContabilidades(): Promise<Contabilidade[]> {
+  return requisicao<Contabilidade[]>("/contabilidades");
+}
+
+export function criarContabilidade(nome: string): Promise<Contabilidade> {
+  return requisicao<Contabilidade>("/contabilidades", {
+    method: "POST",
+    body: JSON.stringify({ nome }),
+  });
+}
+
+export function criarPendencia(dados: {
+  clienteId: number;
+  competencia: string;
+  status: StatusPendencia;
+  responsavel?: string;
+  observacao?: string;
+  autor?: string;
+}): Promise<unknown> {
+  return requisicao("/pendencias", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+}
+
+export function listarHistoricoPendencia(id: number): Promise<HistoricoPendencia[]> {
+  return requisicao<HistoricoPendencia[]>(`/pendencias/${id}/historico`);
 }
 
 export function obterMensagemContador(id: number): Promise<MensagemContadorResponse> {
