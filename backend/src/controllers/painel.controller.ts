@@ -105,6 +105,9 @@ export async function obterPainelMensal(req: Request, res: Response): Promise<vo
           status: pendencia.status,
           responsavel: pendencia.responsavel,
           observacao: pendencia.observacao,
+          mensagemContador: pendencia.mensagemContador,
+          temMensagemContador:
+            pendencia.mensagemContador !== null && pendencia.mensagemContador.length > 0,
           criadoEm: pendencia.criadoEm,
           atualizadoEm: pendencia.atualizadoEm,
           concluidoEm: pendencia.concluidoEm,
