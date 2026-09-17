@@ -2,16 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   atualizarStatusPendencia,
+  criarCliente,
+  criarContabilidade,
+  criarPendencia,
+  listarClientes,
   listarCompetencias,
+  listarContabilidades,
+  listarHistoricoPendencia,
   obterMensagemContador,
   obterPainel,
   salvarMensagemContador,
 } from "./api";
 import type {
+  Cliente,
+  Contabilidade,
+  HistoricoPendencia,
   MensagemContadorResponse,
   PainelMensal,
   PendenciaPainel,
   StatusPendencia,
+  TipoHistoricoPendencia,
 } from "./types";
 
 const rotulosStatus: Record<StatusPendencia, string> = {
@@ -19,6 +29,14 @@ const rotulosStatus: Record<StatusPendencia, string> = {
   AGUARDANDO_CLIENTE: "Aguardando cliente",
   EM_ATENDIMENTO: "Em atendimento",
   CONCLUIDO: "Concluído",
+};
+
+const rotulosHistorico: Record<TipoHistoricoPendencia, string> = {
+  CRIACAO: "Pendência criada",
+  STATUS: "Status alterado",
+  RESPONSAVEL: "Responsável alterado",
+  OBSERVACAO: "Observação alterada",
+  MENSAGEM_CONTADOR: "Mensagem do contador alterada",
 };
 
 const statusDisponiveis = Object.keys(rotulosStatus) as StatusPendencia[];
@@ -31,6 +49,12 @@ interface EditorMensagem {
   mensagem: string;
   linkWhatsApp: string | null;
   salvando: boolean;
+}
+
+interface ModalHistorico {
+  clienteNome: string;
+  registros: HistoricoPendencia[];
+  carregando: boolean;
 }
 
 function formatarCompetencia(competencia: string): string {
@@ -48,8 +72,21 @@ function formatarData(data: string): string {
   }).format(new Date(data));
 }
 
+function competenciaAtual(): string {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  return `${ano}-${mes}`;
+}
+
 function criarModeloMensagem(clienteNome: string): string {
   return `${clienteNome}\nNF-e, NFC-e, Entradas\nNotas inutilizadas\nNFC-e:\n`;
+}
+
+function formatarValorHistorico(valor: string | null): string {
+  if (!valor) return "—";
+  if (valor in rotulosStatus) return rotulosStatus[valor as StatusPendencia];
+  return valor;
 }
 
 export function App() {
@@ -64,6 +101,29 @@ export function App() {
   const [alterandoStatusId, setAlterandoStatusId] = useState<number | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [autor, setAutor] = useState(() => localStorage.getItem("controle-notas-autor") || "");
+
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [contabilidades, setContabilidades] = useState<Contabilidade[]>([]);
+  const [carregandoCadastros, setCarregandoCadastros] = useState(false);
+
+  const [modalCliente, setModalCliente] = useState(false);
+  const [clienteNome, setClienteNome] = useState("");
+  const [clienteContabilidadeId, setClienteContabilidadeId] = useState("");
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
+
+  const [modalContabilidade, setModalContabilidade] = useState(false);
+  const [contabilidadeNome, setContabilidadeNome] = useState("");
+  const [salvandoContabilidade, setSalvandoContabilidade] = useState(false);
+
+  const [modalPendencia, setModalPendencia] = useState(false);
+  const [pendenciaClienteId, setPendenciaClienteId] = useState("");
+  const [pendenciaCompetencia, setPendenciaCompetencia] = useState(competenciaAtual());
+  const [pendenciaStatus, setPendenciaStatus] = useState<StatusPendencia>("PENDENTE");
+  const [pendenciaResponsavel, setPendenciaResponsavel] = useState("");
+  const [pendenciaObservacao, setPendenciaObservacao] = useState("");
+  const [salvandoPendencia, setSalvandoPendencia] = useState(false);
+
+  const [historicoModal, setHistoricoModal] = useState<ModalHistorico | null>(null);
 
   async function carregarCompetencias() {
     try {
@@ -100,6 +160,25 @@ export function App() {
       setErro(error instanceof Error ? error.message : "Erro ao carregar painel.");
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function carregarCadastros() {
+    try {
+      setCarregandoCadastros(true);
+      setErro(null);
+      const [listaClientes, listaContabilidades] = await Promise.all([
+        listarClientes(),
+        listarContabilidades(),
+      ]);
+      setClientes(listaClientes);
+      setContabilidades(listaContabilidades);
+      return { listaClientes, listaContabilidades };
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao carregar cadastros.");
+      return null;
+    } finally {
+      setCarregandoCadastros(false);
     }
   }
 
@@ -204,6 +283,123 @@ export function App() {
     window.open(dados.linkWhatsApp, "_blank", "noopener,noreferrer");
   }
 
+  async function abrirNovoCliente() {
+    setClienteNome("");
+    setClienteContabilidadeId("");
+    await carregarCadastros();
+    setModalCliente(true);
+  }
+
+  async function salvarNovoCliente(event: React.FormEvent) {
+    event.preventDefault();
+    if (!clienteNome.trim()) return;
+
+    try {
+      setSalvandoCliente(true);
+      setErro(null);
+      await criarCliente(
+        clienteNome.trim(),
+        clienteContabilidadeId ? Number(clienteContabilidadeId) : null,
+      );
+      await carregarCadastros();
+      setModalCliente(false);
+      setAviso("Cliente cadastrado.");
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao cadastrar cliente.");
+    } finally {
+      setSalvandoCliente(false);
+    }
+  }
+
+  function abrirNovaContabilidade() {
+    setContabilidadeNome("");
+    setModalContabilidade(true);
+  }
+
+  async function salvarNovaContabilidade(event: React.FormEvent) {
+    event.preventDefault();
+    if (!contabilidadeNome.trim()) return;
+
+    try {
+      setSalvandoContabilidade(true);
+      setErro(null);
+      await criarContabilidade(contabilidadeNome.trim());
+      await carregarCadastros();
+      setModalContabilidade(false);
+      setAviso("Contabilidade cadastrada.");
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao cadastrar contabilidade.");
+    } finally {
+      setSalvandoContabilidade(false);
+    }
+  }
+
+  async function abrirNovaPendencia() {
+    const dados = await carregarCadastros();
+    const ativos = (dados?.listaClientes ?? clientes).filter((cliente) => cliente.ativo);
+
+    setPendenciaClienteId(ativos[0] ? String(ativos[0].id) : "");
+    setPendenciaCompetencia(competencia || competenciaAtual());
+    setPendenciaStatus("PENDENTE");
+    setPendenciaResponsavel(autor.trim());
+    setPendenciaObservacao("");
+    setModalPendencia(true);
+  }
+
+  async function salvarNovaPendencia(event: React.FormEvent) {
+    event.preventDefault();
+    if (!pendenciaClienteId || !pendenciaCompetencia) return;
+
+    try {
+      setSalvandoPendencia(true);
+      setErro(null);
+      await criarPendencia({
+        clienteId: Number(pendenciaClienteId),
+        competencia: pendenciaCompetencia,
+        status: pendenciaStatus,
+        responsavel: pendenciaResponsavel.trim() || undefined,
+        observacao: pendenciaObservacao.trim() || undefined,
+        autor: autor.trim() || undefined,
+      });
+
+      const lista = await listarCompetencias();
+      setCompetencias(lista);
+      setModalPendencia(false);
+      setAviso("Pendência criada.");
+
+      if (pendenciaCompetencia === competencia) {
+        await carregarPainel(pendenciaCompetencia);
+      } else {
+        setCompetencia(pendenciaCompetencia);
+      }
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao criar pendência.");
+    } finally {
+      setSalvandoPendencia(false);
+    }
+  }
+
+  async function abrirHistorico(item: PendenciaPainel) {
+    setHistoricoModal({
+      clienteNome: item.cliente.nome,
+      registros: [],
+      carregando: true,
+    });
+
+    try {
+      setErro(null);
+      const registros = await listarHistoricoPendencia(item.id);
+      setHistoricoModal({
+        clienteNome: item.cliente.nome,
+        registros,
+        carregando: false,
+      });
+    } catch (error) {
+      setHistoricoModal(null);
+      setErro(error instanceof Error ? error.message : "Erro ao carregar histórico.");
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -261,6 +457,18 @@ export function App() {
 
           <button className="button secondary" onClick={() => void carregarPainel(competencia)}>
             Atualizar
+          </button>
+
+          <div className="toolbar-spacer" />
+
+          <button className="button secondary" onClick={abrirNovaContabilidade}>
+            Nova contabilidade
+          </button>
+          <button className="button secondary" onClick={() => void abrirNovoCliente()}>
+            Novo cliente
+          </button>
+          <button className="button primary" onClick={() => void abrirNovaPendencia()}>
+            Nova pendência
           </button>
         </section>
 
@@ -372,6 +580,10 @@ export function App() {
                         Copiar
                       </button>
                     )}
+
+                    <button className="button secondary" onClick={() => void abrirHistorico(item)}>
+                      Histórico
+                    </button>
                   </div>
                 </article>
               ))}
@@ -437,6 +649,289 @@ export function App() {
                 {editor.salvando ? "Salvando..." : "Salvar mensagem"}
               </button>
             </div>
+          </section>
+        </div>
+      )}
+
+      {modalCliente && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalCliente(false)}>
+          <form
+            className="message-modal form-modal"
+            onSubmit={(event) => void salvarNovoCliente(event)}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">Cadastro</span>
+                <h2>Novo cliente</h2>
+              </div>
+              <button type="button" className="close-button" onClick={() => setModalCliente(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label className="form-field full-width">
+                <span>Nome do cliente</span>
+                <input
+                  value={clienteNome}
+                  onChange={(event) => setClienteNome(event.target.value)}
+                  placeholder="Ex.: Mercado Rondinense"
+                  autoFocus
+                  required
+                />
+              </label>
+
+              <label className="form-field full-width">
+                <span>Contabilidade</span>
+                <select
+                  value={clienteContabilidadeId}
+                  onChange={(event) => setClienteContabilidadeId(event.target.value)}
+                  disabled={carregandoCadastros}
+                >
+                  <option value="">Sem contabilidade vinculada</option>
+                  {contabilidades.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="button secondary" onClick={() => setModalCliente(false)}>
+                Cancelar
+              </button>
+              <button className="button primary" disabled={salvandoCliente || !clienteNome.trim()}>
+                {salvandoCliente ? "Salvando..." : "Cadastrar cliente"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {modalContabilidade && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={() => setModalContabilidade(false)}
+        >
+          <form
+            className="message-modal form-modal compact-modal"
+            onSubmit={(event) => void salvarNovaContabilidade(event)}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">Cadastro</span>
+                <h2>Nova contabilidade</h2>
+              </div>
+              <button
+                type="button"
+                className="close-button"
+                onClick={() => setModalContabilidade(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <label className="form-field">
+              <span>Nome da contabilidade</span>
+              <input
+                value={contabilidadeNome}
+                onChange={(event) => setContabilidadeNome(event.target.value)}
+                placeholder="Ex.: Contabilidade Silva"
+                autoFocus
+                required
+              />
+            </label>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setModalContabilidade(false)}
+              >
+                Cancelar
+              </button>
+              <button className="button primary" disabled={salvandoContabilidade || !contabilidadeNome.trim()}>
+                {salvandoContabilidade ? "Salvando..." : "Cadastrar"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {modalPendencia && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalPendencia(false)}>
+          <form
+            className="message-modal form-modal"
+            onSubmit={(event) => void salvarNovaPendencia(event)}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">Acompanhamento mensal</span>
+                <h2>Nova pendência</h2>
+              </div>
+              <button type="button" className="close-button" onClick={() => setModalPendencia(false)}>
+                ×
+              </button>
+            </div>
+
+            <p className="modal-help">
+              Cadastre somente clientes que tiveram alguma nota ou conferência pendente nesta competência.
+            </p>
+
+            <div className="form-grid">
+              <label className="form-field full-width">
+                <span>Cliente</span>
+                <select
+                  value={pendenciaClienteId}
+                  onChange={(event) => setPendenciaClienteId(event.target.value)}
+                  disabled={carregandoCadastros}
+                  required
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clientes
+                    .filter((cliente) => cliente.ativo)
+                    .map((cliente) => (
+                      <option key={cliente.id} value={cliente.id}>
+                        {cliente.nome}
+                        {cliente.contabilidade ? ` — ${cliente.contabilidade.nome}` : ""}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label className="form-field">
+                <span>Competência</span>
+                <input
+                  type="month"
+                  value={pendenciaCompetencia}
+                  onChange={(event) => setPendenciaCompetencia(event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Status inicial</span>
+                <select
+                  value={pendenciaStatus}
+                  onChange={(event) => setPendenciaStatus(event.target.value as StatusPendencia)}
+                >
+                  {statusDisponiveis.map((status) => (
+                    <option key={status} value={status}>
+                      {rotulosStatus[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-field full-width">
+                <span>Responsável</span>
+                <input
+                  value={pendenciaResponsavel}
+                  onChange={(event) => setPendenciaResponsavel(event.target.value)}
+                  placeholder="Quem ficará responsável"
+                />
+              </label>
+
+              <label className="form-field full-width">
+                <span>Observação interna</span>
+                <textarea
+                  rows={4}
+                  value={pendenciaObservacao}
+                  onChange={(event) => setPendenciaObservacao(event.target.value)}
+                  placeholder="Ex.: Aguardando cliente liberar acesso ao computador."
+                />
+              </label>
+            </div>
+
+            {clientes.filter((cliente) => cliente.ativo).length === 0 && (
+              <div className="inline-warning">
+                Nenhum cliente ativo cadastrado. Cadastre um cliente antes de criar a pendência.
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="button secondary" onClick={() => setModalPendencia(false)}>
+                Cancelar
+              </button>
+              <button
+                className="button primary"
+                disabled={salvandoPendencia || !pendenciaClienteId || !pendenciaCompetencia}
+              >
+                {salvandoPendencia ? "Criando..." : "Criar pendência"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {historicoModal && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setHistoricoModal(null)}>
+          <section
+            className="message-modal history-modal"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">Linha do tempo</span>
+                <h2>{historicoModal.clienteNome}</h2>
+              </div>
+              <button className="close-button" onClick={() => setHistoricoModal(null)}>
+                ×
+              </button>
+            </div>
+
+            {historicoModal.carregando ? (
+              <div className="history-empty">Carregando histórico...</div>
+            ) : historicoModal.registros.length === 0 ? (
+              <div className="history-empty">Ainda não existem movimentações registradas.</div>
+            ) : (
+              <div className="history-list">
+                {historicoModal.registros.map((registro) => (
+                  <article className="history-item" key={registro.id}>
+                    <div className="history-dot" />
+                    <div className="history-content">
+                      <div className="history-heading">
+                        <strong>{rotulosHistorico[registro.tipo]}</strong>
+                        <span>{formatarData(registro.criadoEm)}</span>
+                      </div>
+                      <p className="history-author">
+                        {registro.autor ? `Por ${registro.autor}` : "Autor não informado"}
+                      </p>
+
+                      {registro.tipo === "CRIACAO" ? (
+                        <p className="history-value">
+                          Status inicial: <strong>{formatarValorHistorico(registro.valorNovo)}</strong>
+                        </p>
+                      ) : registro.tipo === "MENSAGEM_CONTADOR" ? (
+                        <div className="history-message-preview">
+                          {registro.valorNovo || "Mensagem removida"}
+                        </div>
+                      ) : (
+                        <div className="history-change">
+                          <div>
+                            <span>Antes</span>
+                            <strong>{formatarValorHistorico(registro.valorAnterior)}</strong>
+                          </div>
+                          <span className="history-arrow">→</span>
+                          <div>
+                            <span>Depois</span>
+                            <strong>{formatarValorHistorico(registro.valorNovo)}</strong>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       )}
