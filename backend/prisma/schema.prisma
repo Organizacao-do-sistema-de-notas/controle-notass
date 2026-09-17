@@ -20,6 +20,7 @@ enum TipoHistoricoPendencia {
   STATUS
   RESPONSAVEL
   OBSERVACAO
+  MENSAGEM_CONTADOR
 }
 
 model Contabilidade {
@@ -44,22 +45,23 @@ model Cliente {
 }
 
 model Pendencia {
-  id           Int                  @id @default(autoincrement())
+  id               Int                  @id @default(autoincrement())
 
-  clienteId    Int
-  cliente      Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  clienteId        Int
+  cliente          Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  competencia  String
-  status       StatusPendencia      @default(PENDENTE)
+  competencia      String
+  status           StatusPendencia      @default(PENDENTE)
 
-  responsavel  String?
-  observacao   String?
+  responsavel      String?
+  observacao       String?
+  mensagemContador String?
 
-  historico    HistoricoPendencia[]
+  historico        HistoricoPendencia[]
 
-  criadoEm     DateTime             @default(now())
-  atualizadoEm DateTime             @updatedAt
-  concluidoEm  DateTime?
+  criadoEm         DateTime             @default(now())
+  atualizadoEm     DateTime             @updatedAt
+  concluidoEm      DateTime?
 
   @@unique([clienteId, competencia])
 }
