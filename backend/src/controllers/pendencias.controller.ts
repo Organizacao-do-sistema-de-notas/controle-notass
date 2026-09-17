@@ -41,6 +41,13 @@ function autorValido(valor: unknown): boolean {
   return valor === undefined || valor === null || typeof valor === "string";
 }
 
+type EventoHistorico = {
+  tipo: TipoHistoricoPendencia;
+  valorAnterior: string | null;
+  valorNovo: string | null;
+  autor: string | null;
+};
+
 export async function listarPendencias(req: Request, res: Response): Promise<void> {
   const { competencia, status, clienteId } = req.query;
 
@@ -235,7 +242,7 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
     const observacaoInicial = textoOpcional(observacao);
     const autorHistorico = textoOpcional(autor);
 
-    const eventosHistorico = [
+    const eventosHistorico: EventoHistorico[] = [
       {
         tipo: TipoHistoricoPendencia.CRIACAO,
         valorAnterior: null,
@@ -345,12 +352,7 @@ export async function atualizarPendencia(req: Request, res: Response): Promise<v
       observacao !== undefined ? textoOpcional(observacao) : existente.observacao;
     const autorHistorico = textoOpcional(autor);
 
-    const eventosHistorico: Array<{
-      tipo: TipoHistoricoPendencia;
-      valorAnterior: string | null;
-      valorNovo: string | null;
-      autor: string | null;
-    }> = [];
+    const eventosHistorico: EventoHistorico[] = [];
 
     if (status !== undefined && status !== existente.status) {
       eventosHistorico.push({
