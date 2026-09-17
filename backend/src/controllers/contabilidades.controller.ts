@@ -2,7 +2,11 @@ import type { Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.ts";
 
-function obterId(valor: string): number | null {
+function obterId(valor: unknown): number | null {
+  if (typeof valor !== "string") {
+    return null;
+  }
+
   const id = Number(valor);
 
   if (!Number.isInteger(id) || id <= 0) {
