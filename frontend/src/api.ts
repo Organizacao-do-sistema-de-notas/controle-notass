@@ -7,12 +7,15 @@ import type {
 const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
 
 async function requisicao<T>(caminho: string, opcoes?: RequestInit): Promise<T> {
+  const headers = new Headers(opcoes?.headers);
+
+  if (opcoes?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const resposta = await fetch(`${API_URL}${caminho}`, {
     ...opcoes,
-    headers: {
-      "Content-Type": "application/json",
-      ...opcoes?.headers,
-    },
+    headers,
   });
 
   if (!resposta.ok) {
