@@ -3,6 +3,7 @@ import express from "express";
 
 import { clientesRouter } from "./routes/clientes.routes.ts";
 import { contabilidadesRouter } from "./routes/contabilidades.routes.ts";
+import { painelRouter } from "./routes/painel.routes.ts";
 import { pendenciasRouter } from "./routes/pendencias.routes.ts";
 
 export const app = express();
@@ -18,6 +19,7 @@ app.get("/", (_req, res) => {
 
 app.use("/clientes", clientesRouter);
 app.use("/contabilidades", contabilidadesRouter);
+app.use("/painel", painelRouter);
 app.use("/pendencias", pendenciasRouter);
 
 app.use((_req, res) => {
