@@ -8,6 +8,9 @@ set "BACKEND_DIR=%PROJECT_DIR%backend"
 set "FRONTEND_DIR=%PROJECT_DIR%frontend"
 set "FRONTEND_URL=http://localhost:5173"
 set "NPM_CMD="
+set "CMD_EXE=%ComSpec%"
+set "TIMEOUT_EXE=%SystemRoot%\System32\timeout.exe"
+set "WHERE_EXE=%SystemRoot%\System32\where.exe"
 
 cls
 echo ============================================================
@@ -39,8 +42,10 @@ if not exist "%PROJECT_DIR%.env" (
     exit /b 1
 )
 
-:: Procura o npm de forma mais robusta do que apenas depender do PATH atual.
-for /f "delims=" %%P in ('where.exe npm.cmd 2^>nul') do if not defined NPM_CMD set "NPM_CMD=%%P"
+:: Localiza o npm mesmo quando o PATH do terminal esta incompleto.
+if exist "%WHERE_EXE%" (
+    for /f "delims=" %%P in ('"%WHERE_EXE%" npm.cmd 2^>nul') do if not defined NPM_CMD set "NPM_CMD=%%P"
+)
 if not defined NPM_CMD if exist "%ProgramFiles%\nodejs\npm.cmd" set "NPM_CMD=%ProgramFiles%\nodejs\npm.cmd"
 if not defined NPM_CMD if defined ProgramFiles(x86) if exist "%ProgramFiles(x86)%\nodejs\npm.cmd" set "NPM_CMD=%ProgramFiles(x86)%\nodejs\npm.cmd"
 if not defined NPM_CMD if exist "%LOCALAPPDATA%\Programs\nodejs\npm.cmd" set "NPM_CMD=%LOCALAPPDATA%\Programs\nodejs\npm.cmd"
@@ -48,10 +53,15 @@ if not defined NPM_CMD if exist "%LOCALAPPDATA%\Programs\nodejs\npm.cmd" set "NP
 if not defined NPM_CMD (
     echo [ERRO] npm nao foi encontrado.
     echo.
-    echo Se o Node.js ja estiver instalado, feche e abra novamente o VS Code
-    echo ou o terminal para atualizar o PATH do Windows.
+    echo Execute instalar-controle-notas.bat para instalar/verificar o Node.js.
     echo.
-    echo Caso ainda nao funcione, execute instalar-controle-notas.bat.
+    pause
+    exit /b 1
+)
+
+if not exist "%CMD_EXE%" (
+    echo [ERRO] O Prompt de Comando do Windows nao foi encontrado:
+    echo %CMD_EXE%
     echo.
     pause
     exit /b 1
@@ -62,16 +72,16 @@ echo %NPM_CMD%
 echo.
 
 echo Iniciando backend...
-start "Controle de Notas - Backend" cmd /k "cd /d ""%BACKEND_DIR%"" && ""%NPM_CMD%"" run dev"
+start "Controle de Notas - Backend" /D "%BACKEND_DIR%" "%CMD_EXE%" /k call "%NPM_CMD%" run dev
 
-timeout /t 2 /nobreak >nul
+if exist "%TIMEOUT_EXE%" "%TIMEOUT_EXE%" /t 2 /nobreak >nul
 
 echo Iniciando frontend...
-start "Controle de Notas - Frontend" cmd /k "cd /d ""%FRONTEND_DIR%"" && ""%NPM_CMD%"" run dev"
+start "Controle de Notas - Frontend" /D "%FRONTEND_DIR%" "%CMD_EXE%" /k call "%NPM_CMD%" run dev
 
 echo.
 echo Aguardando os servidores iniciarem...
-timeout /t 3 /nobreak >nul
+if exist "%TIMEOUT_EXE%" "%TIMEOUT_EXE%" /t 3 /nobreak >nul
 
 echo Abrindo sistema no navegador...
 start "" "%FRONTEND_URL%"
@@ -92,6 +102,6 @@ echo ou pressione Ctrl+C dentro de cada uma.
 echo ============================================================
 echo.
 
-timeout /t 4 /nobreak >nul
+if exist "%TIMEOUT_EXE%" "%TIMEOUT_EXE%" /t 4 /nobreak >nul
 endlocal
 exit /b 0
