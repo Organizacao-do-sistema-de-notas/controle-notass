@@ -12,11 +12,13 @@ echo ============================================================
 echo           CONTROLE DE NOTAS - INSTALACAO COMPLETA
 echo ============================================================
 echo.
-echo Este instalador prepara uma maquina Windows para desenvolvimento
-echo ou reinstalacao local do sistema.
+echo Este arquivo prepara uma maquina Windows nova para rodar o sistema.
+echo Ele verifica/instala Git, Node.js LTS e PostgreSQL 17, baixa o projeto,
+echo instala as dependencias, configura o banco, aplica migrations e valida
+echo backend e frontend.
 echo.
 
-:: Winget e instalacoes de sistema normalmente precisam de administrador.
+:: Instalacoes pelo winget podem exigir administrador.
 net session >nul 2>&1
 if not "%errorlevel%"=="0" (
     echo Solicitando permissao de administrador...
@@ -24,9 +26,6 @@ if not "%errorlevel%"=="0" (
     exit /b
 )
 
-:: ------------------------------------------------------------
-:: 1. WINGET
-:: ------------------------------------------------------------
 where winget >nul 2>&1
 if errorlevel 1 (
     echo [ERRO] O Windows Package Manager ^(winget^) nao foi encontrado.
@@ -45,7 +44,7 @@ if errorlevel 1 (
 )
 where git >nul 2>&1
 if errorlevel 1 (
-    echo [ERRO] Git foi instalado, mas ainda nao esta disponivel no PATH.
+    echo [ERRO] Git ainda nao esta disponivel no PATH.
     echo Reinicie o Windows e execute este instalador novamente.
     pause
     exit /b 1
@@ -60,12 +59,10 @@ if errorlevel 1 (
     set "PATH=%PATH%;%ProgramFiles%\nodejs"
 )
 where npm >nul 2>&1
-if errorlevel 1 (
-    set "PATH=%PATH%;%ProgramFiles%\nodejs"
-)
+if errorlevel 1 set "PATH=%PATH%;%ProgramFiles%\nodejs"
 where npm >nul 2>&1
 if errorlevel 1 (
-    echo [ERRO] npm nao ficou disponivel no PATH.
+    echo [ERRO] npm ainda nao esta disponivel no PATH.
     echo Reinicie o Windows e execute este instalador novamente.
     pause
     exit /b 1
@@ -94,21 +91,16 @@ echo PostgreSQL localizado em:
 echo %PSQL%
 echo.
 
-:: ------------------------------------------------------------
-:: 2. PROJETO
-:: ------------------------------------------------------------
 echo [4/8] Preparando o codigo do sistema...
 set "SCRIPT_DIR=%~dp0"
 if exist "%SCRIPT_DIR%.git" (
     set "PROJECT_DIR=%SCRIPT_DIR:~0,-1%"
-    echo Repositorio detectado na mesma pasta do instalador.
-    git -C "%PROJECT_DIR%" pull
-    if errorlevel 1 goto :erro_git
+    echo Repositorio detectado na pasta do instalador.
+    echo Sera usado o codigo que ja esta nesta pasta.
 ) else (
     set "DEFAULT_PROJECT_DIR=%USERPROFILE%\Desktop\Trabalho-controle"
     echo.
-    echo Pasta padrao:
-    echo %DEFAULT_PROJECT_DIR%
+    echo Pasta padrao: %DEFAULT_PROJECT_DIR%
     set /p "PROJECT_DIR=Pressione ENTER para usar a pasta padrao ou informe outra pasta: "
     if not defined PROJECT_DIR set "PROJECT_DIR=%DEFAULT_PROJECT_DIR%"
 
@@ -120,11 +112,10 @@ if exist "%SCRIPT_DIR%.git" (
         if exist "%PROJECT_DIR%" (
             echo [ERRO] A pasta escolhida ja existe, mas nao e um repositorio Git:
             echo %PROJECT_DIR%
-            echo Escolha uma pasta vazia ou remova/renomeie a pasta existente.
+            echo Escolha uma pasta que ainda nao exista ou renomeie a pasta atual.
             pause
             exit /b 1
         )
-
         git clone "%REPO_URL%" "%PROJECT_DIR%"
         if errorlevel 1 goto :erro_git
     )
@@ -134,9 +125,6 @@ echo.
 echo Projeto em: %PROJECT_DIR%
 echo.
 
-:: ------------------------------------------------------------
-:: 3. DEPENDENCIAS NODE
-:: ------------------------------------------------------------
 echo [5/8] Instalando dependencias do backend...
 pushd "%PROJECT_DIR%\backend"
 call npm install
@@ -146,7 +134,6 @@ if errorlevel 1 (
 )
 popd
 
-echo.
 echo Instalando dependencias do frontend...
 pushd "%PROJECT_DIR%\frontend"
 call npm install
@@ -156,9 +143,6 @@ if errorlevel 1 (
 )
 popd
 
-:: ------------------------------------------------------------
-:: 4. BANCO / .ENV
-:: ------------------------------------------------------------
 echo.
 echo [6/8] Configurando banco de dados...
 if exist "%PROJECT_DIR%\.env" (
@@ -172,6 +156,9 @@ if exist "%PROJECT_DIR%\.env" (
 set "DB_HOST=localhost"
 set "DB_PORT=5432"
 set "DB_USER=postgres"
+set "NOVO_HOST="
+set "NOVA_PORTA="
+set "NOVO_USUARIO="
 
 echo.
 set /p "NOVO_HOST=Host do PostgreSQL [localhost]: "
@@ -192,7 +179,6 @@ if not defined DB_PASSWORD (
 )
 
 set "PGPASSWORD=%DB_PASSWORD%"
-
 "%PSQL%" -h "%DB_HOST%" -p "%DB_PORT%" -U "%DB_USER%" -d postgres -c "SELECT 1;" >nul 2>&1
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel conectar ao PostgreSQL.
@@ -218,8 +204,8 @@ if errorlevel 1 (
     echo Banco %DB_NAME% ja existe.
 )
 
-:: Monta DATABASE_URL com a senha codificada para URL sem exibir a senha.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=[Uri]::EscapeDataString($env:DB_PASSWORD); $url='postgresql://'+$env:DB_USER+':'+$p+'@'+$env:DB_HOST+':'+$env:DB_PORT+'/'+$env:DB_NAME; Set-Content -LiteralPath (Join-Path $env:PROJECT_DIR '.env') -Value @('DATABASE_URL=\"'+$url+'\"','PORT='+$env:API_PORT) -Encoding utf8"
+:: A senha e codificada para URL e nunca e gravada dentro deste .bat.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=[Uri]::EscapeDataString($env:DB_PASSWORD); $url='postgresql://'+$env:DB_USER+':'+$p+'@'+$env:DB_HOST+':'+$env:DB_PORT+'/'+$env:DB_NAME; Set-Content -LiteralPath (Join-Path $env:PROJECT_DIR '.env') -Value @('DATABASE_URL='+$url,'PORT='+$env:API_PORT) -Encoding utf8"
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel criar o arquivo .env.
     set "PGPASSWORD="
@@ -233,9 +219,6 @@ set "DB_PASSWORD="
 echo Arquivo .env criado com sucesso.
 
 :depois_env
-:: ------------------------------------------------------------
-:: 5. PRISMA / VALIDACOES
-:: ------------------------------------------------------------
 echo.
 echo [7/8] Preparando Prisma e banco...
 pushd "%PROJECT_DIR%\backend"
@@ -256,9 +239,6 @@ if errorlevel 1 (
 )
 popd
 
-:: ------------------------------------------------------------
-:: 6. BUILD FRONTEND
-:: ------------------------------------------------------------
 echo.
 echo [8/8] Validando frontend...
 pushd "%PROJECT_DIR%\frontend"
@@ -279,19 +259,16 @@ echo Backend:  http://localhost:%API_PORT%
 echo Frontend: http://localhost:5173
 echo Banco:    %DB_NAME%
 echo.
-echo Para usar o sistema, mantenha duas janelas abertas:
-echo   backend  - npm run dev
-echo   frontend - npm run dev
+echo O .env fica somente nesta maquina e nao e enviado ao GitHub.
 echo.
 choice /C SN /N /M "Deseja iniciar o sistema agora? [S/N]: "
 if errorlevel 2 goto :fim
 
-start "Controle de Notas - Backend" cmd /k "cd /d \"%PROJECT_DIR%\backend\" && npm run dev"
+start "Controle de Notas - Backend" cmd /k "cd /d ""%PROJECT_DIR%\backend"" && npm run dev"
 timeout /t 2 /nobreak >nul
-start "Controle de Notas - Frontend" cmd /k "cd /d \"%PROJECT_DIR%\frontend\" && npm run dev"
+start "Controle de Notas - Frontend" cmd /k "cd /d ""%PROJECT_DIR%\frontend"" && npm run dev"
 timeout /t 3 /nobreak >nul
 start "" "http://localhost:5173"
-
 goto :fim
 
 :localizar_psql
