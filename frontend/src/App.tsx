@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
   atualizarStatusPendencia,
@@ -290,7 +291,7 @@ export function App() {
     setModalCliente(true);
   }
 
-  async function salvarNovoCliente(event: React.FormEvent) {
+  async function salvarNovoCliente(event: FormEvent) {
     event.preventDefault();
     if (!clienteNome.trim()) return;
 
@@ -316,7 +317,7 @@ export function App() {
     setModalContabilidade(true);
   }
 
-  async function salvarNovaContabilidade(event: React.FormEvent) {
+  async function salvarNovaContabilidade(event: FormEvent) {
     event.preventDefault();
     if (!contabilidadeNome.trim()) return;
 
@@ -346,7 +347,7 @@ export function App() {
     setModalPendencia(true);
   }
 
-  async function salvarNovaPendencia(event: React.FormEvent) {
+  async function salvarNovaPendencia(event: FormEvent) {
     event.preventDefault();
     if (!pendenciaClienteId || !pendenciaCompetencia) return;
 
