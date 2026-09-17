@@ -1,43 +1,12 @@
-import { StatusPendencia } from "../../generated/prisma/enums.ts";
-
-interface DadosMensagemPendencia {
-  clienteNome: string;
-  competencia: string;
-  status: StatusPendencia;
-  observacao: string | null;
+export function normalizarMensagemContador(valor: string): string {
+  return valor
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((linha) => linha.trimEnd())
+    .join("\n")
+    .trim();
 }
 
-const rotulosStatus: Record<StatusPendencia, string> = {
-  [StatusPendencia.PENDENTE]: "Pendente",
-  [StatusPendencia.AGUARDANDO_CLIENTE]: "Aguardando cliente",
-  [StatusPendencia.EM_ATENDIMENTO]: "Em atendimento",
-  [StatusPendencia.CONCLUIDO]: "Concluído",
-};
-
-export function formatarCompetencia(competencia: string): string {
-  const [ano, mes] = competencia.split("-");
-  return `${mes}/${ano}`;
-}
-
-function resumirObservacao(observacao: string | null): string {
-  if (!observacao) {
-    return "Sem observações adicionais.";
-  }
-
-  const texto = observacao.replace(/\s+/g, " ").trim();
-
-  if (texto.length <= 240) {
-    return texto;
-  }
-
-  return `${texto.slice(0, 237).trimEnd()}...`;
-}
-
-export function gerarMensagemPendencia(dados: DadosMensagemPendencia): string {
-  return [
-    `Cliente: ${dados.clienteNome}`,
-    `Competência: ${formatarCompetencia(dados.competencia)}`,
-    `Status: ${rotulosStatus[dados.status]}`,
-    `Observação: ${resumirObservacao(dados.observacao)}`,
-  ].join("\n");
+export function gerarLinkWhatsApp(mensagem: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
 }
