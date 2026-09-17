@@ -4,9 +4,38 @@ export type StatusPendencia =
   | "EM_ATENDIMENTO"
   | "CONCLUIDO";
 
+export type TipoHistoricoPendencia =
+  | "CRIACAO"
+  | "STATUS"
+  | "RESPONSAVEL"
+  | "OBSERVACAO"
+  | "MENSAGEM_CONTADOR";
+
 export interface Contabilidade {
   id: number;
   nome: string;
+  criadoEm: string;
+  _count?: {
+    clientes: number;
+  };
+}
+
+export interface Cliente {
+  id: number;
+  nome: string;
+  ativo: boolean;
+  contabilidadeId: number | null;
+  contabilidade: Contabilidade | null;
+  criadoEm: string;
+}
+
+export interface HistoricoPendencia {
+  id: number;
+  pendenciaId: number;
+  tipo: TipoHistoricoPendencia;
+  valorAnterior: string | null;
+  valorNovo: string | null;
+  autor: string | null;
   criadoEm: string;
 }
 
