@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 
-import { StatusPendencia } from "../../generated/prisma/enums.ts";
+import {
+  StatusPendencia,
+  TipoHistoricoPendencia,
+} from "../../generated/prisma/enums.ts";
 import { prisma } from "../lib/prisma.ts";
 
 function obterId(valor: unknown): number | null {
@@ -34,6 +37,10 @@ function textoOpcional(valor: unknown): string | null {
   return texto.length > 0 ? texto : null;
 }
 
+function autorValido(valor: unknown): boolean {
+  return valor === undefined || valor === null || typeof valor === "string";
+}
+
 export async function listarPendencias(req: Request, res: Response): Promise<void> {
   const { competencia, status, clienteId } = req.query;
 
@@ -50,11 +57,6 @@ export async function listarPendencias(req: Request, res: Response): Promise<voi
   let clienteIdNumero: number | undefined;
 
   if (clienteId !== undefined) {
-    if (typeof clienteId !== "string") {
-      res.status(400).json({ erro: "clienteId inválido." });
-      return;
-    }
-
     const id = obterId(clienteId);
 
     if (id === null) {
@@ -113,6 +115,11 @@ export async function buscarPendenciaPorId(req: Request, res: Response): Promise
             contabilidade: true,
           },
         },
+        historico: {
+          orderBy: {
+            criadoEm: "desc",
+          },
+        },
       },
     });
 
@@ -128,8 +135,43 @@ export async function buscarPendenciaPorId(req: Request, res: Response): Promise
   }
 }
 
+export async function listarHistoricoPendencia(req: Request, res: Response): Promise<void> {
+  const id = obterId(req.params.id);
+
+  if (id === null) {
+    res.status(400).json({ erro: "ID de pendência inválido." });
+    return;
+  }
+
+  try {
+    const pendencia = await prisma.pendencia.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!pendencia) {
+      res.status(404).json({ erro: "Pendência não encontrada." });
+      return;
+    }
+
+    const historico = await prisma.historicoPendencia.findMany({
+      where: {
+        pendenciaId: id,
+      },
+      orderBy: {
+        criadoEm: "desc",
+      },
+    });
+
+    res.json(historico);
+  } catch (erro) {
+    console.error("Erro ao listar histórico da pendência:", erro);
+    res.status(500).json({ erro: "Erro ao listar histórico da pendência." });
+  }
+}
+
 export async function criarPendencia(req: Request, res: Response): Promise<void> {
-  const { clienteId, competencia, status, responsavel, observacao } = req.body;
+  const { clienteId, competencia, status, responsavel, observacao, autor } = req.body;
 
   if (!Number.isInteger(clienteId) || clienteId <= 0) {
     res.status(400).json({ erro: "clienteId é obrigatório e deve ser um número inteiro positivo." });
@@ -143,6 +185,21 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
 
   if (status !== undefined && !statusValido(status)) {
     res.status(400).json({ erro: "Status de pendência inválido." });
+    return;
+  }
+
+  if (responsavel !== undefined && responsavel !== null && typeof responsavel !== "string") {
+    res.status(400).json({ erro: "Responsável inválido." });
+    return;
+  }
+
+  if (observacao !== undefined && observacao !== null && typeof observacao !== "string") {
+    res.status(400).json({ erro: "Observação inválida." });
+    return;
+  }
+
+  if (!autorValido(autor)) {
+    res.status(400).json({ erro: "Autor inválido." });
     return;
   }
 
@@ -174,20 +231,58 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
     }
 
     const statusInicial = status ?? StatusPendencia.PENDENTE;
+    const responsavelInicial = textoOpcional(responsavel);
+    const observacaoInicial = textoOpcional(observacao);
+    const autorHistorico = textoOpcional(autor);
+
+    const eventosHistorico = [
+      {
+        tipo: TipoHistoricoPendencia.CRIACAO,
+        valorAnterior: null,
+        valorNovo: statusInicial,
+        autor: autorHistorico,
+      },
+    ];
+
+    if (responsavelInicial !== null) {
+      eventosHistorico.push({
+        tipo: TipoHistoricoPendencia.RESPONSAVEL,
+        valorAnterior: null,
+        valorNovo: responsavelInicial,
+        autor: autorHistorico,
+      });
+    }
+
+    if (observacaoInicial !== null) {
+      eventosHistorico.push({
+        tipo: TipoHistoricoPendencia.OBSERVACAO,
+        valorAnterior: null,
+        valorNovo: observacaoInicial,
+        autor: autorHistorico,
+      });
+    }
 
     const pendencia = await prisma.pendencia.create({
       data: {
         clienteId,
         competencia,
         status: statusInicial,
-        responsavel: textoOpcional(responsavel),
-        observacao: textoOpcional(observacao),
+        responsavel: responsavelInicial,
+        observacao: observacaoInicial,
         concluidoEm: statusInicial === StatusPendencia.CONCLUIDO ? new Date() : null,
+        historico: {
+          create: eventosHistorico,
+        },
       },
       include: {
         cliente: {
           include: {
             contabilidade: true,
+          },
+        },
+        historico: {
+          orderBy: {
+            criadoEm: "desc",
           },
         },
       },
@@ -202,7 +297,7 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
 
 export async function atualizarPendencia(req: Request, res: Response): Promise<void> {
   const id = obterId(req.params.id);
-  const { status, responsavel, observacao } = req.body;
+  const { status, responsavel, observacao, autor } = req.body;
 
   if (id === null) {
     res.status(400).json({ erro: "ID de pendência inválido." });
@@ -224,6 +319,11 @@ export async function atualizarPendencia(req: Request, res: Response): Promise<v
     return;
   }
 
+  if (!autorValido(autor)) {
+    res.status(400).json({ erro: "Autor inválido." });
+    return;
+  }
+
   if (status === undefined && responsavel === undefined && observacao === undefined) {
     res.status(400).json({ erro: "Nenhum campo foi informado para atualização." });
     return;
@@ -239,29 +339,112 @@ export async function atualizarPendencia(req: Request, res: Response): Promise<v
       return;
     }
 
-    const pendencia = await prisma.pendencia.update({
-      where: { id },
-      data: {
-        status,
-        responsavel: responsavel !== undefined ? textoOpcional(responsavel) : undefined,
-        observacao: observacao !== undefined ? textoOpcional(observacao) : undefined,
-        concluidoEm:
-          status === undefined
-            ? undefined
-            : status === StatusPendencia.CONCLUIDO
-              ? existente.concluidoEm ?? new Date()
-              : null,
-      },
+    const responsavelNovo =
+      responsavel !== undefined ? textoOpcional(responsavel) : existente.responsavel;
+    const observacaoNova =
+      observacao !== undefined ? textoOpcional(observacao) : existente.observacao;
+    const autorHistorico = textoOpcional(autor);
+
+    const eventosHistorico: Array<{
+      tipo: TipoHistoricoPendencia;
+      valorAnterior: string | null;
+      valorNovo: string | null;
+      autor: string | null;
+    }> = [];
+
+    if (status !== undefined && status !== existente.status) {
+      eventosHistorico.push({
+        tipo: TipoHistoricoPendencia.STATUS,
+        valorAnterior: existente.status,
+        valorNovo: status,
+        autor: autorHistorico,
+      });
+    }
+
+    if (responsavel !== undefined && responsavelNovo !== existente.responsavel) {
+      eventosHistorico.push({
+        tipo: TipoHistoricoPendencia.RESPONSAVEL,
+        valorAnterior: existente.responsavel,
+        valorNovo: responsavelNovo,
+        autor: autorHistorico,
+      });
+    }
+
+    if (observacao !== undefined && observacaoNova !== existente.observacao) {
+      eventosHistorico.push({
+        tipo: TipoHistoricoPendencia.OBSERVACAO,
+        valorAnterior: existente.observacao,
+        valorNovo: observacaoNova,
+        autor: autorHistorico,
+      });
+    }
+
+    if (eventosHistorico.length === 0) {
+      const pendenciaAtual = await prisma.pendencia.findUnique({
+        where: { id },
+        include: {
+          cliente: {
+            include: {
+              contabilidade: true,
+            },
+          },
+          historico: {
+            orderBy: {
+              criadoEm: "desc",
+            },
+          },
+        },
+      });
+
+      res.json(pendenciaAtual);
+      return;
+    }
+
+    const pendencia = await prisma.$transaction(async (tx) => {
+      const atualizada = await tx.pendencia.update({
+        where: { id },
+        data: {
+          status,
+          responsavel: responsavel !== undefined ? responsavelNovo : undefined,
+          observacao: observacao !== undefined ? observacaoNova : undefined,
+          concluidoEm:
+            status === undefined
+              ? undefined
+              : status === StatusPendencia.CONCLUIDO
+                ? existente.concluidoEm ?? new Date()
+                : null,
+        },
+      });
+
+      for (const evento of eventosHistorico) {
+        await tx.historicoPendencia.create({
+          data: {
+            pendenciaId: id,
+            ...evento,
+          },
+        });
+      }
+
+      return atualizada;
+    });
+
+    const pendenciaCompleta = await prisma.pendencia.findUnique({
+      where: { id: pendencia.id },
       include: {
         cliente: {
           include: {
             contabilidade: true,
           },
         },
+        historico: {
+          orderBy: {
+            criadoEm: "desc",
+          },
+        },
       },
     });
 
-    res.json(pendencia);
+    res.json(pendenciaCompleta);
   } catch (erro) {
     console.error("Erro ao atualizar pendência:", erro);
     res.status(500).json({ erro: "Erro ao atualizar pendência." });
