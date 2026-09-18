@@ -33,21 +33,23 @@ export function RootApp() {
     <>
       <nav className="mode-switcher" aria-label="Alternar visualização do sistema">
         <div className="mode-switcher-inner">
-          <div className="mode-switcher-copy">
-            <strong>Visualização</strong>
-            <span>Escolha como acompanhar o mês</span>
-          </div>
+          <div className="mode-switcher-left">
+            <div className="mode-switcher-copy">
+              <strong>Visualização</strong>
+              <span>Escolha como acompanhar o mês</span>
+            </div>
 
-          {modo === "excel" && (
-            <label className="month-picker">
-              <span>Mês</span>
-              <input
-                type="month"
-                value={competenciaExcel}
-                onChange={(event) => trocarCompetencia(event.target.value)}
-              />
-            </label>
-          )}
+            {modo === "excel" && (
+              <label className="month-picker">
+                <span>Mês</span>
+                <input
+                  type="month"
+                  value={competenciaExcel}
+                  onChange={(event) => trocarCompetencia(event.target.value)}
+                />
+              </label>
+            )}
+          </div>
 
           <div className="mode-switcher-actions">
             <button
