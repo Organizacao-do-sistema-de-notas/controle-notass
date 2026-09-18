@@ -213,8 +213,8 @@
 }
 
 .excel-status-select-pendente {
-  background: #fff3d6;
-  color: #935c00;
+  background: #ea4335;
+  color: #111827;
 }
 
 .excel-status-select-aguardando {
@@ -228,8 +228,8 @@
 }
 
 .excel-status-select-ok {
-  background: #dff5e7;
-  color: #147a45;
+  background: #34a853;
+  color: #0b1f12;
 }
 
 .excel-note {
@@ -305,8 +305,8 @@
 }
 
 .priority-status-pendente {
-  background: #fff3d6;
-  color: #935c00;
+  background: #ea4335;
+  color: #111827;
 }
 
 .priority-status-aguardando {
@@ -320,8 +320,8 @@
 }
 
 .priority-status-ok {
-  background: #dff5e7;
-  color: #147a45;
+  background: #34a853;
+  color: #0b1f12;
 }
 
 .xaxim-card {
