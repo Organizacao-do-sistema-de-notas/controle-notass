@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { App } from "./App";
-import { ExcelView } from "./ExcelView";
+import { ExcelViewV2 } from "./ExcelViewV2";
 
 type ModoTela = "painel" | "excel";
 
@@ -103,7 +103,7 @@ export function RootApp() {
         </div>
       </nav>
 
-      {modo === "painel" ? <App /> : <ExcelView competencia={competenciaExcel} />}
+      {modo === "painel" ? <App /> : <ExcelViewV2 competencia={competenciaExcel} />}
     </>
   );
 }
