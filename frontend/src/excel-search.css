@@ -1,0 +1,75 @@
+.excel-search-box {
+  display: grid;
+  gap: 5px;
+  margin: -2px 0 2px;
+}
+
+.excel-search-box > span {
+  color: #12243e;
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.excel-search-control {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  min-height: 38px;
+  border: 2px solid #80d5e1;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.excel-search-control:focus-within {
+  border-color: #366cff;
+  box-shadow: 0 0 0 3px rgba(54, 108, 255, 0.1);
+}
+
+.excel-search-icon {
+  padding-left: 10px;
+  color: #58708d;
+  font-size: 1.1rem;
+}
+
+.excel-search-control input {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  padding: 0 10px;
+  background: transparent;
+  color: #172033;
+  outline: none;
+}
+
+.excel-search-control button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.excel-search-box > small,
+.excel-form-field small {
+  color: #65758a;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.excel-search-empty {
+  padding: 28px 16px;
+  color: #667085;
+  text-align: center;
+}
+
+.excel-client-aliases {
+  display: block;
+  margin-top: 4px;
+  color: #6c7b8f;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
