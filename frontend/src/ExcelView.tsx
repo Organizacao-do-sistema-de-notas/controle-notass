@@ -66,11 +66,6 @@ function lerJson<T>(chave: string, padrao: T): T {
   }
 }
 
-function formatarCompetencia(competencia: string): string {
-  const [ano, mes] = competencia.split("-");
-  return `${mes}/${ano}`;
-}
-
 export function ExcelView({ competencia }: ExcelViewProps) {
   const [clientesExtras, setClientesExtras] = useState<string[]>(() =>
     lerJson<string[]>("controle-notas-excel-clientes", []),
@@ -84,6 +79,7 @@ export function ExcelView({ competencia }: ExcelViewProps) {
   );
 
   const [statusAberto, setStatusAberto] = useState<string | null>(null);
+  const [prioridadeAberta, setPrioridadeAberta] = useState(false);
   const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
   const [modalAviso, setModalAviso] = useState<"incluir" | "alterar" | null>(null);
 
@@ -236,16 +232,7 @@ export function ExcelView({ competencia }: ExcelViewProps) {
   }
 
   return (
-    <div className="excel-page">
-      <header className="excel-page-header">
-        <span className="excel-eyebrow">Pedroso Automação</span>
-        <h1>Controle mensal — {formatarCompetencia(competencia)}</h1>
-        <p>
-          Visão rápida no estilo da planilha, com status mensal, observações, prioridades e avisos sempre
-          visíveis.
-        </p>
-      </header>
-
+    <div className="excel-page excel-page-clean">
       <main className="excel-layout">
         <section className="excel-main-column">
           <div className="excel-section-actions">
@@ -324,28 +311,45 @@ export function ExcelView({ competencia }: ExcelViewProps) {
         </section>
 
         <aside className="excel-side-column">
-          <section className="excel-side-card priority-card">
-            <span className="excel-eyebrow">Prioridade fixa</span>
-            <h2>Controle mercados</h2>
-            <p>
-              Esses três clientes são sempre prioridade no início do mês. A meta é verificar os acessos entre os
-              dias 1 e 3, conciliando com os atendimentos de suporte.
-            </p>
+          <section className={`excel-side-card priority-card ${prioridadeAberta ? "is-open" : "is-collapsed"}`}>
+            <button
+              type="button"
+              className="priority-toggle"
+              onClick={() => setPrioridadeAberta((atual) => !atual)}
+              aria-expanded={prioridadeAberta}
+            >
+              <span>
+                <small>Prioridade fixa</small>
+                <strong>Controle mercados</strong>
+              </span>
+              <span className={`priority-chevron ${prioridadeAberta ? "open" : ""}`} aria-hidden="true">
+                ⌄
+              </span>
+            </button>
 
-            <div className="priority-list">
-              {mercadosPrioritarios.map((mercado) => {
-                const registro = obterRegistro(mercado);
+            {prioridadeAberta && (
+              <div className="priority-content">
+                <p>
+                  Esses três clientes são prioridade no início do mês. A meta é verificar os acessos entre os
+                  dias 1 e 3, conciliando com os atendimentos de suporte.
+                </p>
 
-                return (
-                  <div className="priority-row" key={mercado}>
-                    <span>{nomeExibido(mercado)}</span>
-                    <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>
-                      {rotulosStatus[registro.status]}
-                    </strong>
-                  </div>
-                );
-              })}
-            </div>
+                <div className="priority-list">
+                  {mercadosPrioritarios.map((mercado) => {
+                    const registro = obterRegistro(mercado);
+
+                    return (
+                      <div className="priority-row" key={mercado}>
+                        <span>{nomeExibido(mercado)}</span>
+                        <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>
+                          {rotulosStatus[registro.status]}
+                        </strong>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           <div className="excel-section-actions excel-section-actions-notices">
