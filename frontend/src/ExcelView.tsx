@@ -75,15 +75,27 @@ export function ExcelView({ competencia }: ExcelViewProps) {
   const [clientesExtras, setClientesExtras] = useState<string[]>(() =>
     lerJson<string[]>("controle-notas-excel-clientes", []),
   );
+  const [nomesAlterados, setNomesAlterados] = useState<Record<string, string>>(() =>
+    lerJson<Record<string, string>>("controle-notas-excel-clientes-nomes", {}),
+  );
   const [registros, setRegistros] = useState<Record<string, RegistroMensal>>({});
   const [avisosExtras, setAvisosExtras] = useState<AvisoExtra[]>(() =>
     lerJson<AvisoExtra[]>("controle-notas-excel-avisos", []),
   );
-  const [modalCliente, setModalCliente] = useState(false);
-  const [modalAviso, setModalAviso] = useState(false);
+
+  const [statusAberto, setStatusAberto] = useState<string | null>(null);
+  const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
+  const [modalAviso, setModalAviso] = useState<"incluir" | "alterar" | null>(null);
+
   const [novoCliente, setNovoCliente] = useState("");
+  const [clienteSelecionado, setClienteSelecionado] = useState("");
+  const [clienteAlteradoNome, setClienteAlteradoNome] = useState("");
+
   const [novoAvisoTitulo, setNovoAvisoTitulo] = useState("");
   const [novoAvisoTexto, setNovoAvisoTexto] = useState("");
+  const [avisoSelecionado, setAvisoSelecionado] = useState("");
+  const [avisoAlteradoTitulo, setAvisoAlteradoTitulo] = useState("");
+  const [avisoAlteradoTexto, setAvisoAlteradoTexto] = useState("");
 
   const clientes = useMemo(() => {
     const nomes = [...clientesPadrao, ...clientesExtras];
@@ -94,7 +106,12 @@ export function ExcelView({ competencia }: ExcelViewProps) {
     if (!competencia) return;
     const chave = `controle-notas-excel-registros-${competencia}`;
     setRegistros(lerJson<Record<string, RegistroMensal>>(chave, {}));
+    setStatusAberto(null);
   }, [competencia]);
+
+  function nomeExibido(chave: string): string {
+    return nomesAlterados[chave] || chave;
+  }
 
   function salvarRegistros(proximos: Record<string, RegistroMensal>) {
     setRegistros(proximos);
@@ -113,6 +130,7 @@ export function ExcelView({ competencia }: ExcelViewProps) {
         status,
       },
     });
+    setStatusAberto(null);
   }
 
   function alterarObservacao(nome: string, observacao: string) {
@@ -129,14 +147,42 @@ export function ExcelView({ competencia }: ExcelViewProps) {
     const nome = novoCliente.trim();
     if (!nome) return;
 
-    const jaExiste = clientes.some((cliente) => cliente.toLocaleLowerCase() === nome.toLocaleLowerCase());
+    const jaExiste = clientes.some(
+      (cliente) => nomeExibido(cliente).toLocaleLowerCase() === nome.toLocaleLowerCase(),
+    );
     if (jaExiste) return;
 
     const proximos = [...clientesExtras, nome];
     setClientesExtras(proximos);
     localStorage.setItem("controle-notas-excel-clientes", JSON.stringify(proximos));
     setNovoCliente("");
-    setModalCliente(false);
+    setModalCliente(null);
+  }
+
+  function abrirAlteracaoCliente() {
+    const primeiro = clientes[0] ?? "";
+    setClienteSelecionado(primeiro);
+    setClienteAlteradoNome(primeiro ? nomeExibido(primeiro) : "");
+    setModalCliente("alterar");
+  }
+
+  function trocarClienteSelecionado(chave: string) {
+    setClienteSelecionado(chave);
+    setClienteAlteradoNome(nomeExibido(chave));
+  }
+
+  function salvarAlteracaoCliente() {
+    const nome = clienteAlteradoNome.trim();
+    if (!clienteSelecionado || !nome) return;
+
+    const proximos = {
+      ...nomesAlterados,
+      [clienteSelecionado]: nome,
+    };
+
+    setNomesAlterados(proximos);
+    localStorage.setItem("controle-notas-excel-clientes-nomes", JSON.stringify(proximos));
+    setModalCliente(null);
   }
 
   function incluirAviso() {
@@ -155,71 +201,126 @@ export function ExcelView({ competencia }: ExcelViewProps) {
     localStorage.setItem("controle-notas-excel-avisos", JSON.stringify(proximos));
     setNovoAvisoTitulo("");
     setNovoAvisoTexto("");
-    setModalAviso(false);
+    setModalAviso(null);
+  }
+
+  function abrirAlteracaoAviso() {
+    const primeiro = avisosExtras[0];
+    if (!primeiro) return;
+
+    setAvisoSelecionado(primeiro.id);
+    setAvisoAlteradoTitulo(primeiro.titulo);
+    setAvisoAlteradoTexto(primeiro.texto);
+    setModalAviso("alterar");
+  }
+
+  function trocarAvisoSelecionado(id: string) {
+    const aviso = avisosExtras.find((item) => item.id === id);
+    setAvisoSelecionado(id);
+    setAvisoAlteradoTitulo(aviso?.titulo ?? "");
+    setAvisoAlteradoTexto(aviso?.texto ?? "");
+  }
+
+  function salvarAlteracaoAviso() {
+    const titulo = avisoAlteradoTitulo.trim();
+    const texto = avisoAlteradoTexto.trim();
+    if (!avisoSelecionado || !titulo || !texto) return;
+
+    const proximos = avisosExtras.map((aviso) =>
+      aviso.id === avisoSelecionado ? { ...aviso, titulo, texto } : aviso,
+    );
+
+    setAvisosExtras(proximos);
+    localStorage.setItem("controle-notas-excel-avisos", JSON.stringify(proximos));
+    setModalAviso(null);
   }
 
   return (
     <div className="excel-page">
-      <header className="excel-page-header excel-page-header-actions">
-        <div>
-          <span className="excel-eyebrow">Pedroso Automação</span>
-          <h1>Controle mensal — {formatarCompetencia(competencia)}</h1>
-          <p>
-            Visão rápida no estilo da planilha, com status mensal, observações, prioridades e avisos sempre
-            visíveis.
-          </p>
-        </div>
-
-        <div className="excel-header-buttons">
-          <button className="excel-action-button primary" onClick={() => setModalCliente(true)}>
-            Incluir
-          </button>
-          <button className="excel-action-button" onClick={() => setModalAviso(true)}>
-            Incluir aviso
-          </button>
-        </div>
+      <header className="excel-page-header">
+        <span className="excel-eyebrow">Pedroso Automação</span>
+        <h1>Controle mensal — {formatarCompetencia(competencia)}</h1>
+        <p>
+          Visão rápida no estilo da planilha, com status mensal, observações, prioridades e avisos sempre
+          visíveis.
+        </p>
       </header>
 
       <main className="excel-layout">
-        <section className="excel-table-card">
-          <div className="excel-table-head">
-            <div>Clientes</div>
-            <div>Status</div>
-            <div>Obs</div>
+        <section className="excel-main-column">
+          <div className="excel-section-actions">
+            <button className="excel-toolbar-button" onClick={() => setModalCliente("incluir")}>
+              <span>Incluir<br />Cliente</span>
+              <strong aria-hidden="true">＋</strong>
+            </button>
+            <button className="excel-toolbar-button" onClick={abrirAlteracaoCliente}>
+              <span>Alterar<br />Cliente</span>
+              <strong aria-hidden="true">✎</strong>
+            </button>
           </div>
 
-          <div className="excel-table-body">
-            {clientes.map((cliente) => {
-              const registro = obterRegistro(cliente);
+          <section className="excel-table-card">
+            <div className="excel-table-head">
+              <div>Clientes</div>
+              <div>Status</div>
+              <div>Obs</div>
+            </div>
 
-              return (
-                <div className="excel-table-row" key={cliente}>
-                  <div className="excel-client-name">{cliente}</div>
-                  <div className="excel-status-cell">
-                    <select
-                      className={`excel-status-select excel-status-select-${registro.status.toLowerCase()}`}
-                      value={registro.status}
-                      onChange={(event) => alterarStatus(cliente, event.target.value as StatusExcel)}
-                    >
-                      {statusDisponiveis.map((status) => (
-                        <option key={status} value={status}>
-                          {rotulosStatus[status]}
-                        </option>
-                      ))}
-                    </select>
+            <div className="excel-table-body">
+              {clientes.map((cliente) => {
+                const registro = obterRegistro(cliente);
+
+                return (
+                  <div className="excel-table-row" key={cliente}>
+                    <div className="excel-client-name">{nomeExibido(cliente)}</div>
+                    <div className="excel-status-cell">
+                      <div
+                        className="excel-status-dropdown"
+                        onBlur={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                            setStatusAberto(null);
+                          }
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className={`excel-status-trigger excel-status-${registro.status.toLowerCase()}`}
+                          onClick={() => setStatusAberto(statusAberto === cliente ? null : cliente)}
+                          aria-expanded={statusAberto === cliente}
+                        >
+                          <span>{rotulosStatus[registro.status]}</span>
+                          <span aria-hidden="true">⌄</span>
+                        </button>
+
+                        {statusAberto === cliente && (
+                          <div className="excel-status-menu">
+                            {statusDisponiveis.map((status) => (
+                              <button
+                                type="button"
+                                key={status}
+                                className={`excel-status-option excel-status-${status.toLowerCase()}`}
+                                onClick={() => alterarStatus(cliente, status)}
+                              >
+                                {rotulosStatus[status]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="excel-note">
+                      <input
+                        className="excel-note-input"
+                        value={registro.observacao}
+                        onChange={(event) => alterarObservacao(cliente, event.target.value)}
+                        placeholder="Adicionar observação..."
+                      />
+                    </div>
                   </div>
-                  <div className="excel-note">
-                    <input
-                      className="excel-note-input"
-                      value={registro.observacao}
-                      onChange={(event) => alterarObservacao(cliente, event.target.value)}
-                      placeholder="Adicionar observação..."
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </section>
         </section>
 
         <aside className="excel-side-column">
@@ -237,7 +338,7 @@ export function ExcelView({ competencia }: ExcelViewProps) {
 
                 return (
                   <div className="priority-row" key={mercado}>
-                    <span>{mercado}</span>
+                    <span>{nomeExibido(mercado)}</span>
                     <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>
                       {rotulosStatus[registro.status]}
                     </strong>
@@ -246,6 +347,21 @@ export function ExcelView({ competencia }: ExcelViewProps) {
               })}
             </div>
           </section>
+
+          <div className="excel-section-actions excel-section-actions-notices">
+            <button className="excel-toolbar-button" onClick={() => setModalAviso("incluir")}>
+              <span>Incluir<br />Aviso</span>
+              <strong aria-hidden="true">＋</strong>
+            </button>
+            <button
+              className="excel-toolbar-button"
+              onClick={abrirAlteracaoAviso}
+              disabled={avisosExtras.length === 0}
+            >
+              <span>Alterar<br />Aviso</span>
+              <strong aria-hidden="true">✎</strong>
+            </button>
+          </div>
 
           <section className="excel-side-card xaxim-card">
             <span className="xaxim-alert">Extremamente importante</span>
@@ -276,17 +392,15 @@ export function ExcelView({ competencia }: ExcelViewProps) {
         </aside>
       </main>
 
-      {modalCliente && (
-        <div className="excel-modal-backdrop" onMouseDown={() => setModalCliente(false)}>
+      {modalCliente === "incluir" && (
+        <div className="excel-modal-backdrop" onMouseDown={() => setModalCliente(null)}>
           <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
               <div>
                 <span className="excel-eyebrow">Novo cliente</span>
                 <h2>Incluir cliente</h2>
               </div>
-              <button className="excel-modal-close" onClick={() => setModalCliente(false)}>
-                ×
-              </button>
+              <button className="excel-modal-close" onClick={() => setModalCliente(null)}>×</button>
             </div>
 
             <label className="excel-form-field">
@@ -300,9 +414,7 @@ export function ExcelView({ competencia }: ExcelViewProps) {
             </label>
 
             <div className="excel-modal-actions">
-              <button className="excel-action-button" onClick={() => setModalCliente(false)}>
-                Cancelar
-              </button>
+              <button className="excel-action-button" onClick={() => setModalCliente(null)}>Cancelar</button>
               <button className="excel-action-button primary" onClick={incluirCliente} disabled={!novoCliente.trim()}>
                 Incluir
               </button>
@@ -311,17 +423,54 @@ export function ExcelView({ competencia }: ExcelViewProps) {
         </div>
       )}
 
-      {modalAviso && (
-        <div className="excel-modal-backdrop" onMouseDown={() => setModalAviso(false)}>
+      {modalCliente === "alterar" && (
+        <div className="excel-modal-backdrop" onMouseDown={() => setModalCliente(null)}>
+          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="excel-modal-heading">
+              <div>
+                <span className="excel-eyebrow">Cadastro de cliente</span>
+                <h2>Alterar cliente</h2>
+              </div>
+              <button className="excel-modal-close" onClick={() => setModalCliente(null)}>×</button>
+            </div>
+
+            <label className="excel-form-field">
+              <span>Cliente</span>
+              <select value={clienteSelecionado} onChange={(event) => trocarClienteSelecionado(event.target.value)}>
+                {clientes.map((cliente) => (
+                  <option key={cliente} value={cliente}>{nomeExibido(cliente)}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="excel-form-field">
+              <span>Nome</span>
+              <input value={clienteAlteradoNome} onChange={(event) => setClienteAlteradoNome(event.target.value)} />
+            </label>
+
+            <div className="excel-modal-actions">
+              <button className="excel-action-button" onClick={() => setModalCliente(null)}>Cancelar</button>
+              <button
+                className="excel-action-button primary"
+                onClick={salvarAlteracaoCliente}
+                disabled={!clienteAlteradoNome.trim()}
+              >
+                Salvar alteração
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {modalAviso === "incluir" && (
+        <div className="excel-modal-backdrop" onMouseDown={() => setModalAviso(null)}>
           <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
               <div>
                 <span className="excel-eyebrow">Novo aviso</span>
                 <h2>Incluir aviso fixo</h2>
               </div>
-              <button className="excel-modal-close" onClick={() => setModalAviso(false)}>
-                ×
-              </button>
+              <button className="excel-modal-close" onClick={() => setModalAviso(null)}>×</button>
             </div>
 
             <label className="excel-form-field">
@@ -345,15 +494,64 @@ export function ExcelView({ competencia }: ExcelViewProps) {
             </label>
 
             <div className="excel-modal-actions">
-              <button className="excel-action-button" onClick={() => setModalAviso(false)}>
-                Cancelar
-              </button>
+              <button className="excel-action-button" onClick={() => setModalAviso(null)}>Cancelar</button>
               <button
                 className="excel-action-button primary"
                 onClick={incluirAviso}
                 disabled={!novoAvisoTitulo.trim() || !novoAvisoTexto.trim()}
               >
                 Incluir aviso
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {modalAviso === "alterar" && (
+        <div className="excel-modal-backdrop" onMouseDown={() => setModalAviso(null)}>
+          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="excel-modal-heading">
+              <div>
+                <span className="excel-eyebrow">Avisos extras</span>
+                <h2>Alterar aviso</h2>
+              </div>
+              <button className="excel-modal-close" onClick={() => setModalAviso(null)}>×</button>
+            </div>
+
+            <label className="excel-form-field">
+              <span>Aviso</span>
+              <select value={avisoSelecionado} onChange={(event) => trocarAvisoSelecionado(event.target.value)}>
+                {avisosExtras.map((aviso) => (
+                  <option key={aviso.id} value={aviso.id}>{aviso.titulo}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="excel-form-field">
+              <span>Título</span>
+              <input
+                value={avisoAlteradoTitulo}
+                onChange={(event) => setAvisoAlteradoTitulo(event.target.value)}
+              />
+            </label>
+
+            <label className="excel-form-field">
+              <span>Aviso</span>
+              <textarea
+                rows={5}
+                value={avisoAlteradoTexto}
+                onChange={(event) => setAvisoAlteradoTexto(event.target.value)}
+              />
+            </label>
+
+            <div className="excel-modal-actions">
+              <button className="excel-action-button" onClick={() => setModalAviso(null)}>Cancelar</button>
+              <button
+                className="excel-action-button primary"
+                onClick={salvarAlteracaoAviso}
+                disabled={!avisoAlteradoTitulo.trim() || !avisoAlteradoTexto.trim()}
+              >
+                Salvar alteração
               </button>
             </div>
           </section>
