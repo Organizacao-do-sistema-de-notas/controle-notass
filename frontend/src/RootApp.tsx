@@ -30,14 +30,14 @@ export function RootApp() {
               className={modo === "painel" ? "mode-button active" : "mode-button"}
               onClick={() => trocarModo("painel")}
             >
-              Painel moderno
+              Painel
             </button>
             <button
               type="button"
               className={modo === "excel" ? "mode-button active" : "mode-button"}
               onClick={() => trocarModo("excel")}
             >
-              Opção Excel
+              Excel
             </button>
           </div>
         </div>
