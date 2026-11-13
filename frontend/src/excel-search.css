@@ -73,3 +73,14 @@
   font-weight: 500;
   line-height: 1.35;
 }
+
+.excel-backup-aviso {
+  margin: 4px 0 12px;
+  padding: 9px 12px;
+  border: 1px solid #c9def1;
+  border-radius: 8px;
+  background: #f0f7ff;
+  color: #254c75;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
