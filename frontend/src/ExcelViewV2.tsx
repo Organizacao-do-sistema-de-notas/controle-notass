@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
+import { baixarBackupExcel } from "./excel-backup";
 
 type StatusExcel = "PENDENTE" | "AGUARDANDO" | "EM_ATENDIMENTO" | "OK";
 type RegistroMensal = { status: StatusExcel; observacao: string };
@@ -87,6 +88,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
 
   const [pesquisa, setPesquisa] = useState("");
   const [fichasAbertas, setFichasAbertas] = useState(false);
+  const [resultadoBackup, setResultadoBackup] = useState("");
   const [statusAberto, setStatusAberto] = useState<string | null>(null);
   const [prioridadeAberta, setPrioridadeAberta] = useState(false);
   const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
@@ -153,6 +155,15 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
 
   function alterarObservacao(chave: string, observacao: string) {
     salvarRegistros({ ...registros, [chave]: { ...obterRegistro(chave), observacao } });
+  }
+
+  function exportarBackup() {
+    try {
+      const quantidade = baixarBackupExcel();
+      setResultadoBackup(`Backup gerado com ${quantidade} registro(s) locais. Guarde o arquivo em local seguro.`);
+    } catch (erro) {
+      setResultadoBackup(erro instanceof Error ? erro.message : "Não foi possível exportar o backup.");
+    }
   }
 
   function incluirCliente() {
@@ -257,7 +268,12 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
             <button className="excel-toolbar-button" onClick={() => setFichasAbertas(true)}>
               <span>Fichas dos<br />Clientes</span><strong aria-hidden="true">▣</strong>
             </button>
+            <button className="excel-toolbar-button" type="button" onClick={exportarBackup}
+              title="Salvar uma cópia dos dados Excel deste navegador, antes da futura migração.">
+              <span>Exportar<br />Backup</span><strong aria-hidden="true">↓</strong>
+            </button>
           </div>
+          {resultadoBackup && <p className="excel-backup-aviso" role="status">{resultadoBackup}</p>}
 
           <label className="excel-search-box">
             <span>Pesquisar:</span>
