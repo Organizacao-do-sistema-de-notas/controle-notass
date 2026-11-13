@@ -26,6 +26,7 @@ export interface Cliente {
   ativo: boolean;
   contabilidadeId: number | null;
   contabilidade: Contabilidade | null;
+  nomesAlternativos?: Array<{ nome: string }>;
   criadoEm: string;
 }
 
