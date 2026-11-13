@@ -21,6 +21,7 @@ export async function listarClientes(_req: Request, res: Response): Promise<void
     const clientes = await prisma.cliente.findMany({
       include: {
         contabilidade: true,
+        nomesAlternativos: { select: { nome: true } },
       },
       orderBy: {
         nome: "asc",
