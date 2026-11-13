@@ -6,7 +6,7 @@ const frequencias = ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"] as const;
 type Frequencia = (typeof frequencias)[number];
 
 function idPositivo(valor: unknown): number | null {
-  if (typeof valor !== "string" || !/^\\d+$/.test(valor)) return null;
+  if (typeof valor !== "string" || !/^[0-9]+$/.test(valor)) return null;
   const id = Number(valor);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
