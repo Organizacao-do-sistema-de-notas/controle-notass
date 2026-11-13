@@ -21,6 +21,7 @@ export async function listarClientes(_req: Request, res: Response): Promise<void
     const clientes = await prisma.cliente.findMany({
       include: {
         contabilidade: true,
+        nomesAlternativos: { select: { nome: true } },
       },
       orderBy: {
         nome: "asc",
@@ -115,71 +116,60 @@ export async function criarCliente(req: Request, res: Response): Promise<void> {
 
 export async function atualizarCliente(req: Request, res: Response): Promise<void> {
   const id = obterId(req.params.id);
-  const { nome, ativo, contabilidadeId } = req.body;
+  const { nome, ativo, contabilidadeId, autor } = req.body ?? {};
 
-  if (id === null) {
-    res.status(400).json({ erro: "ID de cliente inválido." });
-    return;
+  if (id === null) { res.status(400).json({ erro: "ID de cliente inválido." }); return; }
+  if (nome !== undefined && (typeof nome !== "string" || nome.trim().length === 0 || nome.length > 200)) {
+    res.status(400).json({ erro: "Nome de cliente inválido." }); return;
   }
-
-  if (nome !== undefined && (typeof nome !== "string" || nome.trim().length === 0)) {
-    res.status(400).json({ erro: "Nome de cliente inválido." });
-    return;
-  }
-
   if (ativo !== undefined && typeof ativo !== "boolean") {
-    res.status(400).json({ erro: "O campo ativo deve ser booleano." });
-    return;
+    res.status(400).json({ erro: "O campo ativo deve ser booleano." }); return;
   }
-
-  if (
-    contabilidadeId !== undefined &&
-    contabilidadeId !== null &&
-    (!Number.isInteger(contabilidadeId) || contabilidadeId <= 0)
-  ) {
-    res.status(400).json({ erro: "contabilidadeId inválido." });
-    return;
+  if (contabilidadeId !== undefined && contabilidadeId !== null &&
+      (!Number.isInteger(contabilidadeId) || contabilidadeId <= 0)) {
+    res.status(400).json({ erro: "contabilidadeId inválido." }); return;
   }
-
+  if (autor !== undefined && (typeof autor !== "string" || autor.length > 150)) {
+    res.status(400).json({ erro: "Autor inválido." }); return;
+  }
   if (nome === undefined && ativo === undefined && contabilidadeId === undefined) {
-    res.status(400).json({ erro: "Nenhum campo foi informado para atualização." });
-    return;
+    res.status(400).json({ erro: "Nenhum campo foi informado para atualização." }); return;
   }
 
   try {
-    const existente = await prisma.cliente.findUnique({
-      where: { id },
-    });
-
-    if (!existente) {
-      res.status(404).json({ erro: "Cliente não encontrado." });
-      return;
-    }
-
     if (contabilidadeId !== undefined && contabilidadeId !== null) {
-      const contabilidade = await prisma.contabilidade.findUnique({
-        where: { id: contabilidadeId },
-      });
-
-      if (!contabilidade) {
-        res.status(404).json({ erro: "Contabilidade não encontrada." });
-        return;
-      }
+      const contabilidade = await prisma.contabilidade.findUnique({ where: { id: contabilidadeId } });
+      if (!contabilidade) { res.status(404).json({ erro: "Contabilidade não encontrada." }); return; }
     }
-
-    const cliente = await prisma.cliente.update({
-      where: { id },
-      data: {
-        nome: nome !== undefined ? nome.trim() : undefined,
-        ativo,
-        contabilidadeId,
-      },
-      include: {
-        contabilidade: true,
-      },
+    const resultado = await prisma.$transaction(async (tx) => {
+      const existente = await tx.cliente.findUnique({
+        where: { id },
+        include: { contabilidade: true },
+      });
+      if (!existente) return null;
+      const cliente = await tx.cliente.update({
+        where: { id },
+        data: {
+          nome: nome === undefined ? undefined : nome.trim(),
+          ativo,
+          contabilidadeId,
+        },
+        include: { contabilidade: true },
+      });
+      if (contabilidadeId !== undefined && existente.contabilidadeId !== cliente.contabilidadeId) {
+        await tx.historicoContabilidadeCliente.create({
+          data: {
+            clienteId: id,
+            nomeAnterior: existente.contabilidade?.nome ?? null,
+            nomeNova: cliente.contabilidade?.nome ?? null,
+            autor: typeof autor === "string" ? autor.trim() || null : null,
+          },
+        });
+      }
+      return cliente;
     });
-
-    res.json(cliente);
+    if (!resultado) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
+    res.json(resultado);
   } catch (erro) {
     console.error("Erro ao atualizar cliente:", erro);
     res.status(500).json({ erro: "Erro ao atualizar cliente." });

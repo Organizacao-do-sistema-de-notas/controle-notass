@@ -15,6 +15,12 @@ enum StatusPendencia {
   CONCLUIDO
 }
 
+enum FrequenciaAcesso {
+  NAO_DEFINIDA
+  MENSAL
+  EVENTUAL
+}
+
 enum TipoHistoricoPendencia {
   CRIACAO
   STATUS
@@ -39,9 +45,50 @@ model Cliente {
   contabilidadeId Int?
   contabilidade   Contabilidade? @relation(fields: [contabilidadeId], references: [id])
 
-  pendencias      Pendencia[]
+  pendencias                Pendencia[]
+  frequenciaAcesso          FrequenciaAcesso @default(NAO_DEFINIDA)
+  observacoesPermanentes    String?           @db.Text
+  modeloMensagem            String?           @db.Text
+  nomesAlternativos         ClienteNomeAlternativo[]
+  procedimentos             ProcedimentoCliente[]
+  historicoContabilidades   HistoricoContabilidadeCliente[]
 
   criadoEm        DateTime       @default(now())
+}
+
+model ClienteNomeAlternativo {
+  id        Int      @id @default(autoincrement())
+  clienteId Int
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  nome      String
+  criadoEm  DateTime @default(now())
+
+  @@unique([clienteId, nome])
+}
+
+model ProcedimentoCliente {
+  id          Int      @id @default(autoincrement())
+  clienteId   Int
+  cliente     Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  titulo      String
+  descricao   String   @db.Text
+  ativo       Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([clienteId, ativo])
+}
+
+model HistoricoContabilidadeCliente {
+  id             Int      @id @default(autoincrement())
+  clienteId      Int
+  cliente        Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  nomeAnterior   String?
+  nomeNova       String?
+  autor          String?
+  criadoEm       DateTime @default(now())
+
+  @@index([clienteId, criadoEm])
 }
 
 model Pendencia {

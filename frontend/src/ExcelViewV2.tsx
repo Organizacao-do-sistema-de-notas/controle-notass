@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./excel-search.css";
+import { FichasClientes } from "./FichasClientes";
 
 type StatusExcel = "PENDENTE" | "AGUARDANDO" | "EM_ATENDIMENTO" | "OK";
 type RegistroMensal = { status: StatusExcel; observacao: string };
@@ -85,6 +86,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
   );
 
   const [pesquisa, setPesquisa] = useState("");
+  const [fichasAbertas, setFichasAbertas] = useState(false);
   const [statusAberto, setStatusAberto] = useState<string | null>(null);
   const [prioridadeAberta, setPrioridadeAberta] = useState(false);
   const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
@@ -242,6 +244,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
 
   return (
     <div className="excel-page excel-page-clean">
+      {fichasAbertas && <FichasClientes aoFechar={() => setFichasAbertas(false)} />}
       <main className="excel-layout">
         <section className="excel-main-column">
           <div className="excel-section-actions">
@@ -250,6 +253,9 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
             </button>
             <button className="excel-toolbar-button" onClick={abrirAlteracaoCliente}>
               <span>Alterar<br />Cliente</span><strong aria-hidden="true">✎</strong>
+            </button>
+            <button className="excel-toolbar-button" onClick={() => setFichasAbertas(true)}>
+              <span>Fichas dos<br />Clientes</span><strong aria-hidden="true">▣</strong>
             </button>
           </div>
 

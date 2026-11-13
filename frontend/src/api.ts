@@ -5,6 +5,9 @@ import type {
   MensagemContadorResponse,
   PainelMensal,
   StatusPendencia,
+  FichaCliente,
+  FrequenciaAcesso,
+  ProcedimentoCliente,
 } from "./types";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
@@ -108,5 +111,49 @@ export function atualizarStatusPendencia(
   return requisicao(`/pendencias/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ status, autor }),
+  });
+}
+
+export function obterFichaCliente(id: number): Promise<FichaCliente> {
+  return requisicao<FichaCliente>(`/clientes/${id}/ficha`);
+}
+
+export function atualizarFichaCliente(id: number, dados: {
+  frequenciaAcesso: FrequenciaAcesso;
+  observacoesPermanentes: string;
+  modeloMensagem: string;
+  nomesAlternativos: string[];
+}): Promise<FichaCliente> {
+  return requisicao<FichaCliente>(`/clientes/${id}/ficha`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
+  });
+}
+
+export function atualizarContabilidadeCliente(
+  id: number, contabilidadeId: number | null, autor?: string,
+): Promise<Cliente> {
+  return requisicao<Cliente>(`/clientes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ contabilidadeId, autor }),
+  });
+}
+
+export function criarProcedimentoCliente(
+  clienteId: number, titulo: string, descricao: string,
+): Promise<ProcedimentoCliente> {
+  return requisicao<ProcedimentoCliente>(`/clientes/${clienteId}/procedimentos`, {
+    method: "POST",
+    body: JSON.stringify({ titulo, descricao }),
+  });
+}
+
+export function atualizarProcedimentoCliente(
+  clienteId: number, procedimentoId: number,
+  dados: { titulo?: string; descricao?: string; ativo?: boolean },
+): Promise<ProcedimentoCliente> {
+  return requisicao<ProcedimentoCliente>(`/clientes/${clienteId}/procedimentos/${procedimentoId}`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
   });
 }
