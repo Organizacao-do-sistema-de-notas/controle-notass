@@ -92,3 +92,41 @@ export interface MensagemContadorResponse {
   temMensagem: boolean;
   linkWhatsApp: string | null;
 }
+
+
+export type FrequenciaAcesso = "NAO_DEFINIDA" | "MENSAL" | "EVENTUAL";
+
+export interface NomeAlternativoCliente {
+  id: number;
+  clienteId: number;
+  nome: string;
+  criadoEm: string;
+}
+
+export interface ProcedimentoCliente {
+  id: number;
+  clienteId: number;
+  titulo: string;
+  descricao: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface HistoricoContabilidadeCliente {
+  id: number;
+  clienteId: number;
+  nomeAnterior: string | null;
+  nomeNova: string | null;
+  autor: string | null;
+  criadoEm: string;
+}
+
+export interface FichaCliente extends Cliente {
+  frequenciaAcesso: FrequenciaAcesso;
+  observacoesPermanentes: string | null;
+  modeloMensagem: string | null;
+  nomesAlternativos: NomeAlternativoCliente[];
+  procedimentos: ProcedimentoCliente[];
+  historicoContabilidades: HistoricoContabilidadeCliente[];
+}
