@@ -90,7 +90,7 @@ function formatarValorHistorico(valor: string | null): string {
   return valor;
 }
 
-export function App() {
+export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   const [competencias, setCompetencias] = useState<string[]>([]);
   const [competencia, setCompetencia] = useState("");
   const [painel, setPainel] = useState<PainelMensal | null>(null);
@@ -186,6 +186,12 @@ export function App() {
   useEffect(() => {
     void carregarCompetencias();
   }, []);
+
+  useEffect(() => {
+    if (revisaoCadastros === 0) return;
+    void carregarCadastros();
+    if (competencia) void carregarPainel(competencia);
+  }, [revisaoCadastros]);
 
   useEffect(() => {
     if (competencia) {

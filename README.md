@@ -89,7 +89,7 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
 2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha e de importação.
 3. Executa os 21 testes de integração do backend.
-4. Inicia backend e Vite próprios e executa os 7 testes de interface no Chromium.
+4. Inicia backend e Vite próprios e executa os 14 testes de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
 O Chromium é instalado na imagem de testes a partir dos pacotes verificados do
@@ -140,6 +140,22 @@ Em **Excel → Fichas dos Clientes**, digite a pesquisa e escolha **Nome e apeli
 abra a ficha, preencha **Outros nomes para pesquisa**, um por linha, e salve. A busca
 ignora maiúsculas, acentos e espaços repetidos. Os códigos do Confere aparecem na
 lista para diferenciar cadastros com nomes iguais.
+
+## Gerenciar clientes e contabilidades
+
+Abra o botão **⋯** no canto superior direito e escolha **Clientes** ou
+**Contabilidades**. A lista de clientes inclui ativos e inativos, com pesquisa
+por nome, apelido ou código do Confere e filtros por situação e contabilidade.
+
+Selecione um cliente para editar seu nome, situação ou contabilidade. Também
+é possível criar uma contabilidade no próprio formulário e selecioná-la antes
+de salvar o cliente. Trocas e remoções de contabilidade ficam no histórico;
+as anotações, apelidos, procedimentos e pendências existentes são preservados.
+
+Em **Contabilidades**, cadastre ou edite o nome de um escritório mantendo os
+clientes vinculados. Os nomes já registrados nos históricos são preservados.
+Os cadastros centrais e a tabela Excel continuam independentes; esta tela não
+importa nem altera automaticamente os registros locais do Excel.
 
 ## Diagnosticar
 

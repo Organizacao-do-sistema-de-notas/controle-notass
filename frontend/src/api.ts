@@ -59,6 +59,16 @@ export function criarCliente(nome: string, contabilidadeId: number | null): Prom
   });
 }
 
+export function atualizarCliente(
+  id: number,
+  dados: Partial<Pick<Cliente, "nome" | "ativo" | "contabilidadeId">> & { autor?: string },
+): Promise<Cliente> {
+  return requisicao<Cliente>(`/clientes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
+  });
+}
+
 export function listarContabilidades(): Promise<Contabilidade[]> {
   return requisicao<Contabilidade[]>("/contabilidades");
 }
@@ -66,6 +76,13 @@ export function listarContabilidades(): Promise<Contabilidade[]> {
 export function criarContabilidade(nome: string): Promise<Contabilidade> {
   return requisicao<Contabilidade>("/contabilidades", {
     method: "POST",
+    body: JSON.stringify({ nome }),
+  });
+}
+
+export function atualizarContabilidade(id: number, nome: string): Promise<Contabilidade> {
+  return requisicao<Contabilidade>(`/contabilidades/${id}`, {
+    method: "PATCH",
     body: JSON.stringify({ nome }),
   });
 }

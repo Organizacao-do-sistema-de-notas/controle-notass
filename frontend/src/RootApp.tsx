@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { App } from "./App";
 import { ExcelViewV2 } from "./ExcelViewV2";
+import { Cadastros, type AbaCadastro } from "./Cadastros";
+import { MenuCadastros } from "./MenuCadastros";
 
 type ModoTela = "painel" | "excel";
 
@@ -34,6 +36,9 @@ function gerarMeses(competenciaAtual: string): string[] {
 }
 
 export function RootApp() {
+  const [cadastroAberto, setCadastroAberto] = useState<AbaCadastro | null>(null);
+  const [revisaoCadastros, setRevisaoCadastros] = useState(0);
+  const botaoCadastros = useRef<HTMLButtonElement>(null);
   const [modo, setModo] = useState<ModoTela>(() => {
     return localStorage.getItem("controle-notas-modo") === "excel" ? "excel" : "painel";
   });
@@ -99,11 +104,18 @@ export function RootApp() {
             >
               Excel
             </button>
+            <MenuCadastros aoAbrir={setCadastroAberto} refBotao={botaoCadastros} />
           </div>
         </div>
       </nav>
 
-      {modo === "painel" ? <App /> : <ExcelViewV2 competencia={competenciaExcel} />}
+      {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} /> : <ExcelViewV2 competencia={competenciaExcel} />}
+      {cadastroAberto && <Cadastros abaInicial={cadastroAberto}
+        aoFechar={() => {
+          setCadastroAberto(null);
+          requestAnimationFrame(() => botaoCadastros.current?.focus());
+        }}
+        aoAtualizar={() => setRevisaoCadastros(valor => valor + 1)} />}
     </>
   );
 }
