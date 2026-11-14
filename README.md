@@ -89,7 +89,7 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
 2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha e de importação.
 3. Executa os 21 testes de integração do backend.
-4. Inicia backend e Vite próprios e executa os 14 testes de interface no Chromium.
+4. Inicia backend e Vite próprios e executa os 20 testes de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
 O Chromium é instalado na imagem de testes a partir dos pacotes verificados do
@@ -156,6 +156,23 @@ Em **Contabilidades**, cadastre ou edite o nome de um escritório mantendo os
 clientes vinculados. Os nomes já registrados nos históricos são preservados.
 Os cadastros centrais e a tabela Excel continuam independentes; esta tela não
 importa nem altera automaticamente os registros locais do Excel.
+
+## Informações adicionais na visão Excel
+
+Cada linha tem um botão quadrado **?**, à direita da observação mensal, para
+consultar as particularidades daquele cliente. O botão mostra somente as
+informações; não modifica a observação ou o status do mês.
+
+Cadastre ou edite o texto no campo **Informações adicionais**, em **Incluir
+Cliente** ou **Alterar Cliente** da própria visão Excel. Ele é permanente entre
+os meses e continua associado ao cliente ao alterar seu nome exibido. Não há
+regras de empresas pré-preenchidas.
+
+Assim como os demais cadastros locais do Excel, essas informações ficam no
+localStorage deste navegador/origem, na chave
+`controle-notas-excel-clientes-informacoes`. Não fazem parte do banco ou do
+backup PostgreSQL e não sincronizam com outros navegadores. Os cadastros do
+menu **⋯ → Clientes** e suas fichas centrais continuam separados.
 
 ## Diagnosticar
 

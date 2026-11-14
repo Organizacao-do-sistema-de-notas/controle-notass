@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
+import { InformacoesCliente } from "./InformacoesCliente";
+import {
+  CHAVE_INFORMACOES_CLIENTES, LIMITE_INFORMACOES_CLIENTE,
+  lerInformacoesClientes, salvarDadosClienteLocal,
+} from "./informacoes-cliente-storage";
 
 type StatusExcel = "PENDENTE" | "AGUARDANDO" | "EM_ATENDIMENTO" | "OK";
 type RegistroMensal = { status: StatusExcel; observacao: string };
@@ -81,6 +86,9 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     lerJson<Record<string, string[]>>("controle-notas-excel-clientes-apelidos", {}),
   );
   const [registros, setRegistros] = useState<Record<string, RegistroMensal>>({});
+  const [informacoesClientes, setInformacoesClientes] = useState(lerInformacoesClientes);
+  const [informacaoAberta, setInformacaoAberta] = useState<string | null>(null);
+  const botaoInformacao = useRef<HTMLButtonElement | null>(null);
   const [avisosExtras, setAvisosExtras] = useState<AvisoExtra[]>(() =>
     lerJson<AvisoExtra[]>("controle-notas-excel-avisos", []),
   );
@@ -93,10 +101,13 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
   const [modalAviso, setModalAviso] = useState<"incluir" | "alterar" | null>(null);
 
   const [novoCliente, setNovoCliente] = useState("");
+  const [novasInformacoes, setNovasInformacoes] = useState("");
+  const [erroCliente, setErroCliente] = useState("");
   const [novosNomesBusca, setNovosNomesBusca] = useState("");
   const [clienteSelecionado, setClienteSelecionado] = useState("");
   const [clienteAlteradoNome, setClienteAlteradoNome] = useState("");
   const [clienteAlteradoNomesBusca, setClienteAlteradoNomesBusca] = useState("");
+  const [clienteAlteradoInformacoes, setClienteAlteradoInformacoes] = useState("");
 
   const [novoAvisoTitulo, setNovoAvisoTitulo] = useState("");
   const [novoAvisoTexto, setNovoAvisoTexto] = useState("");
@@ -136,14 +147,21 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     return registros[chave] ?? { status: "PENDENTE", observacao: "" };
   }
 
+  function obterInformacoes(chave: string): string {
+    const texto = informacoesClientes[chave];
+    return typeof texto === "string" ? texto : "";
+  }
+
+  function fecharInformacoes() {
+    setInformacaoAberta(null);
+    requestAnimationFrame(() => {
+      if (botaoInformacao.current?.isConnected) botaoInformacao.current.focus();
+    });
+  }
+
   function salvarRegistros(proximos: Record<string, RegistroMensal>) {
     setRegistros(proximos);
     localStorage.setItem(`controle-notas-excel-registros-${competencia}`, JSON.stringify(proximos));
-  }
-
-  function salvarNomesBusca(proximos: Record<string, string[]>) {
-    setNomesBusca(proximos);
-    localStorage.setItem("controle-notas-excel-clientes-apelidos", JSON.stringify(proximos));
   }
 
   function alterarStatus(chave: string, status: StatusExcel) {
@@ -162,14 +180,21 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     if (duplicado) return;
 
     const proximos = [...clientesExtras, nome];
-    setClientesExtras(proximos);
-    localStorage.setItem("controle-notas-excel-clientes", JSON.stringify(proximos));
-
     const alternativos = parseNomes(novosNomesBusca);
-    if (alternativos.length > 0) salvarNomesBusca({ ...nomesBusca, [nome]: alternativos });
+    const proximosNomesBusca = alternativos.length ? { ...nomesBusca, [nome]: alternativos } : nomesBusca;
+    const proximasInformacoes = { ...informacoesClientes, [nome]: novasInformacoes.trim() };
+    try {
+      salvarDadosClienteLocal({
+        "controle-notas-excel-clientes": proximos,
+        "controle-notas-excel-clientes-apelidos": proximosNomesBusca,
+        [CHAVE_INFORMACOES_CLIENTES]: proximasInformacoes,
+      });
+    } catch (erro) { setErroCliente(erro instanceof Error ? erro.message : "Não foi possível salvar o cliente."); return; }
+    setClientesExtras(proximos); setNomesBusca(proximosNomesBusca); setInformacoesClientes(proximasInformacoes);
 
     setNovoCliente("");
     setNovosNomesBusca("");
+    setNovasInformacoes(""); setErroCliente("");
     setModalCliente(null);
   }
 
@@ -178,6 +203,8 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     setClienteSelecionado(primeiro);
     setClienteAlteradoNome(primeiro ? nomeExibido(primeiro) : "");
     setClienteAlteradoNomesBusca((nomesBusca[primeiro] || []).join("\n"));
+    setClienteAlteradoInformacoes(primeiro ? obterInformacoes(primeiro) : "");
+    setErroCliente("");
     setModalCliente("alterar");
   }
 
@@ -185,6 +212,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     setClienteSelecionado(chave);
     setClienteAlteradoNome(nomeExibido(chave));
     setClienteAlteradoNomesBusca((nomesBusca[chave] || []).join("\n"));
+    setClienteAlteradoInformacoes(obterInformacoes(chave)); setErroCliente("");
   }
 
   function salvarAlteracaoCliente() {
@@ -192,9 +220,17 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
     if (!clienteSelecionado || !nome) return;
 
     const proximosNomes = { ...nomesAlterados, [clienteSelecionado]: nome };
+    const proximosNomesBusca = { ...nomesBusca, [clienteSelecionado]: parseNomes(clienteAlteradoNomesBusca) };
+    const proximasInformacoes = { ...informacoesClientes, [clienteSelecionado]: clienteAlteradoInformacoes.trim() };
+    try {
+      salvarDadosClienteLocal({
+        "controle-notas-excel-clientes-nomes": proximosNomes,
+        "controle-notas-excel-clientes-apelidos": proximosNomesBusca,
+        [CHAVE_INFORMACOES_CLIENTES]: proximasInformacoes,
+      });
+    } catch (erro) { setErroCliente(erro instanceof Error ? erro.message : "Não foi possível salvar o cliente."); return; }
     setNomesAlterados(proximosNomes);
-    localStorage.setItem("controle-notas-excel-clientes-nomes", JSON.stringify(proximosNomes));
-    salvarNomesBusca({ ...nomesBusca, [clienteSelecionado]: parseNomes(clienteAlteradoNomesBusca) });
+    setNomesBusca(proximosNomesBusca); setInformacoesClientes(proximasInformacoes); setErroCliente("");
     setModalCliente(null);
   }
 
@@ -245,10 +281,12 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
   return (
     <div className="excel-page excel-page-clean">
       {fichasAbertas && <FichasClientes aoFechar={() => setFichasAbertas(false)} />}
+      {informacaoAberta !== null && <InformacoesCliente nome={nomeExibido(informacaoAberta)}
+        texto={obterInformacoes(informacaoAberta)} aoFechar={fecharInformacoes} />}
       <main className="excel-layout">
         <section className="excel-main-column">
           <div className="excel-section-actions">
-            <button className="excel-toolbar-button" onClick={() => setModalCliente("incluir")}>
+            <button className="excel-toolbar-button" onClick={() => { setErroCliente(""); setModalCliente("incluir"); }}>
               <span>Incluir<br />Cliente</span><strong aria-hidden="true">＋</strong>
             </button>
             <button className="excel-toolbar-button" onClick={abrirAlteracaoCliente}>
@@ -322,10 +360,18 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
                     <div className="excel-note">
                       <input
                         className="excel-note-input"
+                        aria-label={`Observação mensal de ${nomeExibido(cliente)}`}
                         value={registro.observacao}
                         onChange={(event) => alterarObservacao(cliente, event.target.value)}
                         placeholder="Adicionar observação..."
                       />
+                      <button type="button" className={obterInformacoes(cliente).trim() ? "cliente-info-botao com-informacao" : "cliente-info-botao"}
+                        aria-label={`Informações adicionais de ${nomeExibido(cliente)}`}
+                        title={obterInformacoes(cliente).trim() ? "Ver informações adicionais" : "Nenhuma informação adicional cadastrada"}
+                        aria-haspopup="dialog" onClick={evento => {
+                          botaoInformacao.current = evento.currentTarget;
+                          setStatusAberto(null); setInformacaoAberta(cliente);
+                        }}><span aria-hidden="true">?</span></button>
                     </div>
                   </div>
                 );
@@ -389,7 +435,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
 
       {modalCliente === "incluir" && (
         <div className="excel-modal-backdrop" onMouseDown={() => setModalCliente(null)}>
-          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
+          <section className="excel-modal excel-modal-clientes" onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
               <div><span className="excel-eyebrow">Novo cliente</span><h2>Incluir cliente</h2></div>
               <button className="excel-modal-close" onClick={() => setModalCliente(null)}>×</button>
@@ -400,6 +446,11 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
               <textarea rows={4} value={novosNomesBusca} onChange={(event) => setNovosNomesBusca(event.target.value)} placeholder={"Um nome por linha. Ex.:\nRazão Social Ltda\nMercado do João\nCentral Alimentos"} />
               <small>Use para nome fantasia, razão social, abreviações e apelidos. Pode cadastrar quantos forem necessários.</small>
             </label>
+            <label className="excel-form-field"><span>Informações adicionais</span>
+              <textarea aria-label="Informações adicionais" rows={4} maxLength={LIMITE_INFORMACOES_CLIENTE} value={novasInformacoes} onChange={event => setNovasInformacoes(event.target.value)} placeholder="Particularidades e orientações específicas deste cliente..." />
+              <small>Informações permanentes, exibidas no botão ?. Salvas neste navegador e separadas das observações de cada mês.</small>
+            </label>
+            {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
               <button className="excel-action-button" onClick={() => setModalCliente(null)}>Cancelar</button>
               <button className="excel-action-button primary" onClick={incluirCliente} disabled={!novoCliente.trim()}>Incluir</button>
@@ -410,7 +461,7 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
 
       {modalCliente === "alterar" && (
         <div className="excel-modal-backdrop" onMouseDown={() => setModalCliente(null)}>
-          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
+          <section className="excel-modal excel-modal-clientes" onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
               <div><span className="excel-eyebrow">Cadastro de cliente</span><h2>Alterar cliente</h2></div>
               <button className="excel-modal-close" onClick={() => setModalCliente(null)}>×</button>
@@ -427,6 +478,11 @@ export function ExcelViewV2({ competencia }: ExcelViewProps) {
               <textarea rows={5} value={clienteAlteradoNomesBusca} onChange={(event) => setClienteAlteradoNomesBusca(event.target.value)} placeholder="Um nome por linha" />
               <small>Ex.: nome fantasia, razão social, abreviação ou qualquer nome pelo qual o cliente é conhecido.</small>
             </label>
+            <label className="excel-form-field"><span>Informações adicionais</span>
+              <textarea aria-label="Informações adicionais" rows={4} maxLength={LIMITE_INFORMACOES_CLIENTE} value={clienteAlteradoInformacoes} onChange={event => setClienteAlteradoInformacoes(event.target.value)} placeholder="Particularidades e orientações específicas deste cliente..." />
+              <small>Informações permanentes, exibidas no botão ?. Salvas neste navegador e separadas das observações de cada mês.</small>
+            </label>
+            {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
               <button className="excel-action-button" onClick={() => setModalCliente(null)}>Cancelar</button>
               <button className="excel-action-button primary" onClick={salvarAlteracaoCliente} disabled={!clienteAlteradoNome.trim()}>Salvar alteração</button>
