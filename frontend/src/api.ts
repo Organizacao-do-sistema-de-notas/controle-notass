@@ -10,7 +10,7 @@ import type {
   ProcedimentoCliente,
 } from "./types";
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
+export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
 
 async function requisicao<T>(caminho: string, opcoes?: RequestInit): Promise<T> {
   const headers = new Headers(opcoes?.headers);

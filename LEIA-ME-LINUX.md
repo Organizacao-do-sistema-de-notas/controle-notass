@@ -36,7 +36,7 @@ autenticação do GitHub ou GitHub CLI. Não coloque tokens na URL nem compartil
 credenciais neste chat.
 
 O instalador cria `.env.docker` com senha aleatória, confirma o banco local,
-aplica as seis migrações, gera o Prisma Client, verifica o TypeScript, compila
+aplica as migrações existentes, gera o Prisma Client, verifica o TypeScript, compila
 o frontend e inicia os três serviços. Na primeira instalação a Internet é
 necessária para baixar imagens e dependências.
 
@@ -101,5 +101,7 @@ docker compose --env-file .env.docker logs --tail 80 backend frontend db
 ```
 
 Não compartilhe `.env.docker` nem a saída de `docker compose config` sem
-`--quiet`, pois podem conter a senha local. Os status e observações antigos do
-Excel continuam no armazenamento do navegador e não fazem parte do PostgreSQL.
+`--quiet`, pois podem conter a senha local. Para compartilhar os registros antigos
+do Excel, use **Importar dados deste navegador**. Os originais permanecem locais;
+os dados importados e as novas alterações ficam no PostgreSQL e entram no backup.
+Veja [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md).

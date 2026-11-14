@@ -28,8 +28,12 @@ def main():
     if backup[:5] != b'PGDMP':
         raise SystemExit('O backup deve ser um arquivo PostgreSQL custom validado.')
     verification = json.loads(args.verificacao.read_text(encoding='utf-8-sig'))
-    if verification.get('banco') != 'controle_notas' or len(verification.get('tabelas', {})) != 10:
-        raise SystemExit('Verificacao deve descrever as dez tabelas do banco controle_notas.')
+    required_tables = {'Cliente', 'Contabilidade', 'ClienteNomeAlternativo', 'ProcedimentoCliente',
+                       'HistoricoContabilidadeCliente', 'Pendencia', 'HistoricoPendencia',
+                       'ClienteConfere', 'ContabilidadeConfere', '_prisma_migrations'}
+    tables = set(verification.get('tabelas', {}))
+    if verification.get('banco') != 'controle_notas' or not required_tables <= tables <= required_tables | {'ExcelCompartilhado'}:
+        raise SystemExit('Verificacao deve descrever as tabelas do controle_notas, incluindo ExcelCompartilhado quando presente.')
     for item in verification['tabelas'].values():
         if not isinstance(item['quantidade'], int) or item['quantidade'] < 0 or len(item['sha256']) != 64:
             raise SystemExit('Verificacao invalida.')

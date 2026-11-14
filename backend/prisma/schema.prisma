@@ -152,3 +152,13 @@ model ContabilidadeConfere {
   @@index([grupo])
   @@index([contabilidadeId])
 }
+
+// Shared state of the existing Excel view. No automatic name-based association
+// with Cliente: its legacy identities and the central registry stay separate.
+model ExcelCompartilhado {
+  id           String   @id
+  instancia    String   @default(uuid())
+  dados        Json
+  revisao      Int      @default(0)
+  atualizadoEm DateTime @default(now()) @updatedAt
+}

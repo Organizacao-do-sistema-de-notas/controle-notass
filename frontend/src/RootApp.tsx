@@ -39,6 +39,7 @@ export function RootApp() {
   const [cadastroAberto, setCadastroAberto] = useState<AbaCadastro | null>(null);
   const [revisaoCadastros, setRevisaoCadastros] = useState(0);
   const botaoCadastros = useRef<HTMLButtonElement>(null);
+  const [pendenciasExcel, setPendenciasExcel] = useState({ gravando: false, rascunhos: false });
   const [modo, setModo] = useState<ModoTela>(() => {
     return localStorage.getItem("controle-notas-modo") === "excel" ? "excel" : "painel";
   });
@@ -49,6 +50,10 @@ export function RootApp() {
   const mesesDisponiveis = useMemo(() => gerarMeses(competenciaExcel), [competenciaExcel]);
 
   function trocarModo(novoModo: ModoTela) {
+    if (modo === "excel" && novoModo !== "excel") {
+      if (pendenciasExcel.gravando) return;
+      if (pendenciasExcel.rascunhos && !window.confirm("Há observações ainda não salvas. Deseja sair e descartar o texto pendente?")) return;
+    }
     setModo(novoModo);
     localStorage.setItem("controle-notas-modo", novoModo);
   }
@@ -93,6 +98,7 @@ export function RootApp() {
             <button
               type="button"
               className={modo === "painel" ? "mode-button active" : "mode-button"}
+              disabled={modo === "excel" && pendenciasExcel.gravando}
               onClick={() => trocarModo("painel")}
             >
               Painel
@@ -109,7 +115,7 @@ export function RootApp() {
         </div>
       </nav>
 
-      {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} /> : <ExcelViewV2 competencia={competenciaExcel} />}
+      {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} /> : <ExcelViewV2 competencia={competenciaExcel} aoPendenciasAlteradas={setPendenciasExcel} />}
       {cadastroAberto && <Cadastros abaInicial={cadastroAberto}
         aoFechar={() => {
           setCadastroAberto(null);

@@ -26,7 +26,8 @@ O instalador:
 - gera `.env.docker` com uma senha local aleatória, sem exibi-la;
 - inicia o PostgreSQL e confirma que o banco está vazio;
 - restaura em uma única transação, sem apagar tabelas ou dados existentes;
-- compara quantidade e SHA-256 do conteúdo das dez tabelas com o manifesto;
+- compara quantidade e SHA-256 das tabelas com o manifesto, incluindo o Excel
+  compartilhado nas versões que já possuem essa tabela;
 - constrói e inicia backend e frontend, verifica as migrações e consulta a API;
 - abre o sistema em `http://localhost:5173` por padrão.
 
@@ -36,10 +37,11 @@ cadastrar apelidos da equipe, use **Outros nomes para pesquisa**, um por linha,
 e salve a ficha. O código do Confere ajuda a distinguir nomes iguais.
 
 O backup preserva o cadastro central, fichas, nomes alternativos, contabilidades,
-procedimentos e históricos presentes no PostgreSQL. Os status e observações da
-visão Excel antiga continuam no armazenamento do navegador em que foram usados.
-Esses registros de navegador têm exportação separada e não fazem parte do backup
-PostgreSQL.
+procedimentos e históricos presentes no PostgreSQL. Nas versões com Excel
+compartilhado, também preserva clientes, informações, avisos e registros mensais
+dessa visão. Para trazer registros antigos do navegador, use **Importar dados
+deste navegador**; os originais são preservados. Antes dessa importação, esses
+dados antigos ainda dependem da cópia local. Veja [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md).
 
 ## Reiniciar depois
 

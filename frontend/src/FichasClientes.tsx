@@ -254,7 +254,7 @@ export function FichasClientes({ aoFechar }: Props) {
                 {resultados.length === 0 && <p>Nenhum cliente encontrado no PostgreSQL.</p>}
               </div>
             )}
-            <p className="ficha-nota">Os clientes da tabela Excel ainda são locais. A integração entre os dois cadastros será feita em uma próxima etapa.</p>
+            <p className="ficha-nota">A tabela Excel e estas fichas são cadastros independentes. As empresas não são vinculadas automaticamente pelo nome.</p>
           </aside>
 
           <div className="ficha-detalhes">

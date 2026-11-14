@@ -1,0 +1,19 @@
+.excel-compartilhado { margin: 14px 0; padding: 10px 14px; border: 1px solid #d6e5f2; border-radius: 10px; background: #f8fcff; color: #60758e; font-size: 12px; line-height: 1.5; }
+.excel-compartilhado > p { margin: 0; }
+.excel-compartilhado [role="alert"] { color: #a23838; margin: 8px 0; }
+.excel-compartilhado .excel-action-button { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.excel-importacao { padding-top: 12px; margin-top: 8px; border-top: 1px solid #d6e5f2; }
+.excel-importacao p { margin: 6px 0 10px; }
+.excel-importacao > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.excel-importacao-resultado p { margin: 8px 0 0; }
+.excel-importacao-resultado details { max-height: 250px; overflow: auto; margin-top: 8px; }
+.excel-importacao-resultado li { margin: 8px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.excel-note-editor { min-width: 0; flex: 1; }
+.excel-observacao-pendente { display: block; font-size: 10px; color: #8b723d; padding: 3px 7px; }
+.excel-observacao-erro { padding: 8px; border: 1px solid #efc9ca; border-radius: 6px; background: #fff8f8; font-size: 11px; }
+.excel-observacao-erro p { margin: 0 0 5px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.excel-observacao-erro button { background: #fff; color: #8c4545; border: 1px solid #e3bbbb; border-radius: 4px; margin: 3px; padding: 5px 7px; font-size: 10px; }
+.cliente-info-conflito { background: #fff8e9; padding: 10px; margin-top: 12px; color: #81612b; font-size: 11px; line-height: 1.5; }
+.cliente-info-conflito p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 8px; }
+.cliente-info-conflito .excel-action-button { font-size: 10px; margin: 5px 5px 0 0; min-height: 30px; }
+.excel-form-group { border: 0; margin: 0; padding: 0; min-width: 0; }

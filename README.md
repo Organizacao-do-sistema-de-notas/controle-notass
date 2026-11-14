@@ -42,7 +42,8 @@ e execute novamente o comando. O endereço da API usado pelo navegador acompanha
 O Compose espera o PostgreSQL ficar disponível, aplica as migrações existentes
 com `prisma migrate deploy --config prisma7.config.ts` e inicia o backend. O
 frontend só inicia depois que a API consegue consultar clientes no banco. As migrações incluem
-`20261112220000_ficha_cliente` e `20261113090000_importacao_confere`.
+`20261112220000_ficha_cliente`, `20261113090000_importacao_confere` e
+`20261114180000_excel_compartilhado`.
 Não são executados `migrate reset` ou `db push`.
 
 | Componente | Endereço e persistência |
@@ -87,9 +88,9 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 `tests` e sua dependência `test-db`, sem iniciar ou alterar os serviços de trabalho:
 
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
-2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha e de importação.
-3. Executa os 21 testes de integração do backend.
-4. Inicia backend e Vite próprios e executa os 20 testes de interface no Chromium.
+2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha, de importação e do Excel compartilhado.
+3. Executa os 27 testes de integração do backend.
+4. Inicia backend e Vite próprios e executa os 27 testes de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
 O Chromium é instalado na imagem de testes a partir dos pacotes verificados do
@@ -155,24 +156,36 @@ as anotações, apelidos, procedimentos e pendências existentes são preservado
 Em **Contabilidades**, cadastre ou edite o nome de um escritório mantendo os
 clientes vinculados. Os nomes já registrados nos históricos são preservados.
 Os cadastros centrais e a tabela Excel continuam independentes; esta tela não
-importa nem altera automaticamente os registros locais do Excel.
+importa nem altera automaticamente os registros da visão Excel.
 
-## Informações adicionais na visão Excel
+## Informações adicionais e controle compartilhado
 
-Cada linha tem um botão quadrado **?**, à direita da observação mensal, para
-consultar as particularidades daquele cliente. O botão mostra somente as
-informações; não modifica a observação ou o status do mês.
+O botão **?**, à direita da observação mensal, abre a caixa com as particularidades
+do cliente. Use **Alterar** para editar e o botão verde **Salvar** para confirmar.
+O **X vermelho** fecha a janela e pede confirmação se houver texto não salvo.
+As informações também continuam disponíveis nos formulários Incluir/Alterar Cliente.
 
-Cadastre ou edite o texto no campo **Informações adicionais**, em **Incluir
-Cliente** ou **Alterar Cliente** da própria visão Excel. Ele é permanente entre
-os meses e continua associado ao cliente ao alterar seu nome exibido. Não há
-regras de empresas pré-preenchidas.
+Os dados da visão Excel agora ficam no PostgreSQL: clientes incluídos, nomes,
+apelidos, informações adicionais, avisos, status e observações de todos os meses.
+Os computadores conectados à mesma instância recebem as atualizações automaticamente.
+A edição concorrente do mesmo campo exige revisão, sem sobrescrita silenciosa.
 
-Assim como os demais cadastros locais do Excel, essas informações ficam no
-localStorage deste navegador/origem, na chave
-`controle-notas-excel-clientes-informacoes`. Não fazem parte do banco ou do
-backup PostgreSQL e não sincronizam com outros navegadores. Os cadastros do
-menu **⋯ → Clientes** e suas fichas centrais continuam separados.
+Na primeira abertura após atualizar, use **Importar dados deste navegador** para
+trazer os registros locais antigos. A importação copia somente dados ausentes:
+se o banco já tiver um valor diferente, ele é mantido e a divergência é mostrada.
+Os originais do navegador não são apagados nem atualizados por essa operação.
+Faça isso nos navegadores que tenham registros próprios, revisando as divergências.
+O botão **Baixar cópia dos dados locais** exporta os originais para um JSON privado.
+
+Preferências de visualização/mês e a identificação da importação permanecem locais.
+Os cadastros centrais do menu e da ficha continuam independentes da tabela Excel;
+não há associação automática de empresas por nome. Xaxim Gás e os três mercados
+prioritários mantêm o comportamento anterior.
+
+A nova migração apenas cria `ExcelCompartilhado`; não modifica linhas das tabelas
+existentes. O backup PostgreSQL passa a incluir também o controle Excel compartilhado.
+Veja [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md) para instalação,
+importação e acesso entre o notebook e o computador principal.
 
 ## Diagnosticar
 
