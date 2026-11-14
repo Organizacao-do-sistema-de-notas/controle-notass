@@ -289,3 +289,23 @@
   .ficha-campos-duplos { grid-template-columns: 1fr; gap: 0; }
   .ficha-footer { padding: 10px 16px; }
 }
+
+.ficha-edicao {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.ficha-item-nome, .ficha-item-codigo {
+  display: block;
+}
+
+.ficha-item-codigo, .ficha-identificacao {
+  color: #63738a;
+  font-size: 0.76rem;
+  font-weight: 450;
+}
+
+.ficha-item-codigo { margin-top: 4px; }
+.ficha-identificacao { margin: -10px 0 18px; }

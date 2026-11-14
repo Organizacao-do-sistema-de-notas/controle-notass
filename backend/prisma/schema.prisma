@@ -33,6 +33,7 @@ model Contabilidade {
   id       Int       @id @default(autoincrement())
   nome     String
   clientes Cliente[]
+  confere  ContabilidadeConfere[]
 
   criadoEm DateTime @default(now())
 }
@@ -52,6 +53,7 @@ model Cliente {
   nomesAlternativos         ClienteNomeAlternativo[]
   procedimentos             ProcedimentoCliente[]
   historicoContabilidades   HistoricoContabilidadeCliente[]
+  confere                  ClienteConfere?
 
   criadoEm        DateTime       @default(now())
 }
@@ -127,4 +129,26 @@ model HistoricoPendencia {
   criadoEm      DateTime               @default(now())
 
   @@index([pendenciaId, criadoEm])
+}
+
+// Source identifiers are separate from the application's internal IDs.
+model ClienteConfere {
+  codigo       String   @id
+  clienteId    Int      @unique
+  cliente      Cliente  @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  dadosOrigem  Json
+  hashOrigem   String
+  importadoEm  DateTime @default(now())
+}
+
+model ContabilidadeConfere {
+  codigo          String        @id
+  grupo           String
+  nomeOrigem      String
+  contabilidadeId Int
+  contabilidade   Contabilidade @relation(fields: [contabilidadeId], references: [id], onDelete: Restrict)
+  importadoEm     DateTime      @default(now())
+
+  @@index([grupo])
+  @@index([contabilidadeId])
 }

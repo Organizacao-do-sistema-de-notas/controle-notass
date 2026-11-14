@@ -27,6 +27,7 @@ export interface Cliente {
   contabilidadeId: number | null;
   contabilidade: Contabilidade | null;
   nomesAlternativos?: Array<{ nome: string }>;
+  confere?: { codigo: string } | null;
   criadoEm: string;
 }
 

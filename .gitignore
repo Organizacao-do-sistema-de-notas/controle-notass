@@ -7,6 +7,7 @@ node_modules/
 
 # Permitir arquivo modelo
 !.env.example
+!.env.docker.example
 
 # Código gerado
 /generated/prisma
@@ -20,3 +21,12 @@ npm-debug.log*
 # Windows
 Thumbs.db
 Desktop.ini
+# Resultados dos testes de navegador
+test-results/
+playwright-report/
+
+# Exportações e relatórios privados de importação
+backend/importacoes/
+
+# Dados privados do pacote de transferencia
+/dados/

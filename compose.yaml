@@ -1,0 +1,106 @@
+name: controle-notas-dev
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: controle_notas
+      POSTGRES_DB: controle_notas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD em .env.docker}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U controle_notas -d controle_notas"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+    init: true
+    environment:
+      DATABASE_URL: postgresql://controle_notas:${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD em .env.docker}@db:5432/controle_notas
+      PORT: "3000"
+      CONTROLE_NOTAS_AMBIENTE: docker-local
+      CHOKIDAR_USEPOLLING: "true"
+    command: ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --config prisma7.config.ts && exec npm run dev"]
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    volumes:
+      - ./backend/src:/app/backend/src:ro
+      - ./backend/importacoes:/app/backend/importacoes:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/clientes').then(async r => { if (!r.ok) process.exit(1); await r.arrayBuffer(); }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+    init: true
+    environment:
+      # This address is used by the Windows browser, not by the container.
+      VITE_API_URL: http://localhost:${API_PORT:-3000}
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend/src:/app/frontend/src:ro
+      - ./frontend/index.html:/app/frontend/index.html:ro
+      - ./frontend/vite.config.ts:/app/frontend/vite.config.ts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/').then(async r => { if (!r.ok) process.exit(1); await r.arrayBuffer(); }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  test-db:
+    profiles: [test]
+    image: postgres:17-bookworm
+    # The runner shares this private network namespace: the existing test URL
+    # guard remains restricted to loopback and never accepts the development DB.
+    command: ["postgres", "-p", "5433", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_DB: controle_notas_pr1_test_docker
+      POSTGRES_PASSWORD: codex_test_only
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks: [tests]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5433 -U agent -d controle_notas_pr1_test_docker"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  tests:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    init: true
+    shm_size: 1gb
+    network_mode: service:test-db
+    environment:
+      # Synthetic credentials for the disposable test DB only.
+      DATABASE_URL: postgresql://agent:codex_test_only@127.0.0.1:5433/controle_notas_pr1_test_docker
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+networks:
+  tests:
+    internal: true
+
+volumes:
+  postgres_data:

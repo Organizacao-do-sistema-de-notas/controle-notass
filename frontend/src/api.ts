@@ -119,10 +119,12 @@ export function obterFichaCliente(id: number): Promise<FichaCliente> {
 }
 
 export function atualizarFichaCliente(id: number, dados: {
-  frequenciaAcesso: FrequenciaAcesso;
-  observacoesPermanentes: string;
-  modeloMensagem: string;
-  nomesAlternativos: string[];
+  frequenciaAcesso?: FrequenciaAcesso;
+  observacoesPermanentes?: string | null;
+  modeloMensagem?: string | null;
+  nomesAlternativos?: string[];
+  contabilidadeId?: number | null;
+  autor?: string;
 }): Promise<FichaCliente> {
   return requisicao<FichaCliente>(`/clientes/${id}/ficha`, {
     method: "PATCH",

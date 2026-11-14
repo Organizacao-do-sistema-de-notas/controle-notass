@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/generated
+**/dist
+**/.env
+**/.env.*
+**/*.log
+**/test-results
+**/playwright-report
+.env
+.env.*
+
+**/importacoes
+
+dados

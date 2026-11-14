@@ -14,7 +14,7 @@ Esta implementação amplia o cadastro existente sem apagar clientes ou pendênc
 ## Rotas REST adicionadas
 
 - `GET /clientes/:id/ficha` — ficha, contabilidade, apelidos, procedimentos e histórico de contabilidade.
-- `PATCH /clientes/:id/ficha` — aceita campos opcionais `frequenciaAcesso`, `observacoesPermanentes`, `modeloMensagem` e `nomesAlternativos` (array de strings). O array **substitui** a lista anterior quando informado; omiti-lo preserva a lista.
+- `PATCH /clientes/:id/ficha` — aceita campos opcionais `frequenciaAcesso`, `observacoesPermanentes`, `modeloMensagem` e `nomesAlternativos` (array de strings). Também aceita `contabilidadeId` e `autor`: ficha, apelidos, vínculo e histórico são salvos na mesma transação; um vínculo inválido não grava parte da ficha. O array **substitui** a lista anterior quando informado; omiti-lo preserva a lista.
 - `POST /clientes/:id/procedimentos` — cria procedimento com `titulo` e `descricao`.
 - `PATCH /clientes/:id/procedimentos/:procedimentoId` — altera `titulo`, `descricao` ou `ativo`.
 - `PATCH /clientes/:id` — já existia; ao trocar `contabilidadeId`, agora registra a mudança em histórico. O campo opcional `autor` identifica quem fez a alteração, mas **não é autenticação**.
@@ -48,7 +48,7 @@ Os comandos acima são para execução após aprovação, não foram rodados no 
 ## Restrições desta etapa
 
 - Não realiza importação do Confere Cópias ou das listas Excel.
-- Não inclui interface nova no frontend. O Painel e a visualização Excel existentes permanecem sem alterações.
+- A interface **Fichas dos Clientes** é aberta pela visualização Excel e consulta o PostgreSQL. O cadastro de clientes pelo Painel continua disponível; a tabela Excel mantém seu cadastro local separado, sem importar esses nomes para o banco.
 - **Não armazenar senhas ou segredos em observações/procedimentos**: essas rotas ainda precisam de autenticação e autorização antes de hospedar fora de uma rede de testes protegida.
 - O histórico de contabilidades começa a ser registrado **a partir das futuras alterações**. Não recria retroativamente trocas antigas.
-- Precisa de testes integrados com PostgreSQL antes de ser incorporado à `main`.
+- Testes de integração e de navegador estão descritos em `../VALIDACAO_PR1.md`. Alterações de contabilidade são serializadas por cliente para preservar os snapshots em requisições simultâneas.

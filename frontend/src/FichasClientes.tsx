@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  atualizarContabilidadeCliente,
   atualizarFichaCliente,
   atualizarProcedimentoCliente,
   criarProcedimentoCliente,
@@ -31,17 +30,20 @@ function nomesParaLista(valor: string): string[] {
 }
 
 function normalizar(valor: string): string {
-  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 export function FichasClientes({ aoFechar }: Props) {
+  const dialogRef = useRef<HTMLElement>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [contabilidades, setContabilidades] = useState<Contabilidade[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [ficha, setFicha] = useState<FichaCliente | null>(null);
   const [carregandoFicha, setCarregandoFicha] = useState(false);
+  const [tentativaLeitura, setTentativaLeitura] = useState(0);
   const [busca, setBusca] = useState("");
+  const [buscarEm, setBuscarEm] = useState<"TODOS" | "NOME" | "APELIDOS">("TODOS");
   const [frequencia, setFrequencia] = useState<FrequenciaAcesso>("NAO_DEFINIDA");
   const [contabilidadeId, setContabilidadeId] = useState("");
   const [nomes, setNomes] = useState("");
@@ -54,6 +56,21 @@ export function FichasClientes({ aoFechar }: Props) {
   const [procedimentoId, setProcedimentoId] = useState<number | null>(null);
   const [tituloProcedimento, setTituloProcedimento] = useState("");
   const [descricaoProcedimento, setDescricaoProcedimento] = useState("");
+
+  useEffect(() => {
+    const anterior = document.activeElement;
+    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    return () => { if (anterior instanceof HTMLElement && anterior.isConnected) anterior.focus(); };
+  }, []);
+
+  function preencherFicha(dados: FichaCliente) {
+    setFicha(dados);
+    setFrequencia(dados.frequenciaAcesso);
+    setContabilidadeId(dados.contabilidadeId === null ? "" : String(dados.contabilidadeId));
+    setNomes(dados.nomesAlternativos.map((nome) => nome.nome).join("\n"));
+    setObservacoes(dados.observacoesPermanentes ?? "");
+    setMensagem(dados.modeloMensagem ?? "");
+  }
 
   useEffect(() => {
     let ativo = true;
@@ -81,24 +98,22 @@ export function FichasClientes({ aoFechar }: Props) {
     obterFichaCliente(clienteId)
       .then((dados) => {
         if (!ativo) return;
-        setFicha(dados);
-        setFrequencia(dados.frequenciaAcesso);
-        setContabilidadeId(dados.contabilidadeId === null ? "" : String(dados.contabilidadeId));
-        setNomes(dados.nomesAlternativos.map((nome) => nome.nome).join("\n"));
-        setObservacoes(dados.observacoesPermanentes ?? "");
-        setMensagem(dados.modeloMensagem ?? "");
+        preencherFicha(dados);
       })
       .catch((e: unknown) => { if (ativo) setErro(erroMensagem(e)); })
       .finally(() => { if (ativo) setCarregandoFicha(false); });
     return () => { ativo = false; };
-  }, [clienteId]);
+  }, [clienteId, tentativaLeitura]);
 
   const resultados = useMemo(() => {
     const termo = normalizar(busca.trim());
     if (!termo) return clientes;
-    return clientes.filter((cliente) => normalizar(cliente.nome).includes(termo) ||
-      cliente.nomesAlternativos?.some((nome) => normalizar(nome.nome).includes(termo)));
-  }, [clientes, busca]);
+    return clientes.filter((cliente) => {
+      const peloNome = normalizar(cliente.nome).includes(termo);
+      const peloApelido = cliente.nomesAlternativos?.some((nome) => normalizar(nome.nome).includes(termo)) ?? false;
+      return buscarEm === "NOME" ? peloNome : buscarEm === "APELIDOS" ? peloApelido : peloNome || peloApelido;
+    });
+  }, [clientes, busca, buscarEm]);
 
   async function recarregarFicha(id: number) {
     setFicha(await obterFichaCliente(id));
@@ -110,19 +125,16 @@ export function FichasClientes({ aoFechar }: Props) {
     setErro("");
     setAviso("");
     try {
-      await atualizarFichaCliente(ficha.id, {
+      const dados = await atualizarFichaCliente(ficha.id, {
         frequenciaAcesso: frequencia,
         observacoesPermanentes: observacoes,
         modeloMensagem: mensagem,
         nomesAlternativos: nomesParaLista(nomes),
+        contabilidadeId: contabilidadeId === "" ? null : Number(contabilidadeId),
+        autor: autor.trim() || undefined,
       });
-      const novoId = contabilidadeId === "" ? null : Number(contabilidadeId);
-      if (novoId !== ficha.contabilidadeId) {
-        await atualizarContabilidadeCliente(ficha.id, novoId, autor.trim() || undefined);
-      }
-      await recarregarFicha(ficha.id);
-      setClientes((atuais) => atuais.map((cliente) => cliente.id === ficha.id ?
-        { ...cliente, nomesAlternativos: nomesParaLista(nomes).map((nome) => ({ nome })) } : cliente));
+      preencherFicha(dados);
+      setClientes((atuais) => atuais.map((cliente) => cliente.id === dados.id ? dados : cliente));
       setAviso("Ficha salva no banco de dados.");
     } catch (e) {
       setErro(erroMensagem(e));
@@ -181,14 +193,32 @@ export function FichasClientes({ aoFechar }: Props) {
 
   return (
     <div className="ficha-backdrop">
-      <section className="ficha-dialog" role="dialog" aria-modal="true" aria-labelledby="ficha-titulo">
+      <section ref={dialogRef} className="ficha-dialog" role="dialog" aria-modal="true" aria-labelledby="ficha-titulo"
+        aria-busy={salvando} tabIndex={-1} onKeyDown={(evento) => {
+          if (evento.key === "Escape") {
+            evento.preventDefault();
+            if (!salvando) aoFechar();
+          }
+          if (evento.key === "Tab") {
+            const elementos = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
+              'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)',
+            ) ?? []);
+            const primeiro = elementos[0];
+            const ultimo = elementos[elementos.length - 1];
+            if (evento.shiftKey && document.activeElement === primeiro) {
+              evento.preventDefault(); ultimo?.focus();
+            } else if (!evento.shiftKey && document.activeElement === ultimo) {
+              evento.preventDefault(); primeiro?.focus();
+            }
+          }
+        }}>
         <header className="ficha-header">
           <div>
             <span className="ficha-eyebrow">Cadastro centralizado · PostgreSQL</span>
             <h2 id="ficha-titulo">Fichas dos clientes</h2>
             <p>Informações permanentes, procedimentos, contabilidade e mensagens.</p>
           </div>
-          <button type="button" className="ficha-fechar" aria-label="Fechar fichas" onClick={aoFechar}>×</button>
+          <button type="button" className="ficha-fechar" aria-label="Fechar fichas" disabled={salvando} onClick={aoFechar}>×</button>
         </header>
 
         <div className="ficha-content">
@@ -197,13 +227,28 @@ export function FichasClientes({ aoFechar }: Props) {
               Buscar no banco
               <input value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Nome do cliente ou apelido..." />
             </label>
+            <label className="ficha-campo">
+              Pesquisar por
+              <select aria-label="Pesquisar por" value={buscarEm} onChange={(evento) => setBuscarEm(evento.target.value as typeof buscarEm)}>
+                <option value="TODOS">Nome e apelidos</option>
+                <option value="NOME">Somente nome</option>
+                <option value="APELIDOS">Somente apelidos</option>
+              </select>
+            </label>
             {carregandoLista ? <p>Carregando clientes...</p> : (
               <div className="ficha-resultados">
                 {resultados.map((cliente) => (
                   <button type="button" key={cliente.id}
-                    className={cliente.id === clienteId ? "ficha-item selecionado" : "ficha-item"}
-                    onClick={() => setClienteId(cliente.id)}>
-                    {cliente.nome}
+                    disabled={salvando} className={cliente.id === clienteId ? "ficha-item selecionado" : "ficha-item"}
+                    onClick={() => {
+                      if (cliente.id === clienteId && !ficha && !carregandoFicha) {
+                        setTentativaLeitura((atual) => atual + 1);
+                      } else {
+                        setClienteId(cliente.id);
+                      }
+                    }}>
+                    <span className="ficha-item-nome">{cliente.nome}</span>
+                    {cliente.confere && <small className="ficha-item-codigo">Confere #{cliente.confere.codigo}</small>}
                   </button>
                 ))}
                 {resultados.length === 0 && <p>Nenhum cliente encontrado no PostgreSQL.</p>}
@@ -223,7 +268,9 @@ export function FichasClientes({ aoFechar }: Props) {
 
             {ficha && (
               <>
+                <fieldset className="ficha-edicao" disabled={salvando}>
                 <h3 className="ficha-cliente-nome">{ficha.nome}</h3>
+                {ficha.confere && <p className="ficha-identificacao">Código no Confere: {ficha.confere.codigo}</p>}
                 <div className="ficha-campos-duplos">
                   <label className="ficha-campo">
                     Frequência de acesso
@@ -245,17 +292,18 @@ export function FichasClientes({ aoFechar }: Props) {
                   Outros nomes para pesquisa (um por linha)
                   <textarea rows={3} value={nomes} onChange={(evento) => setNomes(evento.target.value)} placeholder="Razão social, nome fantasia, abreviações..." />
                 </label>
+                <p className="ficha-descricao">Adicione também os apelidos usados pela equipe, um por linha. Eles ficam disponíveis na pesquisa após salvar a ficha.</p>
                 <label className="ficha-campo">
                   Anotações permanentes
-                  <textarea rows={4} value={observacoes} onChange={(evento) => setObservacoes(evento.target.value)} placeholder="Informações importantes deste cliente..." />
+                  <textarea rows={4} maxLength={20000} value={observacoes} onChange={(evento) => setObservacoes(evento.target.value)} placeholder="Informações importantes deste cliente..." />
                 </label>
                 <label className="ficha-campo">
                   Modelo manual de mensagem à contabilidade
-                  <textarea rows={5} value={mensagem} onChange={(evento) => setMensagem(evento.target.value)} placeholder="Primeira NF-e: [preencher]\nÚltima NF-e: [preencher]..." />
+                  <textarea rows={5} maxLength={20000} value={mensagem} onChange={(evento) => setMensagem(evento.target.value)} placeholder="Primeira NF-e: [preencher]\nÚltima NF-e: [preencher]..." />
                 </label>
                 <label className="ficha-campo">
                   Responsável pela alteração de contabilidade (opcional)
-                  <input value={autor} onChange={(evento) => setAutor(evento.target.value)} placeholder="Seu nome" />
+                  <input maxLength={150} value={autor} onChange={(evento) => setAutor(evento.target.value)} placeholder="Seu nome" />
                 </label>
                 <div className="ficha-acoes">
                   <button type="button" className="ficha-botao primario" disabled={salvando} onClick={salvarFicha}>
@@ -291,7 +339,7 @@ export function FichasClientes({ aoFechar }: Props) {
                 </label>
                 <label className="ficha-campo">
                   Passo a passo
-                  <textarea value={descricaoProcedimento} onChange={(evento) => setDescricaoProcedimento(evento.target.value)} rows={4} placeholder="Descreva como realizar o atendimento..." />
+                  <textarea maxLength={20000} value={descricaoProcedimento} onChange={(evento) => setDescricaoProcedimento(evento.target.value)} rows={4} placeholder="Descreva como realizar o atendimento..." />
                 </label>
                 <div className="ficha-acoes">
                   {procedimentoId !== null && (
@@ -318,6 +366,7 @@ export function FichasClientes({ aoFechar }: Props) {
                     ))}
                   </ul>
                 ) : <p className="ficha-descricao">Nenhuma troca de contabilidade registrada até agora.</p>}
+                </fieldset>
               </>
             )}
           </div>

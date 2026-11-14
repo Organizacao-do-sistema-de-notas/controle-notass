@@ -1,26 +1,15 @@
 import type { Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.ts";
-
-function obterId(valor: unknown): number | null {
-  if (typeof valor !== "string") {
-    return null;
-  }
-
-  const id = Number(valor);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return null;
-  }
-
-  return id;
-}
+import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
+import { bloquearCliente, registrarTrocaContabilidade } from "../services/historico-contabilidade.service.ts";
 
 export async function listarClientes(_req: Request, res: Response): Promise<void> {
   try {
     const clientes = await prisma.cliente.findMany({
       include: {
         contabilidade: true,
+        confere: { select: { codigo: true } },
         nomesAlternativos: { select: { nome: true } },
       },
       orderBy: {
@@ -48,6 +37,7 @@ export async function buscarClientePorId(req: Request, res: Response): Promise<v
       where: { id },
       include: {
         contabilidade: true,
+        confere: { select: { codigo: true } },
         pendencias: {
           orderBy: {
             criadoEm: "desc",
@@ -69,9 +59,10 @@ export async function buscarClientePorId(req: Request, res: Response): Promise<v
 }
 
 export async function criarCliente(req: Request, res: Response): Promise<void> {
+  if (!corpoValido(req.body)) { res.status(400).json({ erro: "Dados inválidos." }); return; }
   const { nome, contabilidadeId } = req.body;
 
-  if (typeof nome !== "string" || nome.trim().length === 0) {
+  if (typeof nome !== "string" || (nome.trim().length === 0 || nome.length > 200)) {
     res.status(400).json({ erro: "O nome do cliente é obrigatório." });
     return;
   }
@@ -79,7 +70,7 @@ export async function criarCliente(req: Request, res: Response): Promise<void> {
   if (
     contabilidadeId !== undefined &&
     contabilidadeId !== null &&
-    (!Number.isInteger(contabilidadeId) || contabilidadeId <= 0)
+    !idValido(contabilidadeId)
   ) {
     res.status(400).json({ erro: "contabilidadeId inválido." });
     return;
@@ -104,6 +95,7 @@ export async function criarCliente(req: Request, res: Response): Promise<void> {
       },
       include: {
         contabilidade: true,
+        confere: { select: { codigo: true } },
       },
     });
 
@@ -116,7 +108,8 @@ export async function criarCliente(req: Request, res: Response): Promise<void> {
 
 export async function atualizarCliente(req: Request, res: Response): Promise<void> {
   const id = obterId(req.params.id);
-  const { nome, ativo, contabilidadeId, autor } = req.body ?? {};
+  if (!corpoValido(req.body)) { res.status(400).json({ erro: "Dados inválidos." }); return; }
+  const { nome, ativo, contabilidadeId, autor } = req.body;
 
   if (id === null) { res.status(400).json({ erro: "ID de cliente inválido." }); return; }
   if (nome !== undefined && (typeof nome !== "string" || nome.trim().length === 0 || nome.length > 200)) {
@@ -126,7 +119,7 @@ export async function atualizarCliente(req: Request, res: Response): Promise<voi
     res.status(400).json({ erro: "O campo ativo deve ser booleano." }); return;
   }
   if (contabilidadeId !== undefined && contabilidadeId !== null &&
-      (!Number.isInteger(contabilidadeId) || contabilidadeId <= 0)) {
+      !idValido(contabilidadeId)) {
     res.status(400).json({ erro: "contabilidadeId inválido." }); return;
   }
   if (autor !== undefined && (typeof autor !== "string" || autor.length > 150)) {
@@ -142,10 +135,7 @@ export async function atualizarCliente(req: Request, res: Response): Promise<voi
       if (!contabilidade) { res.status(404).json({ erro: "Contabilidade não encontrada." }); return; }
     }
     const resultado = await prisma.$transaction(async (tx) => {
-      const existente = await tx.cliente.findUnique({
-        where: { id },
-        include: { contabilidade: true },
-      });
+      const existente = await bloquearCliente(tx, id);
       if (!existente) return null;
       const cliente = await tx.cliente.update({
         where: { id },
@@ -156,16 +146,7 @@ export async function atualizarCliente(req: Request, res: Response): Promise<voi
         },
         include: { contabilidade: true },
       });
-      if (contabilidadeId !== undefined && existente.contabilidadeId !== cliente.contabilidadeId) {
-        await tx.historicoContabilidadeCliente.create({
-          data: {
-            clienteId: id,
-            nomeAnterior: existente.contabilidade?.nome ?? null,
-            nomeNova: cliente.contabilidade?.nome ?? null,
-            autor: typeof autor === "string" ? autor.trim() || null : null,
-          },
-        });
-      }
+      await registrarTrocaContabilidade(tx, existente, cliente, autor);
       return cliente;
     });
     if (!resultado) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }

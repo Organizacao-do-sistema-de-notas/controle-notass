@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+FROM node:24-bookworm-slim
+
+# Use the distribution's verified Chromium packages: no host browser is needed.
+RUN --mount=type=secret,id=proxy_ca,mode=0444 \
+    if [ -f /run/secrets/proxy_ca ]; then \
+      printf 'Acquire::https::CaInfo "/run/secrets/proxy_ca";\n' > /tmp/apt-proxy-ca.conf; \
+    else touch /tmp/apt-proxy-ca.conf; fi; \
+    apt-get -c /tmp/apt-proxy-ca.conf update \
+    && apt-get -c /tmp/apt-proxy-ca.conf install -y --no-install-recommends chromium fonts-liberation openssl \
+    && rm -rf /var/lib/apt/lists/* /tmp/apt-proxy-ca.conf
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+
+WORKDIR /app
+COPY backend ./backend
+COPY frontend ./frontend
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi; \
+    npm --prefix backend ci && npm --prefix frontend ci \
+    && cd backend && ./node_modules/.bin/prisma generate --config prisma7.config.ts \
+    && ./node_modules/.bin/tsc --noEmit \
+    && cd ../frontend && npm run build
+# No host browser, .env or Windows node_modules are used in this image.
+CMD ["sh", "-c", "npm --prefix backend test && npm --prefix frontend run test:e2e"]

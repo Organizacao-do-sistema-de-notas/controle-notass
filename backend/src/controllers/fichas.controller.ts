@@ -1,15 +1,11 @@
 import type { Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.ts";
+import { corpoValido, idValido, obterId as idPositivo } from "../utils/validacao-cliente.ts";
+import { bloquearCliente, ContabilidadeNaoEncontrada, registrarTrocaContabilidade } from "../services/historico-contabilidade.service.ts";
 
 const frequencias = ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"] as const;
 type Frequencia = (typeof frequencias)[number];
-
-function idPositivo(valor: unknown): number | null {
-  if (typeof valor !== "string" || !/^[0-9]+$/.test(valor)) return null;
-  const id = Number(valor);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
 
 function textoOpcional(valor: unknown, limite: number): string | null | undefined {
   if (valor === undefined) return undefined;
@@ -26,9 +22,10 @@ export async function obterFichaCliente(req: Request, res: Response): Promise<vo
       where: { id },
       include: {
         contabilidade: true,
+        confere: { select: { codigo: true } },
         nomesAlternativos: { orderBy: { nome: "asc" } },
         procedimentos: { orderBy: { criadoEm: "asc" } },
-        historicoContabilidades: { orderBy: { criadoEm: "desc" } },
+        historicoContabilidades: { orderBy: [{ criadoEm: "desc" }, { id: "desc" }] },
       },
     });
     if (!cliente) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
@@ -45,11 +42,17 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
 
   try {
     const corpo = req.body;
-    if (!corpo || typeof corpo !== "object" || Array.isArray(corpo)) {
+    if (!corpoValido(corpo)) {
       res.status(400).json({ erro: "Dados inválidos." }); return;
     }
-    const { frequenciaAcesso, observacoesPermanentes, modeloMensagem, nomesAlternativos } = corpo;
-    if (frequenciaAcesso !== undefined && !frequencias.includes(frequenciaAcesso as Frequencia)) {
+    const { frequenciaAcesso, observacoesPermanentes, modeloMensagem, nomesAlternativos, contabilidadeId, autor } = corpo;
+    if (contabilidadeId !== undefined && contabilidadeId !== null && !idValido(contabilidadeId)) {
+      res.status(400).json({ erro: "contabilidadeId inválido." }); return;
+    }
+    if (autor !== undefined && (typeof autor !== "string" || autor.length > 150)) {
+      res.status(400).json({ erro: "Autor inválido." }); return;
+    }
+    if (frequenciaAcesso !== undefined && (typeof frequenciaAcesso !== "string" || !frequencias.includes(frequenciaAcesso as Frequencia))) {
       res.status(400).json({ erro: "Frequência inválida." }); return;
     }
     const observacoes = textoOpcional(observacoesPermanentes, 20000);
@@ -62,16 +65,23 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
       }
       nomes = [...new Set((nomesAlternativos as string[]).map(nome => nome.trim()))];
     }
-    if (frequenciaAcesso === undefined && observacoes === undefined && modelo === undefined && nomes === undefined) {
+    if (frequenciaAcesso === undefined && observacoes === undefined && modelo === undefined && nomes === undefined && contabilidadeId === undefined) {
       res.status(400).json({ erro: "Nenhum campo de ficha informado." }); return;
     }
     const ficha = await prisma.$transaction(async tx => {
-      const existente = await tx.cliente.findUnique({ where: { id }, select: { id: true } });
+      const existente = await bloquearCliente(tx, id);
       if (!existente) return null;
-      await tx.cliente.update({
+      if (contabilidadeId !== undefined && contabilidadeId !== null &&
+          !await tx.contabilidade.findUnique({ where: { id: contabilidadeId } })) {
+        throw new ContabilidadeNaoEncontrada();
+      }
+      const atualizado = await tx.cliente.update({
         where: { id },
-        data: { frequenciaAcesso, observacoesPermanentes: observacoes, modeloMensagem: modelo },
+        data: { frequenciaAcesso: frequenciaAcesso as Frequencia | undefined,
+          observacoesPermanentes: observacoes, modeloMensagem: modelo, contabilidadeId },
+        include: { contabilidade: true },
       });
+      await registrarTrocaContabilidade(tx, existente, atualizado, autor);
       if (nomes !== undefined) {
         await tx.clienteNomeAlternativo.deleteMany({ where: { clienteId: id } });
         if (nomes.length > 0) {
@@ -82,15 +92,19 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
         where: { id },
         include: {
           contabilidade: true,
+          confere: { select: { codigo: true } },
           nomesAlternativos: { orderBy: { nome: "asc" } },
           procedimentos: { orderBy: { criadoEm: "asc" } },
-          historicoContabilidades: { orderBy: { criadoEm: "desc" } },
+          historicoContabilidades: { orderBy: [{ criadoEm: "desc" }, { id: "desc" }] },
         },
       });
     });
     if (!ficha) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
     res.json(ficha);
   } catch (erro) {
+    if (erro instanceof ContabilidadeNaoEncontrada) {
+      res.status(404).json({ erro: erro.message }); return;
+    }
     if (erro instanceof Error && erro.message === "Campo de texto inválido ou muito longo.") {
       res.status(400).json({ erro: erro.message }); return;
     }
@@ -101,7 +115,8 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
 
 export async function criarProcedimentoCliente(req: Request, res: Response): Promise<void> {
   const clienteId = idPositivo(req.params.id);
-  const { titulo, descricao } = req.body ?? {};
+  if (!corpoValido(req.body)) { res.status(400).json({ erro: "Dados inválidos." }); return; }
+  const { titulo, descricao } = req.body;
   if (!clienteId || typeof titulo !== "string" || !titulo.trim() || titulo.length > 200 ||
       typeof descricao !== "string" || !descricao.trim() || descricao.length > 20000) {
     res.status(400).json({ erro: "Cliente, título ou descrição inválidos." }); return;
@@ -125,7 +140,8 @@ export async function atualizarProcedimentoCliente(req: Request, res: Response):
   if (!clienteId || !procedimentoId) {
     res.status(400).json({ erro: "Identificador inválido." }); return;
   }
-  const { titulo, descricao, ativo } = req.body ?? {};
+  if (!corpoValido(req.body)) { res.status(400).json({ erro: "Dados inválidos." }); return; }
+  const { titulo, descricao, ativo } = req.body;
   if ((titulo === undefined && descricao === undefined && ativo === undefined) ||
       (titulo !== undefined && (typeof titulo !== "string" || !titulo.trim() || titulo.length > 200)) ||
       (descricao !== undefined && (typeof descricao !== "string" || !descricao.trim() || descricao.length > 20000)) ||
