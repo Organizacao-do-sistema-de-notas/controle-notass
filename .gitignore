@@ -30,3 +30,6 @@ backend/importacoes/
 
 # Dados privados do pacote de transferencia
 /dados/
+
+# Backups privados do servidor
+/backups/

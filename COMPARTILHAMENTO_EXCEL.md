@@ -79,3 +79,6 @@ O `pg_dump` do banco passa a guardar a visão Excel compartilhada. Os scripts de
 validação e empacotamento verificam a tabela nova quando presente, mantendo a
 compatibilidade com backups antigos de dez tabelas. Guarde os backups e as cópias
 JSON em local privado. A persistência em volume não substitui backup externo.
+
+No notebook, `bash ./BACKUP-LINUX.sh` gera uma nova cópia do banco em execução,
+incluindo esses dados. Uso e limites: [BACKUP_SERVIDOR.md](BACKUP_SERVIDOR.md).

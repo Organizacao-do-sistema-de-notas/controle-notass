@@ -46,7 +46,7 @@ def main():
         if path.is_symlink() or not path.resolve().is_relative_to(root):
             raise SystemExit('Link de arquivo inesperado: ' + name)
         parts = Path(name).parts
-        if any(part in {'.git', 'node_modules', 'generated', 'dist', 'test-results', 'playwright-report', 'importacoes', 'dados'} for part in parts):
+        if any(part.casefold() in {'.git', 'node_modules', 'generated', 'dist', 'test-results', 'playwright-report', 'importacoes', 'dados', 'backups'} for part in parts):
             raise SystemExit('Arquivo privado ou gerado inesperado na lista Git: ' + name)
         if path.name.startswith('.env') and not path.name.endswith('.example'):
             raise SystemExit('Configuracao local nao pode entrar no pacote: ' + name)

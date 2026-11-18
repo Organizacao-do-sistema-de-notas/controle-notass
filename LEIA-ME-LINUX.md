@@ -88,6 +88,16 @@ edite somente as portas nesse arquivo e mantenha o nome original do projeto.
 
 ## Backup e diagnóstico
 
+Para gerar uma nova cópia do banco já em execução no notebook:
+
+```bash
+bash ./BACKUP-LINUX.sh
+```
+
+O comando informa a pasta criada em `backups/`. Copie a pasta completa para um
+dispositivo privado separado. Os registros compartilhados do Excel entram junto
+com os cadastros e históricos. Veja [BACKUP_SERVIDOR.md](BACKUP_SERVIDOR.md).
+
 Para uma futura instalação com backup, use uma pasta/projeto separado e os
 arquivos privados do pacote, conforme `LEIA-ME-WINDOWS.md`. Execute então
 `bash ./INICIAR-LINUX.sh` sem `--banco-vazio`. O modo vazio recusa um pacote que

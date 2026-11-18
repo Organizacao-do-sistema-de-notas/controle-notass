@@ -76,6 +76,15 @@ e faça backup antes de atualizar um banco com dados que precisam ser preservado
 A suíte atual cobre a atualização da base anterior à ficha; ao acrescentar novas
 migrações, atualize também as expectativas de migração dos testes.
 
+## Backup do servidor
+
+No notebook/servidor Linux, execute `bash ./BACKUP-LINUX.sh`. Se o banco estiver
+no Windows, execute `BACKUP-WINDOWS.bat`. O PostgreSQL precisa estar em execução.
+Cada cópia gera uma pasta privada em `backups/`, com arquivo PostgreSQL custom e
+checksum, sem interromper a API. Essa pasta é excluída do Git e das imagens.
+Guarde uma cópia externa. Veja [BACKUP_SERVIDOR.md](BACKUP_SERVIDOR.md) para uso,
+verificações, destino alternativo e cuidados na recuperação.
+
 ## Testar tudo em containers
 
 Execute em outro terminal, usando um nome de projeto separado:

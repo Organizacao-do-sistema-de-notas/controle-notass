@@ -43,6 +43,14 @@ dessa visão. Para trazer registros antigos do navegador, use **Importar dados
 deste navegador**; os originais são preservados. Antes dessa importação, esses
 dados antigos ainda dependem da cópia local. Veja [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md).
 
+## Gerar novos backups
+
+Se este Windows hospeda o PostgreSQL, execute **BACKUP-WINDOWS.bat** com o Docker
+Desktop iniciado. A cópia fica em `backups/`, incluindo o Excel compartilhado.
+Se o banco está no notebook Linux, faça o backup lá com **BACKUP-LINUX.sh**.
+Guarde a pasta completa em outro dispositivo privado. Esses arquivos são cópias
+de dados, separados do pacote de instalação. Veja [BACKUP_SERVIDOR.md](BACKUP_SERVIDOR.md).
+
 ## Reiniciar depois
 
 Pode executar **INICIAR-WINDOWS.bat** novamente. O instalador reconhece a
