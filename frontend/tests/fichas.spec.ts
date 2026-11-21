@@ -102,6 +102,79 @@ test('navegação bloqueada durante gravação e erro de rede permite corrigir e
   await expect(page.getByRole('status')).toContainText('Ficha salva');
 });
 
+test('rascunhos da ficha pedem confirmação ao trocar cliente, fechar ou usar Escape', async ({ page, request }) => {
+  await abrir(page);
+  const campo = page.getByLabel('Anotações permanentes');
+  await campo.fill('Texto fictício ainda não salvo');
+  let confirmacoes = 0;
+  page.on('dialog', async dialog => { confirmacoes++; await dialog.dismiss(); });
+  await page.getByRole('button', { name: outro.nome, exact: true }).click();
+  await expect(page.getByRole('heading', { name: cliente.nome, exact: true })).toBeVisible();
+  await expect(campo).toHaveValue('Texto fictício ainda não salvo');
+  await page.getByRole('button', { name: 'Fechar fichas' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(campo).toHaveValue('Texto fictício ainda não salvo');
+  expect(confirmacoes).toBe(3);
+  page.removeAllListeners('dialog');
+  page.once('dialog', async dialog => { await dialog.accept(); });
+  await page.getByRole('button', { name: outro.nome, exact: true }).click();
+  await expect(page.getByRole('heading', { name: outro.nome, exact: true })).toBeVisible();
+  await expect(campo).toHaveValue('');
+  const salvo = await (await request.get(`${api}/clientes/${cliente.id}/ficha`)).json();
+  expect(salvo.observacoesPermanentes).toBeNull();
+});
+
+test('rascunho de procedimento é preservado ao editar outro e ao salvar ficha', async ({ page, request }) => {
+  const r = await request.post(`${api}/clientes/${cliente.id}/procedimentos`, { data: { titulo: 'Procedimento existente', descricao: 'Passo original' } });
+  expect(r.status()).toBe(201);
+  await abrir(page);
+  await page.getByLabel('Anotações permanentes').fill('Anotação salva separadamente');
+  await page.getByLabel('Título', { exact: true }).fill('Novo procedimento em rascunho');
+  await page.getByLabel('Passo a passo').fill('Passo que ainda não foi salvo');
+  page.once('dialog', async dialog => { await dialog.dismiss(); });
+  await page.getByRole('button', { name: 'Editar', exact: true }).click();
+  await expect(page.getByLabel('Título', { exact: true })).toHaveValue('Novo procedimento em rascunho');
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Ficha salva');
+  await expect(page.getByLabel('Passo a passo')).toHaveValue('Passo que ainda não foi salvo');
+  page.once('dialog', async dialog => { await dialog.dismiss(); });
+  await page.getByRole('button', { name: 'Fechar fichas' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  page.once('dialog', async dialog => { await dialog.accept(); });
+  await page.getByRole('button', { name: 'Editar', exact: true }).click();
+  await expect(page.getByLabel('Título', { exact: true })).toHaveValue('Procedimento existente');
+  await page.getByLabel('Passo a passo').fill('Edição de procedimento não salva');
+  page.once('dialog', async dialog => { await dialog.dismiss(); });
+  await page.getByRole('button', { name: 'Cancelar edição', exact: true }).click();
+  await expect(page.getByLabel('Passo a passo')).toHaveValue('Edição de procedimento não salva');
+  page.once('dialog', async dialog => { await dialog.accept(); });
+  await page.getByRole('button', { name: 'Cancelar edição', exact: true }).click();
+  await expect(page.getByLabel('Passo a passo')).toHaveValue('');
+  await page.getByRole('button', { name: 'Fechar fichas' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const salvo = await (await request.get(`${api}/clientes/${cliente.id}/ficha`)).json();
+  expect(salvo.observacoesPermanentes).toBe('Anotação salva separadamente');
+  expect(salvo.procedimentos).toHaveLength(1);
+  expect(salvo.procedimentos[0].descricao).toBe('Passo original');
+});
+
+test('recarregar protege o rascunho da ficha e fica liberado depois de salvar', async ({ page }) => {
+  await abrir(page);
+  await page.getByLabel('Anotações permanentes').fill('Rascunho protegido ao atualizar');
+  let avisos = 0;
+  page.on('dialog', async dialog => { avisos++; expect(dialog.type()).toBe('beforeunload'); await dialog.dismiss(); });
+  // A canceled reload has no navigation to await with page.reload().
+  await page.evaluate(() => { window.setTimeout(() => window.location.reload(), 0); });
+  await expect.poll(() => avisos).toBe(1);
+  await expect(page.getByLabel('Anotações permanentes')).toHaveValue('Rascunho protegido ao atualizar');
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Ficha salva');
+  await page.reload();
+  expect(avisos).toBe(1);
+  await expect(page.getByRole('button', { name: /Fichas dos\s*Clientes/ })).toBeVisible();
+});
+
 test('Excel preserva aviso, prioridades, pesquisa e cadastro local; Painel continua acessível', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Excel', exact: true }).click();

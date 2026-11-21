@@ -7,6 +7,9 @@ incluídas. Não é necessário instalar Node, PostgreSQL ou Chromium no Windows
 Para instalar no **Xubuntu por comandos**, clonando a branch de instalação com
 um banco local vazio, siga [LEIA-ME-LINUX.md](LEIA-ME-LINUX.md).
 
+O escopo atual e o roteiro para concluir a versão básica estão em
+[FECHAMENTO_CONTROLE_NOTAS.md](FECHAMENTO_CONTROLE_NOTAS.md).
+
 Se recebeu o pacote privado com backup do Codex, siga
 [LEIA-ME-WINDOWS.md](LEIA-ME-WINDOWS.md) e execute `INICIAR-WINDOWS.bat`.
 Esse caminho restaura os dados em um banco local vazio e gera a configuração
@@ -99,7 +102,7 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
 2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha, de importação e do Excel compartilhado.
 3. Executa os 27 testes de integração do backend.
-4. Inicia backend e Vite próprios e executa os 27 testes de interface no Chromium.
+4. Inicia backend e Vite próprios e executa os 30 testes de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
 O Chromium é instalado na imagem de testes a partir dos pacotes verificados do
@@ -166,6 +169,11 @@ Em **Contabilidades**, cadastre ou edite o nome de um escritório mantendo os
 clientes vinculados. Os nomes já registrados nos históricos são preservados.
 Os cadastros centrais e a tabela Excel continuam independentes; esta tela não
 importa nem altera automaticamente os registros da visão Excel.
+
+Na ficha individual, fechar, trocar de cliente ou substituir uma edição de
+procedimento pede confirmação quando há texto não salvo. Cancelar a confirmação
+mantém o rascunho; salvar a ficha e salvar o procedimento continuam ações separadas.
+O navegador também é avisado de alterações pendentes ao tentar recarregar a página.
 
 ## Informações adicionais e controle compartilhado
 
