@@ -5,20 +5,8 @@ import {
   TipoHistoricoPendencia,
 } from "../../generated/prisma/enums.ts";
 import { prisma } from "../lib/prisma.ts";
-
-function obterId(valor: unknown): number | null {
-  if (typeof valor !== "string") {
-    return null;
-  }
-
-  const id = Number(valor);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return null;
-  }
-
-  return id;
-}
+import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
+import { bloquearPendencia, relacoesPendencia } from "../services/historico-pendencia.service.ts";
 
 function competenciaValida(valor: unknown): valor is string {
   return typeof valor === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
@@ -116,18 +104,7 @@ export async function buscarPendenciaPorId(req: Request, res: Response): Promise
   try {
     const pendencia = await prisma.pendencia.findUnique({
       where: { id },
-      include: {
-        cliente: {
-          include: {
-            contabilidade: true,
-          },
-        },
-        historico: {
-          orderBy: {
-            criadoEm: "desc",
-          },
-        },
-      },
+      include: relacoesPendencia,
     });
 
     if (!pendencia) {
@@ -165,9 +142,7 @@ export async function listarHistoricoPendencia(req: Request, res: Response): Pro
       where: {
         pendenciaId: id,
       },
-      orderBy: {
-        criadoEm: "desc",
-      },
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
     });
 
     res.json(historico);
@@ -178,9 +153,12 @@ export async function listarHistoricoPendencia(req: Request, res: Response): Pro
 }
 
 export async function criarPendencia(req: Request, res: Response): Promise<void> {
+  if (!corpoValido(req.body)) {
+    res.status(400).json({ erro: "Dados inválidos." }); return;
+  }
   const { clienteId, competencia, status, responsavel, observacao, autor } = req.body;
 
-  if (!Number.isInteger(clienteId) || clienteId <= 0) {
+  if (!idValido(clienteId)) {
     res.status(400).json({ erro: "clienteId é obrigatório e deve ser um número inteiro positivo." });
     return;
   }
@@ -281,22 +259,20 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
           create: eventosHistorico,
         },
       },
-      include: {
-        cliente: {
-          include: {
-            contabilidade: true,
-          },
-        },
-        historico: {
-          orderBy: {
-            criadoEm: "desc",
-          },
-        },
-      },
+      include: relacoesPendencia,
     });
 
     res.status(201).json(pendencia);
   } catch (erro) {
+    // The unique database constraint also handles requests that passed the
+    // pre-check at the same time. Return the existing conflict response.
+    if (erro && typeof erro === "object" && "code" in erro && erro.code === "P2002") {
+      const existente = await prisma.pendencia.findUnique({ where: { clienteId_competencia: { clienteId, competencia } } });
+      if (existente) {
+        res.status(409).json({ erro: "Já existe uma pendência para este cliente nesta competência.", pendenciaId: existente.id });
+        return;
+      }
+    }
     console.error("Erro ao criar pendência:", erro);
     res.status(500).json({ erro: "Erro ao criar pendência." });
   }
@@ -304,12 +280,16 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
 
 export async function atualizarPendencia(req: Request, res: Response): Promise<void> {
   const id = obterId(req.params.id);
-  const { status, responsavel, observacao, autor } = req.body;
 
   if (id === null) {
     res.status(400).json({ erro: "ID de pendência inválido." });
     return;
   }
+
+  if (!corpoValido(req.body)) {
+    res.status(400).json({ erro: "Dados inválidos." }); return;
+  }
+  const { status, responsavel, observacao, autor } = req.body;
 
   if (status !== undefined && !statusValido(status)) {
     res.status(400).json({ erro: "Status de pendência inválido." });
@@ -337,116 +317,42 @@ export async function atualizarPendencia(req: Request, res: Response): Promise<v
   }
 
   try {
-    const existente = await prisma.pendencia.findUnique({
-      where: { id },
-    });
-
-    if (!existente) {
-      res.status(404).json({ erro: "Pendência não encontrada." });
-      return;
-    }
-
-    const responsavelNovo =
-      responsavel !== undefined ? textoOpcional(responsavel) : existente.responsavel;
-    const observacaoNova =
-      observacao !== undefined ? textoOpcional(observacao) : existente.observacao;
-    const autorHistorico = textoOpcional(autor);
-
-    const eventosHistorico: EventoHistorico[] = [];
-
-    if (status !== undefined && status !== existente.status) {
-      eventosHistorico.push({
-        tipo: TipoHistoricoPendencia.STATUS,
-        valorAnterior: existente.status,
-        valorNovo: status,
-        autor: autorHistorico,
-      });
-    }
-
-    if (responsavel !== undefined && responsavelNovo !== existente.responsavel) {
-      eventosHistorico.push({
-        tipo: TipoHistoricoPendencia.RESPONSAVEL,
-        valorAnterior: existente.responsavel,
-        valorNovo: responsavelNovo,
-        autor: autorHistorico,
-      });
-    }
-
-    if (observacao !== undefined && observacaoNova !== existente.observacao) {
-      eventosHistorico.push({
-        tipo: TipoHistoricoPendencia.OBSERVACAO,
-        valorAnterior: existente.observacao,
-        valorNovo: observacaoNova,
-        autor: autorHistorico,
-      });
-    }
-
-    if (eventosHistorico.length === 0) {
-      const pendenciaAtual = await prisma.pendencia.findUnique({
-        where: { id },
-        include: {
-          cliente: {
-            include: {
-              contabilidade: true,
-            },
-          },
-          historico: {
-            orderBy: {
-              criadoEm: "desc",
-            },
-          },
-        },
-      });
-
-      res.json(pendenciaAtual);
-      return;
-    }
-
     const pendencia = await prisma.$transaction(async (tx) => {
-      const atualizada = await tx.pendencia.update({
-        where: { id },
-        data: {
-          status,
-          responsavel: responsavel !== undefined ? responsavelNovo : undefined,
-          observacao: observacao !== undefined ? observacaoNova : undefined,
-          concluidoEm:
-            status === undefined
-              ? undefined
-              : status === StatusPendencia.CONCLUIDO
-                ? existente.concluidoEm ?? new Date()
-                : null,
-        },
-      });
-
-      for (const evento of eventosHistorico) {
-        await tx.historicoPendencia.create({
+      const existente = await bloquearPendencia(tx, id);
+      if (!existente) return null;
+      const responsavelNovo = responsavel !== undefined ? textoOpcional(responsavel) : existente.responsavel;
+      const observacaoNova = observacao !== undefined ? textoOpcional(observacao) : existente.observacao;
+      const autorHistorico = textoOpcional(autor);
+      const eventosHistorico: EventoHistorico[] = [];
+      if (status !== undefined && status !== existente.status) {
+        eventosHistorico.push({ tipo: TipoHistoricoPendencia.STATUS, valorAnterior: existente.status, valorNovo: status, autor: autorHistorico });
+      }
+      if (responsavel !== undefined && responsavelNovo !== existente.responsavel) {
+        eventosHistorico.push({ tipo: TipoHistoricoPendencia.RESPONSAVEL, valorAnterior: existente.responsavel, valorNovo: responsavelNovo, autor: autorHistorico });
+      }
+      if (observacao !== undefined && observacaoNova !== existente.observacao) {
+        eventosHistorico.push({ tipo: TipoHistoricoPendencia.OBSERVACAO, valorAnterior: existente.observacao, valorNovo: observacaoNova, autor: autorHistorico });
+      }
+      if (eventosHistorico.length > 0) {
+        const instante = new Date(); // After the row lock, not transaction start.
+        await tx.pendencia.update({
+          where: { id },
           data: {
-            pendenciaId: id,
-            ...evento,
+            status,
+            responsavel: responsavel !== undefined ? responsavelNovo : undefined,
+            observacao: observacao !== undefined ? observacaoNova : undefined,
+            concluidoEm: status === undefined ? undefined : status === StatusPendencia.CONCLUIDO ? existente.concluidoEm ?? instante : null,
           },
         });
+        for (const evento of eventosHistorico) {
+          await tx.historicoPendencia.create({ data: { pendenciaId: id, ...evento, criadoEm: instante } });
+        }
       }
-
-      return atualizada;
+      return tx.pendencia.findUnique({ where: { id }, include: relacoesPendencia });
     });
 
-    const pendenciaCompleta = await prisma.pendencia.findUnique({
-      where: { id: pendencia.id },
-      include: {
-        cliente: {
-          include: {
-            contabilidade: true,
-          },
-        },
-        historico: {
-          orderBy: {
-            criadoEm: "desc",
-          },
-        },
-      },
-    });
-
-    res.json(pendenciaCompleta);
+    if (!pendencia) { res.status(404).json({ erro: "Pendência não encontrada." }); return; }
+    res.json(pendencia);
   } catch (erro) {
     console.error("Erro ao atualizar pendência:", erro);
     res.status(500).json({ erro: "Erro ao atualizar pendência." });

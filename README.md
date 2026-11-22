@@ -101,7 +101,7 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
 2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha, de importação e do Excel compartilhado.
-3. Executa os 27 testes de integração do backend.
+3. Executa os 33 testes de integração do backend.
 4. Inicia backend e Vite próprios e executa os 30 testes de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
@@ -123,6 +123,12 @@ Os testes incluem fichas, apelidos, procedimentos, histórico de contabilidade,
 concorrência, entradas inválidas, erros de rede, navegação, cadastro pelo Painel,
 visualização Excel, Xaxim Gás e os três mercados prioritários. Veja também
 [VALIDACAO_PR1.md](VALIDACAO_PR1.md) e [VALIDACAO_DOCKER.md](VALIDACAO_DOCKER.md).
+
+As gravações de status, responsável, observação e mensagem no Painel registram o
+valor anterior efetivo dentro da transação. Repetir o mesmo valor não duplica o
+histórico; duas criações da mesma pendência retornam uma criação e o conflito 409
+com o ID já existente. Leituras de histórico usam data e ID para desempatar eventos.
+Veja [VALIDACAO_PAINEL_BASICO.md](VALIDACAO_PAINEL_BASICO.md).
 
 ## Builds no ambiente Codex
 

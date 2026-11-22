@@ -50,7 +50,9 @@ no notebook e no computador principal ainda depende do retorno do usuário.
    Conferir o texto salvo e alterá-lo. O notebook deve receber a atualização.
    Uma edição concorrente do mesmo campo deve pedir revisão e preservar o rascunho.
 8. No Painel, criar uma pendência fictícia, mudar seu status, conferir o histórico
-   e salvar uma mensagem. Confirmar que abrir/fechar cadastros mantém o fluxo.
+   e salvar uma mensagem. Repetir o mesmo valor não deve duplicar eventos no histórico.
+   Alterações feitas pelos dois computadores devem registrar o valor anterior
+   efetivo. Confirmar que abrir/fechar cadastros mantém o fluxo.
 9. Reiniciar os serviços pelo Compose, preservando o projeto e o volume. Reabrir
    o sistema e conferir os registros salvos.
 10. Executar o comando de backup no servidor e conferir **Backup concluido**.
