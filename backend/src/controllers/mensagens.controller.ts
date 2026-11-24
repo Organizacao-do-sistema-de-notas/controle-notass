@@ -2,24 +2,12 @@ import type { Request, Response } from "express";
 
 import { TipoHistoricoPendencia } from "../../generated/prisma/enums.ts";
 import { prisma } from "../lib/prisma.ts";
+import { corpoValido, obterId } from "../utils/validacao-cliente.ts";
+import { bloquearPendencia } from "../services/historico-pendencia.service.ts";
 import {
   gerarLinkWhatsApp,
   normalizarMensagemContador,
 } from "../services/mensagem-whatsapp.service.ts";
-
-function obterId(valor: unknown): number | null {
-  if (typeof valor !== "string") {
-    return null;
-  }
-
-  const id = Number(valor);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return null;
-  }
-
-  return id;
-}
 
 function textoOpcional(valor: unknown): string | null {
   if (typeof valor !== "string") {
@@ -77,12 +65,16 @@ export async function obterMensagemContador(req: Request, res: Response): Promis
 
 export async function salvarMensagemContador(req: Request, res: Response): Promise<void> {
   const id = obterId(req.params.id);
-  const { mensagem, autor } = req.body;
 
   if (id === null) {
     res.status(400).json({ erro: "ID de pendência inválido." });
     return;
   }
+
+  if (!corpoValido(req.body)) {
+    res.status(400).json({ erro: "Dados inválidos." }); return;
+  }
+  const { mensagem, autor } = req.body;
 
   if (mensagem === undefined || (mensagem !== null && typeof mensagem !== "string")) {
     res.status(400).json({
@@ -103,24 +95,10 @@ export async function salvarMensagemContador(req: Request, res: Response): Promi
   const autorHistorico = textoOpcional(autor);
 
   try {
-    const existente = await prisma.pendencia.findUnique({
-      where: { id },
-      include: {
-        cliente: {
-          include: {
-            contabilidade: true,
-          },
-        },
-      },
-    });
-
-    if (!existente) {
-      res.status(404).json({ erro: "Pendência não encontrada." });
-      return;
-    }
-
-    if (existente.mensagemContador !== mensagemNova) {
-      await prisma.$transaction(async (tx) => {
+    const existente = await prisma.$transaction(async (tx) => {
+      const anterior = await bloquearPendencia(tx, id);
+      if (!anterior) return null;
+      if (anterior.mensagemContador !== mensagemNova) {
         await tx.pendencia.update({
           where: { id },
           data: {
@@ -132,13 +110,16 @@ export async function salvarMensagemContador(req: Request, res: Response): Promi
           data: {
             pendenciaId: id,
             tipo: TipoHistoricoPendencia.MENSAGEM_CONTADOR,
-            valorAnterior: existente.mensagemContador,
+            valorAnterior: anterior.mensagemContador,
             valorNovo: mensagemNova,
             autor: autorHistorico,
+            criadoEm: new Date(),
           },
         });
-      });
-    }
+      }
+      return tx.pendencia.findUnique({ where: { id }, include: { cliente: { include: { contabilidade: true } } } });
+    });
+    if (!existente) { res.status(404).json({ erro: "Pendência não encontrada." }); return; }
 
     res.json({
       pendenciaId: existente.id,

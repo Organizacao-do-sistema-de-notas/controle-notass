@@ -56,6 +56,37 @@ export function FichasClientes({ aoFechar }: Props) {
   const [procedimentoId, setProcedimentoId] = useState<number | null>(null);
   const [tituloProcedimento, setTituloProcedimento] = useState("");
   const [descricaoProcedimento, setDescricaoProcedimento] = useState("");
+  const fichaAlterada = !!ficha && (
+    frequencia !== ficha.frequenciaAcesso
+    || contabilidadeId !== (ficha.contabilidadeId === null ? "" : String(ficha.contabilidadeId))
+    || observacoes.trim() !== (ficha.observacoesPermanentes ?? "")
+    || mensagem.trim() !== (ficha.modeloMensagem ?? "")
+    || JSON.stringify(nomesParaLista(nomes).sort()) !== JSON.stringify(ficha.nomesAlternativos.map(item => item.nome).sort())
+  );
+  const procedimentoOriginal = ficha?.procedimentos.find(item => item.id === procedimentoId);
+  const procedimentoAlterado = tituloProcedimento.trim() !== (procedimentoOriginal?.titulo ?? "")
+    || descricaoProcedimento.trim() !== (procedimentoOriginal?.descricao ?? "");
+
+  useEffect(() => {
+    if (!fichaAlterada && !procedimentoAlterado && !salvando) return;
+    const proteger = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
+    window.addEventListener("beforeunload", proteger);
+    return () => window.removeEventListener("beforeunload", proteger);
+  }, [fichaAlterada, procedimentoAlterado, salvando]);
+
+  function podeSair() {
+    return !salvando && (!(fichaAlterada || procedimentoAlterado)
+      || window.confirm("Descartar as alterações não salvas da ficha ou do procedimento?"));
+  }
+  function fechar() { if (podeSair()) aoFechar(); }
+  function podeDescartarProcedimento() {
+    return !salvando && (!procedimentoAlterado
+      || window.confirm("Descartar as alterações não salvas deste procedimento?"));
+  }
+  function cancelarProcedimento() {
+    if (!podeDescartarProcedimento()) return;
+    setProcedimentoId(null); setTituloProcedimento(""); setDescricaoProcedimento("");
+  }
 
   useEffect(() => {
     const anterior = document.activeElement;
@@ -120,7 +151,7 @@ export function FichasClientes({ aoFechar }: Props) {
   }
 
   async function salvarFicha() {
-    if (!ficha) return;
+    if (!ficha || salvando) return;
     setSalvando(true);
     setErro("");
     setAviso("");
@@ -170,6 +201,7 @@ export function FichasClientes({ aoFechar }: Props) {
   }
 
   function editarProcedimento(item: ProcedimentoCliente) {
+    if (!podeDescartarProcedimento()) return;
     setProcedimentoId(item.id);
     setTituloProcedimento(item.titulo);
     setDescricaoProcedimento(item.descricao);
@@ -197,7 +229,8 @@ export function FichasClientes({ aoFechar }: Props) {
         aria-busy={salvando} tabIndex={-1} onKeyDown={(evento) => {
           if (evento.key === "Escape") {
             evento.preventDefault();
-            if (!salvando) aoFechar();
+            evento.stopPropagation();
+            fechar();
           }
           if (evento.key === "Tab") {
             const elementos = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -218,7 +251,7 @@ export function FichasClientes({ aoFechar }: Props) {
             <h2 id="ficha-titulo">Fichas dos clientes</h2>
             <p>Informações permanentes, procedimentos, contabilidade e mensagens.</p>
           </div>
-          <button type="button" className="ficha-fechar" aria-label="Fechar fichas" disabled={salvando} onClick={aoFechar}>×</button>
+          <button type="button" className="ficha-fechar" aria-label="Fechar fichas" disabled={salvando} onClick={fechar}>×</button>
         </header>
 
         <div className="ficha-content">
@@ -241,9 +274,10 @@ export function FichasClientes({ aoFechar }: Props) {
                   <button type="button" key={cliente.id}
                     disabled={salvando} className={cliente.id === clienteId ? "ficha-item selecionado" : "ficha-item"}
                     onClick={() => {
+                      if (salvando) return;
                       if (cliente.id === clienteId && !ficha && !carregandoFicha) {
                         setTentativaLeitura((atual) => atual + 1);
-                      } else {
+                      } else if (cliente.id !== clienteId && podeSair()) {
                         setClienteId(cliente.id);
                       }
                     }}>
@@ -343,11 +377,7 @@ export function FichasClientes({ aoFechar }: Props) {
                 </label>
                 <div className="ficha-acoes">
                   {procedimentoId !== null && (
-                    <button type="button" className="ficha-botao" onClick={() => {
-                      setProcedimentoId(null);
-                      setTituloProcedimento("");
-                      setDescricaoProcedimento("");
-                    }}>Cancelar edição</button>
+                    <button type="button" className="ficha-botao" onClick={cancelarProcedimento}>Cancelar edição</button>
                   )}
                   <button type="button" className="ficha-botao primario" disabled={salvando || !tituloProcedimento.trim() || !descricaoProcedimento.trim()} onClick={salvarProcedimento}>
                     Salvar procedimento
