@@ -4,7 +4,7 @@ export type RegistroMensal = { status: StatusExcel; observacao: string };
 export type AvisoExtra = { id: string; titulo: string; texto: string };
 export type EstadoExcel = {
   clientesExtras: string[]; nomesAlterados: Record<string, string>; nomesBusca: Record<string, string[]>;
-  informacoesClientes: Record<string, string>; avisosExtras: AvisoExtra[];
+  informacoesClientes: Record<string, string>; vinculosClientes: Record<string, number>; avisosExtras: AvisoExtra[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
@@ -13,7 +13,7 @@ export type AlteracaoExcel =
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null };
 export type ImportacaoExcel = RespostaExcel & { importados: number; totalConflitos: number; conflitos: { caminho: string[]; atual: unknown; local: unknown }[] };
-export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, avisosExtras: [], registros: {} });
+export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, vinculosClientes: {}, avisosExtras: [], registros: {} });
 export class ErroExcel extends Error {
   constructor(mensagem: string, public status: number, public resposta?: RespostaExcel) { super(mensagem); }
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
 import { InformacoesCliente } from "./InformacoesCliente";
+import { SelecionarFichaCliente } from "./SelecionarFichaCliente";
 import {
   LIMITE_INFORMACOES_CLIENTE,
 } from "./informacoes-cliente-storage";
@@ -69,20 +70,21 @@ function parseNomes(valor: string): string[] {
 
 export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewProps) {
   const compartilhado = useExcelCompartilhado();
-  const { clientesExtras, nomesAlterados, nomesBusca, informacoesClientes, avisosExtras } = compartilhado.estado;
+  const { clientesExtras, nomesAlterados, nomesBusca, informacoesClientes, avisosExtras, vinculosClientes = {} } = compartilhado.estado;
   const registros = compartilhado.estado.registros[competencia] ?? {};
   const observacoes = useObservacoesExcel(compartilhado.estado, compartilhado.executar, compartilhado.conectado);
   const ocupado = compartilhado.gravando > 0;
   const disponivel = compartilhado.carregado && compartilhado.conectado;
   const [erroGeral, setErroGeral] = useState("");
   const [erroAviso, setErroAviso] = useState("");
-  const [baseFormulario, setBaseFormulario] = useState({ nome: "", apelidos: [] as string[], informacoes: "" });
+  const [baseFormulario, setBaseFormulario] = useState({ nome: "", apelidos: [] as string[], informacoes: "", vinculo: null as number | null });
   const [baseAviso, setBaseAviso] = useState<AvisoExtra | null>(null);
   const [informacaoAberta, setInformacaoAberta] = useState<string | null>(null);
   const botaoInformacao = useRef<HTMLButtonElement | null>(null);
 
   const [pesquisa, setPesquisa] = useState("");
   const [fichasAbertas, setFichasAbertas] = useState(false);
+  const [fichaInicialId, setFichaInicialId] = useState<number | null>(null);
   const [statusAberto, setStatusAberto] = useState<string | null>(null);
   const [prioridadeAberta, setPrioridadeAberta] = useState(false);
   const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
@@ -96,6 +98,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [clienteAlteradoNome, setClienteAlteradoNome] = useState("");
   const [clienteAlteradoNomesBusca, setClienteAlteradoNomesBusca] = useState("");
   const [clienteAlteradoInformacoes, setClienteAlteradoInformacoes] = useState("");
+  const [clienteAlteradoFicha, setClienteAlteradoFicha] = useState<number | null>(null);
 
   const [novoAvisoTitulo, setNovoAvisoTitulo] = useState("");
   const [novoAvisoTexto, setNovoAvisoTexto] = useState("");
@@ -185,7 +188,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     setClienteAlteradoNome(primeiro ? nomeExibido(primeiro) : "");
     setClienteAlteradoNomesBusca((nomesBusca[primeiro] || []).join("\n"));
     setClienteAlteradoInformacoes(primeiro ? obterInformacoes(primeiro) : "");
-    setBaseFormulario({ nome: primeiro ? nomeExibido(primeiro) : "", apelidos: nomesBusca[primeiro] || [], informacoes: primeiro ? obterInformacoes(primeiro) : "" });
+    setClienteAlteradoFicha(vinculosClientes[primeiro] ?? null);
+    setBaseFormulario({ nome: primeiro ? nomeExibido(primeiro) : "", apelidos: nomesBusca[primeiro] || [], informacoes: primeiro ? obterInformacoes(primeiro) : "", vinculo: vinculosClientes[primeiro] ?? null });
     setErroCliente("");
     setModalCliente("alterar");
   }
@@ -195,7 +199,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     setClienteAlteradoNome(nomeExibido(chave));
     setClienteAlteradoNomesBusca((nomesBusca[chave] || []).join("\n"));
     setClienteAlteradoInformacoes(obterInformacoes(chave)); setErroCliente("");
-    setBaseFormulario({ nome: nomeExibido(chave), apelidos: nomesBusca[chave] || [], informacoes: obterInformacoes(chave) });
+    setClienteAlteradoFicha(vinculosClientes[chave] ?? null);
+    setBaseFormulario({ nome: nomeExibido(chave), apelidos: nomesBusca[chave] || [], informacoes: obterInformacoes(chave), vinculo: vinculosClientes[chave] ?? null });
   }
 
   async function salvarAlteracaoCliente() {
@@ -207,6 +212,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     const apelidos = parseNomes(clienteAlteradoNomesBusca);
     if (JSON.stringify(apelidos) !== JSON.stringify(baseFormulario.apelidos)) ops.push(definir(["apelidos", clienteSelecionado], apelidos, baseFormulario.apelidos));
     if (clienteAlteradoInformacoes.trim() !== baseFormulario.informacoes) ops.push(definir(["informacoes", clienteSelecionado], clienteAlteradoInformacoes.trim(), baseFormulario.informacoes));
+    if (clienteAlteradoFicha !== baseFormulario.vinculo) ops.push(definir(["vinculo", clienteSelecionado], clienteAlteradoFicha, baseFormulario.vinculo));
     try {
       if (ops.length) await compartilhado.executar(ops);
     } catch (erro) { setErroCliente(erro instanceof Error ? erro.message : "Não foi possível salvar o cliente."); return; }
@@ -257,7 +263,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
 
   return (
     <div className="excel-page excel-page-clean">
-      {fichasAbertas && <FichasClientes aoFechar={() => setFichasAbertas(false)} />}
+      {fichasAbertas && <FichasClientes clienteInicialId={fichaInicialId} aoFechar={() => setFichasAbertas(false)} />}
       {informacaoAberta !== null && <InformacoesCliente nome={nomeExibido(informacaoAberta)}
         texto={obterInformacoes(informacaoAberta)} aoFechar={fecharInformacoes} disponivel={disponivel}
         aoSalvar={(texto, anterior) => compartilhado.executar([definir(["informacoes", informacaoAberta], texto, anterior)])} />}
@@ -291,7 +297,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             <button className="excel-toolbar-button" disabled={!disponivel || ocupado} onClick={abrirAlteracaoCliente}>
               <span>Alterar<br />Cliente</span><strong aria-hidden="true">✎</strong>
             </button>
-            <button className="excel-toolbar-button" onClick={() => setFichasAbertas(true)}>
+            <button className="excel-toolbar-button" onClick={() => { setFichaInicialId(null); setFichasAbertas(true); }}>
               <span>Fichas dos<br />Clientes</span><strong aria-hidden="true">▣</strong>
             </button>
           </div>
@@ -323,6 +329,9 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                   <div className="excel-table-row" key={cliente}>
                     <div className="excel-client-name">
                       {nomeExibido(cliente)}
+                      {vinculosClientes[cliente] && <button type="button" className="excel-ficha-atalho"
+                        aria-label={`Abrir ficha vinculada de ${nomeExibido(cliente)} (#${vinculosClientes[cliente]})`}
+                        onClick={() => { setFichaInicialId(vinculosClientes[cliente]); setFichasAbertas(true); }}>Abrir ficha #{vinculosClientes[cliente]}</button>}
                       {pesquisa && nomesBusca[cliente]?.length > 0 && (
                         <small className="excel-client-aliases">Também cadastrado como: {nomesBusca[cliente].join(" • ")}</small>
                       )}
@@ -496,7 +505,18 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
               <textarea aria-label="Informações adicionais" rows={4} maxLength={LIMITE_INFORMACOES_CLIENTE} value={clienteAlteradoInformacoes} onChange={event => setClienteAlteradoInformacoes(event.target.value)} placeholder="Particularidades e orientações específicas deste cliente..." />
               <small>Informações permanentes, exibidas no botão ?. Salvas no banco compartilhado e separadas das observações de cada mês.</small>
             </label>
+            <SelecionarFichaCliente key={clienteSelecionado} valor={clienteAlteradoFicha} aoAlterar={setClienteAlteradoFicha} />
             </fieldset>
+            {erroCliente && (vinculosClientes[clienteSelecionado] ?? null) !== baseFormulario.vinculo && <div className="excel-vinculo-conflito">
+              <p>Vínculo salvo agora: {vinculosClientes[clienteSelecionado] ? `cadastro #${vinculosClientes[clienteSelecionado]}` : "sem ficha vinculada"}. Confira antes de salvar novamente.</p>
+              <button type="button" className="excel-action-button" disabled={ocupado} onClick={() => {
+                const atual = vinculosClientes[clienteSelecionado] ?? null;
+                setClienteAlteradoFicha(atual); setBaseFormulario(base => ({ ...base, vinculo: atual })); setErroCliente("");
+              }}>Usar vínculo salvo</button>
+              <button type="button" className="excel-action-button" disabled={ocupado} onClick={() => {
+                setBaseFormulario(base => ({ ...base, vinculo: vinculosClientes[clienteSelecionado] ?? null })); setErroCliente("");
+              }}>Manter minha escolha após revisar</button>
+            </div>}
             {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
               <button className="excel-action-button" disabled={ocupado} onClick={() => setModalCliente(null)}>Cancelar</button>

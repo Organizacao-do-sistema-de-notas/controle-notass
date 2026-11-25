@@ -90,3 +90,69 @@ test('Excel: cadastros centrais e dados legados anteriores à migração permane
   const legado = await pool.query('SELECT observacao FROM "Pendencia" WHERE observacao=$1', ['Preservar pendência fictícia anterior à migration']);
   assert.equal(legado.rows.length, 1);
 });
+
+test('Excel: vínculo manual por ID preserva homônimos, meses, ficha e histórico ao trocar e desvincular', async () => {
+  const nome = `${tag} linha vinculada`;
+  const contaA = await requisitar('/contabilidades', 'POST', { nome: `${tag} firma A` }, 201);
+  const contaB = await requisitar('/contabilidades', 'POST', { nome: `${tag} firma B` }, 201);
+  const a = await requisitar('/clientes', 'POST', { nome: `${tag} homônimo`, contabilidadeId: contaA.id }, 201);
+  const b = await requisitar('/clientes', 'POST', { nome: a.nome }, 201);
+  await requisitar(`/clientes/${a.id}/ficha`, 'PATCH', { observacoesPermanentes: 'Preservar ficha', contabilidadeId: contaB.id, autor: 'Teste fictício' });
+  await requisitar(`/clientes/${a.id}/procedimentos`, 'POST', { titulo: 'Preservar procedimento', descricao: 'Instrução fictícia' }, 201);
+  const ficha = await requisitar(`/clientes/${a.id}/ficha`);
+  assert.equal(ficha.historicoContabilidades.length, 1);
+  await alterar([
+    { tipo: 'incluirCliente', nome, apelidos: ['Apelido da linha'], informacoes: 'Preservar informações do Excel' },
+    definir(['registro', '2026-10', nome, 'status'], 'OK', 'PENDENTE'),
+    definir(['registro', '2026-11', nome, 'observacao'], 'Preservar mês seguinte', ''),
+  ]);
+  // Old stored JSON without the new field must remain readable, without a migration.
+  const anterior = await ler();
+  const { vinculosClientes: _vinculos, ...legado } = anterior.estado;
+  await pool.query('UPDATE "ExcelCompartilhado" SET dados=$1::jsonb WHERE id=$2', [JSON.stringify(legado), 'principal']);
+  assert.deepEqual(await ler(), anterior);
+  const vinculado = await alterar([definir(['vinculo', nome], a.id, null)]);
+  assert.equal(vinculado.estado.vinculosClientes[nome], a.id);
+  const repetido = await alterar([definir(['vinculo', nome], a.id, null)]);
+  assert.equal(repetido.revisao, vinculado.revisao);
+  await alterar([definir(['nome', nome], 'Outro nome no Excel', nome)]);
+  assert.equal((await ler()).estado.vinculosClientes[nome], a.id);
+  await alterar([definir(['vinculo', nome], b.id, a.id)]);
+  await alterar([definir(['vinculo', nome], null, b.id)]);
+  const depois = (await ler()).estado;
+  assert.equal(depois.vinculosClientes[nome], undefined);
+  assert.deepEqual(depois.registros, anterior.estado.registros);
+  assert.deepEqual(depois.informacoesClientes, anterior.estado.informacoesClientes);
+  assert.deepEqual(depois.nomesBusca, anterior.estado.nomesBusca);
+  assert.deepEqual(await requisitar(`/clientes/${a.id}/ficha`), ficha);
+  assert.equal((await requisitar(`/clientes/${b.id}`)).id, b.id);
+});
+
+test('Excel: vínculos inválidos e importados são recusados sem aplicar parcialmente o lote', async () => {
+  const nome = `${tag} vínculo inválido`;
+  const cliente = await requisitar('/clientes', 'POST', { nome }, 201);
+  const antes = await ler();
+  for (const id of [0, -1, 1.2, '1', true, 2147483648, {}]) {
+    await alterar([definir(['vinculo', nome], id, null)], 400);
+  }
+  await alterar([definir(['vinculo', '__proto__'], cliente.id, null)], 400);
+  await alterar([definir(['nome', nome], 'Não aplicar este nome', nome), definir(['vinculo', nome], 2147483647, null)], 400);
+  await requisitar('/excel/importar', 'POST', { estado: { ...estadoVazio(), vinculosClientes: { [nome]: cliente.id } } }, 400);
+  assert.deepEqual(await ler(), antes);
+  await alterar([definir(['vinculo', nome], cliente.id, null)]);
+  const local = estadoVazio(); local.informacoesClientes[nome] = 'Importação legada sem vínculos';
+  const importado = await requisitar('/excel/importar', 'POST', { estado: local });
+  assert.equal(importado.estado.vinculosClientes[nome], cliente.id);
+});
+
+test('Excel: vínculo concorrente exige revisão e não associa a mesma linha a dois clientes', async () => {
+  const nome = `${tag} vínculo concorrente`;
+  const a = await requisitar('/clientes', 'POST', { nome: `${nome} A` }, 201);
+  const b = await requisitar('/clientes', 'POST', { nome: `${nome} B` }, 201);
+  const respostas = await Promise.all([a.id, b.id].map(id => fetch(base + '/excel/estado', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alteracoes: [definir(['vinculo', nome], id, null)] }) })));
+  assert.deepEqual(respostas.map(r => r.status).sort(), [200, 409]);
+  const salvo = (await ler()).estado.vinculosClientes[nome];
+  assert.ok([a.id, b.id].includes(salvo));
+  await alterar([definir(['vinculo', `${nome} outra linha`], a.id, null)]);
+  assert.equal((await ler()).estado.vinculosClientes[nome], salvo);
+});

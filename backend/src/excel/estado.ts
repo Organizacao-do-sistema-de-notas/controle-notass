@@ -7,6 +7,7 @@ export type EstadoExcel = {
   nomesAlterados: Record<string, string>;
   nomesBusca: Record<string, string[]>;
   informacoesClientes: Record<string, string>;
+  vinculosClientes: Record<string, number>;
   avisosExtras: AvisoExtra[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
@@ -19,7 +20,7 @@ export class DadosExcelInvalidos extends Error {}
 export class ConflitoExcel extends Error {
   constructor(public caminhos: string[][]) { super("Outro computador alterou estes dados. Confira o conteúdo salvo antes de tentar novamente."); }
 }
-export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, avisosExtras: [], registros: {} });
+export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, vinculosClientes: {}, avisosExtras: [], registros: {} });
 const proprio = (obj: object, chave: string) => Object.hasOwn(obj, chave);
 function objeto(valor: unknown): valor is Record<string, unknown> { return !!valor && typeof valor === "object" && !Array.isArray(valor); }
 function exigir(condicao: unknown, mensagem = "Dados do controle Excel inválidos."): asserts condicao {
@@ -31,6 +32,7 @@ function chaveValida(valor: unknown): valor is string { return texto(valor, 1000
 function nomes(valor: unknown): valor is string[] { return Array.isArray(valor) && valor.length <= 1000 && valor.every(item => texto(item, 1000) && !!item.trim()); }
 const mesValido = (mes: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(mes);
 const statusValido = (valor: unknown): valor is StatusExcel => ["PENDENTE", "AGUARDANDO", "EM_ATENDIMENTO", "OK"].includes(valor as string);
+const idFichaValido = (valor: unknown): valor is number => typeof valor === "number" && Number.isInteger(valor) && valor > 0 && valor <= 2147483647;
 function validarAviso(valor: unknown): asserts valor is AvisoExtra {
   exigir(objeto(valor)); campos(valor, ["id", "titulo", "texto"]);
   exigir(chaveValida(valor.id) && texto(valor.titulo, 1000) && !!valor.titulo.trim() && texto(valor.texto) && !!valor.texto.trim());
@@ -38,7 +40,10 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, raiz); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  const vinculos = proprio(valor, "vinculosClientes") ? valor.vinculosClientes : {};
+  exigir(objeto(vinculos));
+  for (const [chave, id] of Object.entries(vinculos)) exigir(chaveValida(chave) && idFichaValido(id));
   exigir(Array.isArray(valor.clientesExtras) && valor.clientesExtras.every(chaveValida));
   exigir(new Set(valor.clientesExtras).size === valor.clientesExtras.length);
   for (const grupo of ["nomesAlterados", "nomesBusca", "informacoesClientes"] as const) {
@@ -59,7 +64,7 @@ export function validarEstado(valor: unknown): EstadoExcel {
       exigir(statusValido(registro.status) && texto(registro.observacao));
     }
   }
-  return structuredClone(valor) as EstadoExcel;
+  return { ...structuredClone(valor), vinculosClientes: structuredClone(vinculos) } as EstadoExcel;
 }
 export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
@@ -79,6 +84,7 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
         if (grupo === "nome" && caminho.length === 2) return texto(item, 1000) && !!item.trim();
         if (grupo === "apelidos" && caminho.length === 2) return nomes(item);
         if (grupo === "informacoes" && caminho.length === 2) return texto(item);
+        if (grupo === "vinculo" && caminho.length === 2) return item === null || idFichaValido(item);
         if (grupo === "registro" && caminho.length === 4 && mesValido(chave) && chaveValida(cliente)) return campo === "status" ? statusValido(item) : campo === "observacao" && texto(item);
         if (grupo === "aviso" && caminho.length === 3) return ["titulo", "texto"].includes(cliente) && texto(item, cliente === "titulo" ? 1000 : 20000) && !!item.trim();
         return false;
@@ -93,6 +99,7 @@ export function lerCampo(estado: EstadoExcel, caminho: string[]): unknown {
   if (grupo === "nome") return estado.nomesAlterados[chave] ?? chave;
   if (grupo === "apelidos") return estado.nomesBusca[chave] ?? [];
   if (grupo === "informacoes") return estado.informacoesClientes[chave] ?? "";
+  if (grupo === "vinculo") return estado.vinculosClientes[chave] ?? null;
   if (grupo === "registro") return campo === "status" ? estado.registros[chave]?.[cliente]?.status ?? "PENDENTE" : estado.registros[chave]?.[cliente]?.observacao ?? "";
   return estado.avisosExtras.find(item => item.id === chave)?.[cliente as "titulo" | "texto"];
 }
@@ -101,6 +108,10 @@ function definir(estado: EstadoExcel, caminho: string[], valor: unknown) {
   if (grupo === "nome") estado.nomesAlterados[chave] = valor as string;
   else if (grupo === "apelidos") estado.nomesBusca[chave] = valor as string[];
   else if (grupo === "informacoes") estado.informacoesClientes[chave] = valor as string;
+  else if (grupo === "vinculo") {
+    if (valor === null) delete estado.vinculosClientes[chave];
+    else estado.vinculosClientes[chave] = valor as number;
+  }
   else if (grupo === "registro") {
     estado.registros[chave] ??= {};
     estado.registros[chave][cliente] ??= { status: "PENDENTE", observacao: "" };

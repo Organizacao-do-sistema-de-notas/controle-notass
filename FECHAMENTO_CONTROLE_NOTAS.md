@@ -17,16 +17,16 @@ integrações de IA e automação de instalações ficam para uma etapa futura.
 | Compartilhamento | Dois computadores acessam a mesma API e recebem os dados salvos, com revisão de conflitos |
 | Persistência e backup | Reiniciar serviços conserva o banco; gerar cópia em pasta privada e guardar em outro dispositivo |
 
-## Decisão funcional pendente
+## Vínculo manual entre Excel e fichas
 
-O cadastro central do menu **⋯** e as linhas do Excel são independentes hoje.
-Essa separação está documentada e coberta pelos testes existentes.
+Em 25/11/2026, o usuário escolheu permitir o vínculo manual de cada linha do Excel
+com uma ficha central. A escolha é feita em **Excel → Alterar Cliente** e salva
+junto das alterações da linha. O atalho **Abrir ficha #…** consulta a ficha pelo ID.
+Empresas com nomes iguais são identificadas pelo código do cadastro.
 
-Para fechar o escopo, falta confirmar se a versão deve continuar assim ou receber
-um vínculo manual entre uma linha do Excel e uma ficha central. Nenhuma associação
-automática por nome deve ser feita: há empresas com nomes iguais e apelidos locais.
-Um eventual vínculo deve preservar os registros mensais e as informações existentes.
-Essa decisão não autoriza importar dados reais ou alterar o banco do Confere.
+Vincular, trocar e desvincular preserva os campos dos dois cadastros, os registros
+mensais e os históricos. Não há associação automática por nome, importação de
+clientes reais ou acesso ao banco do Confere. Veja [VINCULO_FICHAS.md](VINCULO_FICHAS.md).
 
 ## Roteiro de validação manual
 
@@ -39,23 +39,27 @@ no notebook e no computador principal ainda depende do retorno do usuário.
    campos e vínculos devem permanecer. Testar os filtros de situação e contabilidade.
 3. Em **Excel → Fichas dos Clientes**, buscar o cliente e cadastrar um apelido,
    uma anotação e um procedimento. Salvar, fechar e reabrir para conferir.
-4. Digitar uma alteração sem salvar. Ao trocar de cliente, fechar ou usar Escape,
+4. Em **Excel → Alterar Cliente**, selecionar a linha fictícia e escolher a ficha
+   correta em **Ficha vinculada**. Salvar, abrir a ficha pelo atalho da linha e
+   conferir os dados. Desvincular selecionando **Sem ficha vinculada** e confirmar
+   que os meses, observações e a ficha permanecem intactos.
+5. Digitar uma alteração sem salvar na ficha. Ao trocar de cliente, fechar ou usar Escape,
    cancelar a confirmação deve conservar o texto. Descartar deve exigir confirmação.
-5. Na lista Excel, incluir um cliente fictício próprio dessa visão. Usar seu apelido
+6. Na lista Excel, incluir um cliente fictício próprio dessa visão. Usar seu apelido
    na pesquisa, mudar status e observação, trocar o mês e retornar. O mês original
    deve conservar os valores e o outro mês manter os seus próprios registros.
-6. Abrir **?**, clicar em **Alterar**, salvar informações adicionais e reler.
+7. Abrir **?**, clicar em **Alterar**, salvar informações adicionais e reler.
    As informações permanentes devem continuar separadas da observação mensal.
-7. No computador principal, acessar o mesmo servidor pelo túnel já configurado.
+8. No computador principal, acessar o mesmo servidor pelo túnel já configurado.
    Conferir o texto salvo e alterá-lo. O notebook deve receber a atualização.
    Uma edição concorrente do mesmo campo deve pedir revisão e preservar o rascunho.
-8. No Painel, criar uma pendência fictícia, mudar seu status, conferir o histórico
+9. No Painel, criar uma pendência fictícia, mudar seu status, conferir o histórico
    e salvar uma mensagem. Repetir o mesmo valor não deve duplicar eventos no histórico.
    Alterações feitas pelos dois computadores devem registrar o valor anterior
    efetivo. Confirmar que abrir/fechar cadastros mantém o fluxo.
-9. Reiniciar os serviços pelo Compose, preservando o projeto e o volume. Reabrir
+10. Reiniciar os serviços pelo Compose, preservando o projeto e o volume. Reabrir
    o sistema e conferir os registros salvos.
-10. Executar o comando de backup no servidor e conferir **Backup concluido**.
+11. Executar o comando de backup no servidor e conferir **Backup concluido**.
     Copiar a pasta inteira para um dispositivo privado separado. Recuperação deve
     ser testada em ambiente separado, nunca sobre o banco de uso.
 
@@ -65,7 +69,7 @@ revisando divergências. Não limpar o armazenamento do navegador para contornar
 
 ## Critério de conclusão
 
-Concluir a revisão automatizada, corrigir falhas encontradas, registrar a decisão
-sobre a relação entre os cadastros e obter a validação dos fluxos acima nos dois
+Concluir a revisão automatizada, corrigir falhas encontradas e obter a validação
+dos fluxos acima, incluindo o vínculo manual, nos dois
 computadores. Até esse retorno, a validação em uso permanece pendente.
 Autenticação e publicação na Internet não fazem parte desta versão local.

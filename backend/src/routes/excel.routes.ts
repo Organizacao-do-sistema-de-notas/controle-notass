@@ -29,6 +29,9 @@ for (const importar of [false, true]) {
       const chave = importar ? "estado" : "alteracoes";
       if (Object.keys(req.body).some(nome => nome !== chave)) throw new DadosExcelInvalidos("Campos não reconhecidos na requisição.");
       const estadoLocal = importar ? validarEstado(req.body.estado) : null;
+      if (estadoLocal && Object.keys(estadoLocal.vinculosClientes).length) {
+        throw new DadosExcelInvalidos("Vínculos com fichas devem ser escolhidos manualmente neste cadastro, sem importar identificadores de outro banco.");
+      }
       const alteracoes = importar ? [] : validarAlteracoes(req.body.alteracoes);
       const resultado = await prisma.$transaction(async tx => {
         const instancia = randomUUID();
@@ -38,6 +41,10 @@ for (const importar of [false, true]) {
         const registro = await tx.excelCompartilhado.findUniqueOrThrow({ where: { id } });
         const atual = validarEstado(registro.dados);
         const lote = estadoLocal ? importarAusentes(atual, estadoLocal) : { estado: aplicarAlteracoes(atual, alteracoes), importados: 0, conflitos: [] };
+        const fichas = [...new Set(alteracoes.flatMap(op => op.tipo === "definir" && op.caminho[0] === "vinculo" && typeof op.valor === "number" ? [op.valor] : []))];
+        if (fichas.length && await tx.cliente.count({ where: { id: { in: fichas } } }) !== fichas.length) {
+          throw new DadosExcelInvalidos("A ficha selecionada não existe. Atualize a lista e escolha um cliente cadastrado.");
+        }
         const mudou = !isDeepStrictEqual(atual, lote.estado);
         const salvo = mudou ? await tx.excelCompartilhado.update({ where: { id }, data: { dados: json(lote.estado), revisao: { increment: 1 } } }) : registro;
         return { ...resposta(salvo), ...(importar ? { importados: lote.importados, totalConflitos: lote.conflitos.length, conflitos: lote.conflitos.slice(0, 500) } : {}) };

@@ -19,6 +19,7 @@ import "./ficha-cliente.css";
 
 interface Props {
   aoFechar: () => void;
+  clienteInicialId?: number | null;
 }
 
 function erroMensagem(erro: unknown): string {
@@ -33,12 +34,12 @@ function normalizar(valor: string): string {
   return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-export function FichasClientes({ aoFechar }: Props) {
+export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [contabilidades, setContabilidades] = useState<Contabilidade[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const [clienteId, setClienteId] = useState<number | null>(null);
+  const [clienteId, setClienteId] = useState<number | null>(clienteInicialId);
   const [ficha, setFicha] = useState<FichaCliente | null>(null);
   const [carregandoFicha, setCarregandoFicha] = useState(false);
   const [tentativaLeitura, setTentativaLeitura] = useState(0);
@@ -288,7 +289,7 @@ export function FichasClientes({ aoFechar }: Props) {
                 {resultados.length === 0 && <p>Nenhum cliente encontrado no PostgreSQL.</p>}
               </div>
             )}
-            <p className="ficha-nota">A tabela Excel e estas fichas são cadastros independentes. As empresas não são vinculadas automaticamente pelo nome.</p>
+            <p className="ficha-nota">Use Alterar Cliente no Excel para escolher manualmente a ficha de cada linha. O vínculo preserva os dados mensais e não associa empresas automaticamente pelo nome.</p>
           </aside>
 
           <div className="ficha-detalhes">
