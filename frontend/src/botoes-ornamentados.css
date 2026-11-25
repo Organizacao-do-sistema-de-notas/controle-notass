@@ -42,15 +42,15 @@
 #root .mode-switcher-segmented::after {
   content: "";
   position: absolute;
-  top: -9.5px;
-  bottom: -9.5px;
+  top: -6px;
+  bottom: -6px;
   left: 50%;
   z-index: 3;
-  width: 18px;
+  width: 12px;
   transform: translateX(-50%);
   background:
-    url("./assets/juncao-moldura.svg") center top / 18px 21px no-repeat,
-    url("./assets/juncao-moldura.svg") center bottom / 18px 21px no-repeat;
+    url("./assets/juncao-moldura.svg") center top / 12px 14px no-repeat,
+    url("./assets/juncao-moldura.svg") center bottom / 12px 14px no-repeat;
   pointer-events: none;
 }
 
@@ -64,12 +64,11 @@
 #root .mode-switcher-segmented > .mode-button + .mode-button::before {
   content: "";
   position: absolute;
-  top: 12px;
-  bottom: 12px;
+  top: 8px;
+  bottom: 8px;
   left: -1px;
   width: 1px;
   background: #b8bdca;
-  box-shadow: -1px 0 #252936, 1px 0 #252936;
   pointer-events: none;
 }
 
