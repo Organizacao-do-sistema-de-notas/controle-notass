@@ -95,21 +95,23 @@ export function RootApp() {
           </div>
 
           <div className="mode-switcher-actions">
-            <button
-              type="button"
-              className={modo === "painel" ? "mode-button active" : "mode-button"}
-              disabled={modo === "excel" && pendenciasExcel.gravando}
-              onClick={() => trocarModo("painel")}
-            >
-              Painel
-            </button>
-            <button
-              type="button"
-              className={modo === "excel" ? "mode-button active" : "mode-button"}
-              onClick={() => trocarModo("excel")}
-            >
-              Excel
-            </button>
+            <div className="mode-switcher-segmented">
+              <button
+                type="button"
+                className={modo === "painel" ? "mode-button active" : "mode-button"}
+                disabled={modo === "excel" && pendenciasExcel.gravando}
+                onClick={() => trocarModo("painel")}
+              >
+                Painel
+              </button>
+              <button
+                type="button"
+                className={modo === "excel" ? "mode-button active" : "mode-button"}
+                onClick={() => trocarModo("excel")}
+              >
+                Excel
+              </button>
+            </div>
             <MenuCadastros aoAbrir={setCadastroAberto} refBotao={botaoCadastros} />
           </div>
         </div>

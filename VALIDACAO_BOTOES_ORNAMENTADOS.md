@@ -1,5 +1,15 @@
 # Validação das bordas dos botões
 
+## Correção visual posterior
+
+A revisão substitui a moldura dupla por uma linha única com encaixes nos cantos.
+Painel e Excel compartilham uma moldura, com junções no divisor central e a
+seleção azul preservada. Alterações restritas ao frontend, sem mudanças de lógica.
+Por solicitação do usuário, os testes não foram repetidos nesta revisão.
+Os resultados abaixo pertencem à versão anterior, commit `e724e50`.
+
+## Registro da versão anterior
+
 Data: 24/11/2026. Branch: `feature/botoes-ornamentados`.
 Base: `fix/revisao-controle-basico`, commit `7d377a2`.
 

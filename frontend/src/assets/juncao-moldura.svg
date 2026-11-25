@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="28" viewBox="0 0 24 28" shape-rendering="crispEdges">
+  <defs>
+    <path id="centro" d="M12 4 17 10V18L12 24 7 18V10Z"/>
+    <path id="bracos" d="M5 5V10L1 14 5 18V23 M19 5V10L23 14 19 18V23 M12 0V4 M12 24V28"/>
+  </defs>
+  <g fill="none" stroke-linejoin="miter">
+    <use href="#bracos" stroke="#252936" stroke-width="5"/>
+    <use href="#centro" fill="#f8fafc" stroke="#252936" stroke-width="5"/>
+    <use href="#bracos" stroke="#b8bdca" stroke-width="2"/>
+    <use href="#centro" stroke="#b8bdca" stroke-width="2"/>
+  </g>
+</svg>

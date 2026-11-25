@@ -1,10 +1,8 @@
-/* Nine-slice framing preserves the corner ornaments on wide and small buttons.
-   Only the one-pixel border occupies layout space; the SVG center is transparent.
-   The priority toggle remains part of its containing card. */
+/* Uma linha contínua e encaixes nos cantos; o centro do SVG é transparente. */
 #root button:not(.priority-toggle) {
   border: 1px solid transparent;
   border-radius: 0;
-  border-image: url("./assets/moldura-botao.svg") 16 / var(--largura-moldura, 10px) / 2px stretch;
+  border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 12px) / 3px stretch;
   background-clip: padding-box;
   clip-path: none;
 }
@@ -15,12 +13,68 @@
 #root .close-button,
 #root button[aria-label^="Fechar"],
 #root button[aria-label^="Limpar"] {
-  --largura-moldura: 5px;
+  --largura-moldura: 7px;
 }
 
 #root .excel-status-option,
 #root .cadastros-menu-opcoes button {
-  --largura-moldura: 6px;
+  --largura-moldura: 8px;
+}
+
+/* Painel e Excel compartilham a moldura e a junção do divisor central. */
+#root .mode-switcher-segmented {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  isolation: isolate;
+}
+
+#root .mode-switcher-segmented::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1px solid transparent;
+  border-image: url("./assets/moldura-botao.svg") 24 / 12px / 3px stretch;
+  pointer-events: none;
+}
+
+#root .mode-switcher-segmented::after {
+  content: "";
+  position: absolute;
+  top: -9.5px;
+  bottom: -9.5px;
+  left: 50%;
+  z-index: 3;
+  width: 18px;
+  transform: translateX(-50%);
+  background:
+    url("./assets/juncao-moldura.svg") center top / 18px 21px no-repeat,
+    url("./assets/juncao-moldura.svg") center bottom / 18px 21px no-repeat;
+  pointer-events: none;
+}
+
+#root .mode-switcher-segmented > .mode-button {
+  position: relative;
+  min-width: 72px;
+  border: 0;
+  border-image: none;
+}
+
+#root .mode-switcher-segmented > .mode-button + .mode-button::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: -1px;
+  width: 1px;
+  background: #b8bdca;
+  box-shadow: -1px 0 #252936, 1px 0 #252936;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  #root .mode-switcher-segmented { flex: 1; }
 }
 
 /* Text actions and tabs need room for the corners, like the other buttons. */
@@ -45,6 +99,17 @@
     border-image: none;
     border-color: ButtonText;
     background-image: none;
+  }
+  #root .mode-switcher-segmented::before {
+    border-image: none;
+    border-color: ButtonText;
+  }
+  #root .mode-switcher-segmented::after { display: none; }
+  #root .mode-switcher-segmented > .mode-button + .mode-button::before {
+    top: 1px;
+    bottom: 1px;
+    background: ButtonText;
+    box-shadow: none;
   }
   #root button:focus-visible { outline-color: Highlight; }
 }
