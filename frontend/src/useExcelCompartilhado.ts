@@ -59,6 +59,6 @@ export function useExcelCompartilhado() {
     } catch (e) { setErroImportacao(e instanceof Error ? e.message : "Não foi possível importar os dados locais."); }
     finally { setGravando(valor => valor - 1); }
   }
-  return { estado: snapshot.estado!, snapshot, carregado, conectado, erro, erroImportacao, gravando, atualizar, executar, importar, legado, resultadoImportacao,
+  return { estado: snapshot.estado!, snapshot, carregado, conectado, erro, erroImportacao, gravando, atualizar, executar, importar, receberExclusao: aplicar, legado, resultadoImportacao,
     temLegadoPendente: legado.temDados && assinaturaImportada !== `${snapshot.instancia}:${legado.assinatura}` };
 }

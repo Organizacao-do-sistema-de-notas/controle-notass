@@ -7,6 +7,7 @@ import {
 import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
 import { bloquearPendencia, relacoesPendencia } from "../services/historico-pendencia.service.ts";
+import { bloquearCliente } from "../services/historico-contabilidade.service.ts";
 
 function competenciaValida(valor: unknown): valor is string {
   return typeof valor === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
@@ -68,6 +69,7 @@ export async function listarPendencias(req: Request, res: Response): Promise<voi
         competencia: competencia as string | undefined,
         status: status as StatusPendencia | undefined,
         clienteId: clienteIdNumero,
+        cliente: { excluidoEm: null },
       },
       include: {
         cliente: {
@@ -103,7 +105,7 @@ export async function buscarPendenciaPorId(req: Request, res: Response): Promise
 
   try {
     const pendencia = await prisma.pendencia.findUnique({
-      where: { id },
+      where: { id, cliente: { excluidoEm: null } },
       include: relacoesPendencia,
     });
 
@@ -129,7 +131,7 @@ export async function listarHistoricoPendencia(req: Request, res: Response): Pro
 
   try {
     const pendencia = await prisma.pendencia.findUnique({
-      where: { id },
+      where: { id, cliente: { excluidoEm: null } },
       select: { id: true },
     });
 
@@ -190,7 +192,7 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
 
   try {
     const cliente = await prisma.cliente.findUnique({
-      where: { id: clienteId },
+      where: { id: clienteId, excluidoEm: null },
     });
 
     if (!cliente) {
@@ -247,21 +249,25 @@ export async function criarPendencia(req: Request, res: Response): Promise<void>
       });
     }
 
-    const pendencia = await prisma.pendencia.create({
-      data: {
-        clienteId,
-        competencia,
-        status: statusInicial,
-        responsavel: responsavelInicial,
-        observacao: observacaoInicial,
-        concluidoEm: statusInicial === StatusPendencia.CONCLUIDO ? new Date() : null,
-        historico: {
-          create: eventosHistorico,
+    const pendencia = await prisma.$transaction(async tx => {
+      if (!await bloquearCliente(tx, clienteId)) return null;
+      return tx.pendencia.create({
+        data: {
+          clienteId,
+          competencia,
+          status: statusInicial,
+          responsavel: responsavelInicial,
+          observacao: observacaoInicial,
+          concluidoEm: statusInicial === StatusPendencia.CONCLUIDO ? new Date() : null,
+          historico: {
+            create: eventosHistorico,
+          },
         },
-      },
-      include: relacoesPendencia,
+        include: relacoesPendencia,
+      });
     });
 
+    if (!pendencia) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
     res.status(201).json(pendencia);
   } catch (erro) {
     // The unique database constraint also handles requests that passed the

@@ -154,6 +154,9 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
         const lista = await listarClientes();
         if (!ativo || geracao !== geracaoFicha.current || edicaoAtual.current.bloqueado) return;
         setClientes(lista);
+        if (clienteId !== null && !lista.some(cliente => cliente.id === clienteId)) {
+          setClienteId(null); setFicha(null); return;
+        }
         if (clienteId !== null && edicaoAtual.current.ficha) {
           const atualizada = await obterFichaCliente(clienteId);
           if (ativo && geracao === geracaoFicha.current && !edicaoAtual.current.bloqueado) preencherFicha(atualizada);

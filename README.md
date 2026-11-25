@@ -10,6 +10,10 @@ um banco local vazio, siga [LEIA-ME-LINUX.md](LEIA-ME-LINUX.md).
 O escopo atual e o roteiro para concluir a versão básica estão em
 [FECHAMENTO_CONTROLE_NOTAS.md](FECHAMENTO_CONTROLE_NOTAS.md).
 
+A revisão local inclui **Excluir cliente** no Excel e no Painel, preservando
+históricos no banco. Ela ainda não foi publicada. Funcionamento e verificação
+estão em [EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md).
+
 Se recebeu o pacote privado com backup do Codex, siga
 [LEIA-ME-WINDOWS.md](LEIA-ME-WINDOWS.md) e execute `INICIAR-WINDOWS.bat`.
 Esse caminho restaura os dados em um banco local vazio e gera a configuração
@@ -101,8 +105,8 @@ O código de saída representa o resultado dos testes. Este comando executa apen
 
 1. Cria PostgreSQL separado em memória (`tmpfs`), com credenciais fictícias.
 2. Aplica as quatro migrações antigas, cria dados fictícios e aplica as migrações da ficha, de importação e do Excel compartilhado.
-3. Executa os 33 testes de integração do backend.
-4. Inicia backend e Vite próprios e executa os 30 testes de interface no Chromium.
+3. Executa a suíte de integração do backend.
+4. Inicia backend e Vite próprios e executa a suíte de interface no Chromium.
 5. Encerra os serviços de teste quando o executor termina.
 
 O Chromium é instalado na imagem de testes a partir dos pacotes verificados do

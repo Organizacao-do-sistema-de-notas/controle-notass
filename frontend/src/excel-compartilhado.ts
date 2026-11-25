@@ -11,7 +11,7 @@ export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
-export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null; prioridades?: Record<string, string> };
+export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null; prioridades?: Record<string, string>; prioridadesExcluidas?: string[] };
 export type ImportacaoExcel = RespostaExcel & { importados: number; totalConflitos: number; conflitos: { caminho: string[]; atual: unknown; local: unknown }[] };
 export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, vinculosClientes: {}, clientesInativos: [], avisosExtras: [], registros: {} });
 export class ErroExcel extends Error {

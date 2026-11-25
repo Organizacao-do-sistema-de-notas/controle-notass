@@ -28,7 +28,7 @@ export async function obterMensagemContador(req: Request, res: Response): Promis
 
   try {
     const pendencia = await prisma.pendencia.findUnique({
-      where: { id },
+      where: { id, cliente: { excluidoEm: null } },
       include: {
         cliente: {
           include: {

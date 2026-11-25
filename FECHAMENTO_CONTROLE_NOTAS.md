@@ -9,12 +9,17 @@ rascunhos de formulários está somente na branch local
 `feature/revisao-formularios-basicos`, sem publicação, e aguarda o próximo lote
 de testes. Veja [REVISAO_FORMULARIOS_BASICOS.md](REVISAO_FORMULARIOS_BASICOS.md).
 
+A branch local `feature/exclusao-clientes` continua essa revisão com o botão
+de exclusão nas duas visualizações, preservando históricos. Os testes focados
+estão registrados em [EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md); a suíte completa
+e os testes no Windows continuam pendentes. Esta branch também não foi publicada.
+
 ## Escopo da versão básica
 
 | Fluxo | O que conferir |
 | --- | --- |
 | Instalação e atualização | Docker inicia PostgreSQL, API e frontend; configuração e volume existentes são preservados |
-| Clientes e contabilidades | Criar, pesquisar, editar, ativar/inativar, vincular/desvincular contabilidade e consultar histórico |
+| Clientes e contabilidades | Criar, pesquisar, editar, ativar/inativar, excluir preservando histórico e vincular/desvincular contabilidade |
 | Ficha individual | Salvar apelidos, frequência, anotações permanentes, modelo de mensagem e procedimentos |
 | Excel por mês | Pesquisar por nome/apelido, alterar status e observação; cada mês conserva seus registros |
 | Informações adicionais | Consultar no botão ?, editar, salvar e reler em outro navegador |
@@ -68,6 +73,10 @@ no notebook e no computador principal ainda depende do retorno do usuário.
 11. Executar o comando de backup no servidor e conferir **Backup concluido**.
     Copiar a pasta inteira para um dispositivo privado separado. Recuperação deve
     ser testada em ambiente separado, nunca sobre o banco de uso.
+12. Excluir um cliente fictício pelo Excel e outro pelo Painel, conferindo ID e
+    nome antes de confirmar. Cancelar deve mantê-lo. Confirmar deve retirá-lo das
+    listas e totais nas duas visualizações. Testar também uma falha de conexão
+    e uma observação pendente no outro computador, conforme o relatório da exclusão.
 
 Se um navegador ainda tiver registros antigos, seguir a importação explícita em
 [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md), guardando os originais e

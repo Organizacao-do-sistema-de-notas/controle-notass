@@ -42,6 +42,7 @@ model Cliente {
   id              Int            @id @default(autoincrement())
   nome            String
   ativo           Boolean        @default(true)
+  excluidoEm      DateTime?
 
   contabilidadeId Int?
   contabilidade   Contabilidade? @relation(fields: [contabilidadeId], references: [id])

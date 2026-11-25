@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { ExcluirCliente } from "./ExcluirCliente";
 
 import {
   atualizarStatusPendencia,
@@ -108,6 +109,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   const [carregandoCadastros, setCarregandoCadastros] = useState(false);
 
   const [modalCliente, setModalCliente] = useState(false);
+  const [exclusaoAberta, setExclusaoAberta] = useState(false);
   const [clienteNome, setClienteNome] = useState("");
   const [clienteContabilidadeId, setClienteContabilidadeId] = useState("");
   const [salvandoCliente, setSalvandoCliente] = useState(false);
@@ -125,28 +127,35 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   const [salvandoPendencia, setSalvandoPendencia] = useState(false);
 
   const [historicoModal, setHistoricoModal] = useState<ModalHistorico | null>(null);
+  const geracaoCompetencias = useRef(0);
+  const geracaoPainel = useRef(0);
 
   async function carregarCompetencias() {
+    const geracao = ++geracaoCompetencias.current;
     try {
       setCarregando(true);
       setErro(null);
       const lista = await listarCompetencias();
+      if (geracao !== geracaoCompetencias.current) return;
       setCompetencias(lista);
 
       if (lista.length > 0) {
         setCompetencia((atual) => (atual && lista.includes(atual) ? atual : lista[0]));
       } else {
+        geracaoPainel.current++;
         setCompetencia("");
         setPainel(null);
       }
+      return lista;
     } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao carregar competências.");
+      if (geracao === geracaoCompetencias.current) setErro(error instanceof Error ? error.message : "Erro ao carregar competências.");
     } finally {
-      setCarregando(false);
+      if (geracao === geracaoCompetencias.current) setCarregando(false);
     }
   }
 
   async function carregarPainel(competenciaSelecionada: string) {
+    const geracao = ++geracaoPainel.current;
     if (!competenciaSelecionada) {
       setPainel(null);
       return;
@@ -156,11 +165,11 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
       setCarregando(true);
       setErro(null);
       const dados = await obterPainel(competenciaSelecionada);
-      setPainel(dados);
+      if (geracao === geracaoPainel.current) setPainel(dados);
     } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao carregar painel.");
+      if (geracao === geracaoPainel.current) setErro(error instanceof Error ? error.message : "Erro ao carregar painel.");
     } finally {
-      setCarregando(false);
+      if (geracao === geracaoPainel.current) setCarregando(false);
     }
   }
 
@@ -295,6 +304,25 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     setClienteContabilidadeId("");
     await carregarCadastros();
     setModalCliente(true);
+  }
+
+  async function aposExcluirCliente(_resposta: unknown, id: number) {
+    geracaoPainel.current++;
+    setClientes(atuais => atuais.filter(cliente => cliente.id !== id));
+    setPainel(atual => {
+      if (!atual) return atual;
+      const pendencias = atual.pendencias.filter(item => item.cliente.id !== id);
+      const contar = (status: StatusPendencia) => pendencias.filter(item => item.status === status).length;
+      const concluido = contar("CONCLUIDO");
+      return { ...atual, pendencias, totais: {
+        total: pendencias.length, emAberto: pendencias.length - concluido,
+        pendente: contar("PENDENTE"), aguardandoCliente: contar("AGUARDANDO_CLIENTE"),
+        emAtendimento: contar("EM_ATENDIMENTO"), concluido,
+      } };
+    });
+    const lista = await carregarCompetencias();
+    if (lista?.includes(competencia)) await carregarPainel(competencia);
+    setAviso("Cliente excluído das visualizações. Histórico preservado.");
   }
 
   async function salvarNovoCliente(event: FormEvent) {
@@ -474,6 +502,9 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
           <button className="button secondary" onClick={() => void abrirNovoCliente()}>
             Novo cliente
           </button>
+          <button className="button secondary" onClick={() => setExclusaoAberta(true)}>
+            Excluir cliente
+          </button>
           <button className="button primary" onClick={() => void abrirNovaPendencia()}>
             Nova pendência
           </button>
@@ -599,6 +630,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
         </section>
       </main>
 
+      {exclusaoAberta && <ExcluirCliente aoFechar={() => setExclusaoAberta(false)} aoExcluir={aposExcluirCliente} />}
       {editor && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setEditor(null)}>
           <section

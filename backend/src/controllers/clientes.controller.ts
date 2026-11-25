@@ -3,12 +3,13 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
 import { bloquearCliente, registrarTrocaContabilidade } from "../services/historico-contabilidade.service.ts";
-import { garantirCadastroUnico } from "../excel/cadastro-unico.ts";
+import { acessarCadastro, ExclusaoClienteRecusada, garantirCadastroUnico } from "../excel/cadastro-unico.ts";
 
 export async function listarClientes(_req: Request, res: Response): Promise<void> {
   try {
     await garantirCadastroUnico();
     const clientes = await prisma.cliente.findMany({
+      where: { excluidoEm: null },
       include: {
         contabilidade: true,
         confere: { select: { codigo: true } },
@@ -34,7 +35,7 @@ export async function buscarClientePorId(req: Request, res: Response): Promise<v
 
   try {
     const cliente = await prisma.cliente.findUnique({
-      where: { id },
+      where: { id, excluidoEm: null },
       include: {
         contabilidade: true,
         confere: { select: { codigo: true } },
@@ -55,6 +56,23 @@ export async function buscarClientePorId(req: Request, res: Response): Promise<v
   } catch (erro) {
     console.error("Erro ao buscar cliente:", erro);
     res.status(500).json({ erro: "Erro ao buscar cliente." });
+  }
+}
+
+export async function excluirCliente(req: Request, res: Response): Promise<void> {
+  const id = obterId(req.params.id);
+  if (id === null) { res.status(400).json({ erro: "ID de cliente inválido." }); return; }
+  if (!corpoValido(req.body) || Object.keys(req.body).some(chave => chave !== "nomeConfirmado")
+    || typeof req.body.nomeConfirmado !== "string" || !req.body.nomeConfirmado.trim() || req.body.nomeConfirmado.length > 200) {
+    res.status(400).json({ erro: "Confirme o nome do cliente para excluir." }); return;
+  }
+  try {
+    const snapshot = await acessarCadastro({ excluir: { id, nomeConfirmado: req.body.nomeConfirmado } });
+    res.json({ ...snapshot, id, excluido: true });
+  } catch (erro) {
+    if (erro instanceof ExclusaoClienteRecusada) { res.status(erro.status).json({ erro: erro.message }); return; }
+    console.error("Erro ao excluir cliente:", erro);
+    res.status(500).json({ erro: "Não foi possível excluir o cliente. Confira a conexão e tente novamente." });
   }
 }
 

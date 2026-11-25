@@ -17,6 +17,7 @@ const ordemStatus: Record<StatusPendencia, number> = {
 export async function listarCompetencias(_req: Request, res: Response): Promise<void> {
   try {
     const registros = await prisma.pendencia.findMany({
+      where: { cliente: { excluidoEm: null } },
       distinct: ["competencia"],
       select: {
         competencia: true,
@@ -47,6 +48,7 @@ export async function obterPainelMensal(req: Request, res: Response): Promise<vo
     const pendencias = await prisma.pendencia.findMany({
       where: {
         competencia,
+        cliente: { excluidoEm: null },
       },
       include: {
         cliente: {

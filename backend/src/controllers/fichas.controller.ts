@@ -21,7 +21,7 @@ export async function obterFichaCliente(req: Request, res: Response): Promise<vo
   if (!id) { res.status(400).json({ erro: "ID de cliente inválido." }); return; }
   try {
     const cliente = await prisma.cliente.findUnique({
-      where: { id },
+      where: { id, excluidoEm: null },
       include: {
         contabilidade: true,
         confere: { select: { codigo: true } },
@@ -139,11 +139,11 @@ export async function criarProcedimentoCliente(req: Request, res: Response): Pro
     res.status(400).json({ erro: "Cliente, título ou descrição inválidos." }); return;
   }
   try {
-    const cliente = await prisma.cliente.findUnique({ where: { id: clienteId }, select: { id: true } });
-    if (!cliente) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
-    const procedimento = await prisma.procedimentoCliente.create({
-      data: { clienteId, titulo: titulo.trim(), descricao: descricao.trim() },
+    const procedimento = await prisma.$transaction(async tx => {
+      if (!await bloquearCliente(tx, clienteId)) return null;
+      return tx.procedimentoCliente.create({ data: { clienteId, titulo: titulo.trim(), descricao: descricao.trim() } });
     });
+    if (!procedimento) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
     res.status(201).json(procedimento);
   } catch (erro) {
     console.error("Erro ao criar procedimento:", erro);
@@ -166,16 +166,19 @@ export async function atualizarProcedimentoCliente(req: Request, res: Response):
     res.status(400).json({ erro: "Campos de procedimento inválidos." }); return;
   }
   try {
-    const alterado = await prisma.procedimentoCliente.updateMany({
-      where: { id: procedimentoId, clienteId },
-      data: {
-        titulo: titulo === undefined ? undefined : titulo.trim(),
-        descricao: descricao === undefined ? undefined : descricao.trim(),
-        ativo,
-      },
+    const procedimento = await prisma.$transaction(async tx => {
+      if (!await bloquearCliente(tx, clienteId)) return null;
+      const alterado = await tx.procedimentoCliente.updateMany({
+        where: { id: procedimentoId, clienteId },
+        data: {
+          titulo: titulo === undefined ? undefined : titulo.trim(),
+          descricao: descricao === undefined ? undefined : descricao.trim(),
+          ativo,
+        },
+      });
+      return alterado.count ? tx.procedimentoCliente.findUnique({ where: { id: procedimentoId } }) : null;
     });
-    if (alterado.count === 0) { res.status(404).json({ erro: "Procedimento não encontrado." }); return; }
-    const procedimento = await prisma.procedimentoCliente.findUnique({ where: { id: procedimentoId } });
+    if (!procedimento) { res.status(404).json({ erro: "Procedimento ou cliente não encontrado." }); return; }
     res.json(procedimento);
   } catch (erro) {
     console.error("Erro ao atualizar procedimento:", erro);

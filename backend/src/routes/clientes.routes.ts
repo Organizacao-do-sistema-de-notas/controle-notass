@@ -4,6 +4,7 @@ import {
   atualizarCliente,
   buscarClientePorId,
   criarCliente,
+  excluirCliente,
   listarClientes,
 } from "../controllers/clientes.controller.ts";
 
@@ -20,6 +21,7 @@ clientesRouter.get("/", listarClientes);
 clientesRouter.get("/:id", buscarClientePorId);
 clientesRouter.post("/", criarCliente);
 clientesRouter.patch("/:id", atualizarCliente);
+clientesRouter.delete("/:id", excluirCliente);
 
 clientesRouter.get("/:id/ficha", obterFichaCliente);
 clientesRouter.patch("/:id/ficha", atualizarFichaCliente);

@@ -9,6 +9,7 @@ import type {
   FrequenciaAcesso,
   ProcedimentoCliente,
 } from "./types";
+import type { RespostaExcel } from "./excel-compartilhado";
 
 export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
 
@@ -66,6 +67,13 @@ export function atualizarCliente(
   return requisicao<Cliente>(`/clientes/${id}`, {
     method: "PATCH",
     body: JSON.stringify(dados),
+  });
+}
+
+export function excluirCliente(id: number, nomeConfirmado: string): Promise<RespostaExcel & { id: number; excluido: true }> {
+  return requisicao(`/clientes/${id}`, {
+    method: "DELETE",
+    body: JSON.stringify({ nomeConfirmado }),
   });
 }
 

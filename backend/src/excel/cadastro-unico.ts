@@ -7,6 +7,9 @@ import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, imp
 
 const principal = "principal";
 const mercados = ["Bom dia filial", "Bom dia Matriz", "Compre bem"];
+export class ExclusaoClienteRecusada extends Error {
+  constructor(public status: 404 | 409, mensagem: string) { super(mensagem); }
+}
 type Base = {
   versao: 2;
   estado: EstadoExcel;
@@ -38,9 +41,13 @@ async function criar(tx: Prisma.TransactionClient, base: Base, nome: string, ape
 async function projetar(tx: Prisma.TransactionClient, base: Base) {
   const clientes = await listar(tx);
   const porId = new Map<number, string>();
-  for (const [chave, id] of Object.entries(base.estado.vinculosClientes)) if (!porId.has(id)) porId.set(id, chave);
+  for (const [chave, id] of Object.entries(base.estado.vinculosClientes)) {
+    base.origens[chave] ??= id;
+    if (!porId.has(id)) porId.set(id, chave);
+  }
   const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras };
   for (const cliente of clientes) {
+    if (cliente.excluidoEm !== null) continue;
     const chave = porId.get(cliente.id) ?? `cliente:${cliente.id}`;
     estado.clientesExtras.push(chave);
     estado.vinculosClientes[chave] = cliente.id;
@@ -52,11 +59,12 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
   base.estado = estado;
   for (const mercado of mercados) {
     if (base.prioridades[mercado]) continue;
-    const candidatos = clientes.filter(cliente => cliente.nome === mercado);
+    const candidatos = clientes.filter(cliente => cliente.excluidoEm === null && cliente.nome === mercado);
     const origem = base.origens[mercado];
     if (origem) base.prioridades[mercado] = origem;
     else if (candidatos.length === 1) base.prioridades[mercado] = candidatos[0].id;
   }
+  return clientes;
 }
 async function carregar(tx: Prisma.TransactionClient, dados: unknown): Promise<Base> {
   if (dados && typeof dados === "object" && "versao" in dados && dados.versao === 2) {
@@ -121,6 +129,7 @@ async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: Alte
       const hash = assinatura({ nome: op.nome, apelidos: op.apelidos, informacoes: op.informacoes });
       const anterior = op.idCriacao ? base.criacoes[op.idCriacao] : undefined;
       if (anterior) { exigir(anterior.assinatura === hash, "Esta solicitação já criou um cliente. Confira o cadastro antes de tentar novamente."); continue; }
+      exigir(op.idCriacao || !base.origens[op.nome] || base.estado.vinculosClientes[op.nome], "Esta linha foi retirada do cadastro. Atualize a página antes de criar outro cliente.");
       if (!op.idCriacao && base.estado.vinculosClientes[op.nome]) {
         const atual = base.estado;
         if (atual.nomesAlterados[op.nome] === op.nome && isDeepStrictEqual(atual.nomesBusca[op.nome], op.apelidos) && atual.informacoesClientes[op.nome] === op.informacoes) continue;
@@ -187,7 +196,7 @@ async function importar(tx: Prisma.TransactionClient, base: Base, local: EstadoE
   base.estado = resultado.estado;
   return { importados: resultado.importados + criados, totalConflitos: resultado.conflitos.length, conflitos: resultado.conflitos.slice(0, 500) };
 }
-export async function acessarCadastro(opcoes?: { alteracoes?: AlteracaoExcel[]; importar?: EstadoExcel }) {
+export async function acessarCadastro(opcoes?: { alteracoes?: AlteracaoExcel[]; importar?: EstadoExcel; excluir?: { id: number; nomeConfirmado: string } }) {
   return prisma.$transaction(async tx => {
     const instancia = randomUUID();
     const inicial = JSON.stringify(estadoVazio());
@@ -195,17 +204,25 @@ export async function acessarCadastro(opcoes?: { alteracoes?: AlteracaoExcel[]; 
     await tx.$queryRaw`SELECT "id" FROM "ExcelCompartilhado" WHERE "id" = ${principal} FOR UPDATE`;
     const registro = await tx.excelCompartilhado.findUniqueOrThrow({ where: { id: principal } });
     const base = await carregar(tx, registro.dados);
-    await projetar(tx, base);
+    let cadastros = await projetar(tx, base);
     let importacao;
+    if (opcoes?.excluir) {
+      const cliente = await bloquearCliente(tx, opcoes.excluir.id, true);
+      if (!cliente) throw new ExclusaoClienteRecusada(404, "Cliente não encontrado.");
+      if (cliente.nome !== opcoes.excluir.nomeConfirmado) throw new ExclusaoClienteRecusada(409, "O nome deste cliente foi alterado. Atualize a lista e confirme novamente antes de excluir.");
+      if (!cliente.excluidoEm) await tx.cliente.update({ where: { id: cliente.id }, data: { excluidoEm: new Date() } });
+    }
     if (opcoes?.alteracoes) await editar(tx, base, opcoes.alteracoes);
     if (opcoes?.importar) importacao = await importar(tx, base, opcoes.importar);
-    if (opcoes) await projetar(tx, base);
+    if (opcoes) cadastros = await projetar(tx, base);
     const salvo = !isDeepStrictEqual(registro.dados, base) ? await tx.excelCompartilhado.update({ where: { id: principal }, data: { dados: json(base), revisao: { increment: 1 } } }) : registro;
     const prioridades = Object.fromEntries(Object.entries(base.prioridades).flatMap(([nome, id]) => {
       const chave = Object.keys(base.estado.vinculosClientes).find(chave => base.estado.vinculosClientes[chave] === id);
       return chave ? [[nome, chave]] : [];
     }));
-    return { instancia: salvo.instancia, revisao: salvo.revisao, estado: base.estado, prioridades, ...importacao };
+    const excluidos = new Set(cadastros.filter(cliente => cliente.excluidoEm !== null).map(cliente => cliente.id));
+    const prioridadesExcluidas = Object.entries(base.prioridades).filter(([, id]) => excluidos.has(id)).map(([nome]) => nome);
+    return { instancia: salvo.instancia, revisao: salvo.revisao, estado: base.estado, prioridades, prioridadesExcluidas, ...importacao };
   }, { maxWait: 10000, timeout: 30000 });
 }
 

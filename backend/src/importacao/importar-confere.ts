@@ -27,7 +27,7 @@ export class ImportacaoBloqueada extends Error {
 
 async function montarPlano(tx: Prisma.TransactionClient, lote: LoteConfere): Promise<PlanoConfere> {
   // Read a consistent snapshot; never inspect notes, passwords or procedures.
-  const clientes = await tx.cliente.findMany({ select: { id: true, nome: true, confere: { select: { codigo: true, hashOrigem: true } }, nomesAlternativos: { select: { nome: true } } } });
+  const clientes = await tx.cliente.findMany({ select: { id: true, nome: true, excluidoEm: true, confere: { select: { codigo: true, hashOrigem: true } }, nomesAlternativos: { select: { nome: true } } } });
   const contas = await tx.contabilidade.findMany({ select: { id: true, nome: true, confere: { select: { codigo: true, grupo: true } } } });
   const clientesId = new Map(clientes.map(c => [c.id, c]));
   const clientesCodigo = new Map(clientes.filter(c => c.confere).map(c => [c.confere!.codigo, c]));
@@ -44,7 +44,7 @@ async function montarPlano(tx: Prisma.TransactionClient, lote: LoteConfere): Pro
       acoes.push({ codigo: linha.codigo, nome: linha.nome, acao: 'PRESERVAR', clienteId: anterior.id, origemAlterada: anterior.confere!.hashOrigem !== linha.hash });
     } else if (vinculo) {
       const destino = clientesId.get(vinculo);
-      if (!destino || destino.confere || usados.has(vinculo)) {
+      if (!destino || destino.excluidoEm || destino.confere || usados.has(vinculo)) {
         conflitos.push({ codigo: linha.codigo, motivo: 'Vínculo manual inexistente ou já reservado para outro código.' });
         acoes.push({ codigo: linha.codigo, nome: linha.nome, acao: 'BLOQUEADO' });
       } else {

@@ -1,0 +1,17 @@
+.exclusao-cliente-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 22px; overflow-y: auto; color: #1a2940; background: #fff;
+  border: 1px solid #cfe0f2; border-radius: 16px; box-shadow: 0 24px 60px #0f172a38;
+}
+.exclusao-cliente-dialog::backdrop { background: #0f172a7a; backdrop-filter: blur(3px); }
+.exclusao-cliente-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.exclusao-cliente-cabecalho h2 { margin: 0; font-size: 20px; }
+.exclusao-cliente-dialog p { font-size: 13px; line-height: 1.6; }
+.exclusao-cliente-dialog fieldset { display: grid; gap: 14px; margin: 20px 0; padding: 0; border: 0; min-width: 0; }
+.exclusao-cliente-dialog label { display: grid; gap: 7px; font-size: 13px; font-weight: 650; }
+.exclusao-cliente-dialog input, .exclusao-cliente-dialog select { width: 100%; min-width: 0; }
+.exclusao-cliente-selecao { padding: 10px; border: 1px solid #f0c1c1; border-radius: 7px; background: #fff6f6; overflow-wrap: anywhere; }
+.exclusao-cliente-acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.exclusao-cliente-confirmar { background: #b52e35; color: #fff; }
+.exclusao-cliente-confirmar:hover:not(:disabled) { background: #94232a; }
+@media (max-width: 480px) { .exclusao-cliente-acoes .button { width: 100%; } }

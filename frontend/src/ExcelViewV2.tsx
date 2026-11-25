@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
 import { InformacoesCliente } from "./InformacoesCliente";
+import { ExcluirCliente } from "./ExcluirCliente";
 import {
   LIMITE_INFORMACOES_CLIENTE,
 } from "./informacoes-cliente-storage";
@@ -56,6 +57,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
 
   const [pesquisa, setPesquisa] = useState("");
   const [fichasAbertas, setFichasAbertas] = useState(false);
+  const [exclusaoAberta, setExclusaoAberta] = useState(false);
   const [fichaInicialId, setFichaInicialId] = useState<number | null>(null);
   const [statusAberto, setStatusAberto] = useState<string | null>(null);
   const [prioridadeAberta, setPrioridadeAberta] = useState(false);
@@ -95,6 +97,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const formularioAberto = modalCliente !== null || modalAviso !== null;
 
   const clientes = clientesExtras;
+  const rascunhosForaDoCadastro = Object.entries(observacoes.rascunhos).filter(([, item]) => !clientes.includes(item.cliente));
 
   const clientesFiltrados = useMemo(() => {
     const termos = normalizar(pesquisa).split(" ").filter(Boolean);
@@ -293,6 +296,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
 
   return (
     <div className="excel-page excel-page-clean">
+      {exclusaoAberta && <ExcluirCliente aoFechar={() => setExclusaoAberta(false)} aoExcluir={compartilhado.receberExclusao} />}
       {fichasAbertas && <FichasClientes clienteInicialId={fichaInicialId} aoFechar={() => { setFichasAbertas(false); void compartilhado.atualizar(); }} />}
       {informacaoAberta !== null && <InformacoesCliente nome={nomeExibido(informacaoAberta)}
         texto={obterInformacoes(informacaoAberta)} aoFechar={fecharInformacoes} disponivel={disponivel}
@@ -302,6 +306,18 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
         {compartilhado.erro && <div><p role="alert">{compartilhado.erro}</p><button type="button" className="excel-action-button" onClick={() => void compartilhado.atualizar()}>Tentar conexão novamente</button></div>}
         {compartilhado.erroImportacao && <p role="alert">{compartilhado.erroImportacao}</p>}
         {erroGeral && <p role="alert">{erroGeral}</p>}
+        {rascunhosForaDoCadastro.length > 0 && <div className="excel-importacao" role="region" aria-label="Rascunhos de clientes fora do cadastro">
+          <strong>Há observações pendentes de clientes retirados do cadastro.</strong>
+          <p>O texto abaixo foi preservado neste navegador. Copie-o antes de descartar o rascunho.</p>
+          {rascunhosForaDoCadastro.map(([chave, item]) => <div key={chave}>
+            <label className="excel-form-field"><span>{item.cliente.replace(/^cliente:/, "Cadastro #")} — {item.mes}</span>
+              <textarea readOnly rows={3} value={item.texto} aria-label={`Rascunho preservado de ${item.cliente} em ${item.mes}`} />
+            </label>
+            <button type="button" className="excel-action-button" disabled={item.salvando} onClick={() => {
+              if (window.confirm("Descartar esta observação não salva? Copie o texto antes de continuar.")) observacoes.descartar(chave);
+            }}>Descartar rascunho</button>
+          </div>)}
+        </div>}
         {compartilhado.carregado && compartilhado.temLegadoPendente && <div className="excel-importacao">
           <strong>Existem dados antigos salvos neste navegador.</strong>
           <p>Importe para compartilhar com o outro computador. Os originais serão mantidos neste navegador; valores diferentes já existentes no banco não serão sobrescritos.</p>
@@ -326,6 +342,9 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             </button>
             <button className="excel-toolbar-button" disabled={!disponivel || ocupado || !clientes.length} onClick={abrirAlteracaoCliente}>
               <span>Alterar<br />Cliente</span><strong aria-hidden="true">✎</strong>
+            </button>
+            <button className="excel-toolbar-button" disabled={!disponivel || ocupado || observacoes.pendente || !clientes.length} onClick={() => setExclusaoAberta(true)}>
+              <span>Excluir<br />Cliente</span><strong aria-hidden="true">×</strong>
             </button>
             <button className="excel-toolbar-button" onClick={() => { setFichaInicialId(null); setFichasAbertas(true); }}>
               <span>Fichas dos<br />Clientes</span><strong aria-hidden="true">▣</strong>
@@ -447,7 +466,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                     return (
                       <div className="priority-row" key={mercado}>
                         <span>{nomeExibido(chave)}</span>
-                        <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>{compartilhado.carregado ? rotulosStatus[registro.status] : "Aguardando dados"}</strong>
+                        <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>{!compartilhado.carregado ? "Aguardando dados" : compartilhado.snapshot.prioridadesExcluidas?.includes(mercado) ? "Cliente excluído" : rotulosStatus[registro.status]}</strong>
                       </div>
                     );
                   })}
@@ -528,6 +547,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             <label className="excel-form-field">
               <span>Cliente</span>
               <select value={clienteSelecionado} onChange={(event) => trocarClienteSelecionado(event.target.value)}>
+                {!clientes.includes(clienteSelecionado) && <option value={clienteSelecionado} disabled>Cliente fora do cadastro atual</option>}
                 {clientes.map((cliente) => <option key={cliente} value={cliente}>#{vinculosClientes[cliente]} — {nomeExibido(cliente)}</option>)}
               </select>
             </label>
@@ -542,10 +562,11 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
               <small>Informações permanentes, exibidas no botão ?. Salvas no banco compartilhado e separadas das observações de cada mês.</small>
             </label>
             </fieldset>
+            {!clientes.includes(clienteSelecionado) && <p role="alert" className="excel-cliente-erro">Este cliente não está mais disponível no cadastro. Seus campos foram preservados para consulta e cópia.</p>}
             {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
               <button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioCliente}>Cancelar</button>
-              <button className="excel-action-button primary" onClick={() => void salvarAlteracaoCliente()} disabled={!clienteAlteradoNome.trim() || ocupado || !disponivel}>{ocupado ? "Salvando..." : "Salvar alteração"}</button>
+              <button className="excel-action-button primary" onClick={() => void salvarAlteracaoCliente()} disabled={!clientes.includes(clienteSelecionado) || !clienteAlteradoNome.trim() || ocupado || !disponivel}>{ocupado ? "Salvando..." : "Salvar alteração"}</button>
             </div>
           </section>
         </div>

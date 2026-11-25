@@ -10,6 +10,10 @@ o próprio cadastro. O botão **?** e o campo **Informações adicionais** da fi
 mostram o mesmo conteúdo. O atalho **Abrir ficha #…** abre diretamente a ficha
 correta. Não é necessário escolher, vincular ou desvincular uma ficha.
 
+A revisão local permite **Excluir cliente** tanto no Excel quanto no Painel.
+A ação retira o mesmo ID das telas e conserva os registros no banco, conforme
+[EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md). Essa revisão ainda não foi publicada.
+
 As informações adicionais permanecem separadas das anotações permanentes já
 existentes e das observações de cada mês. Procedimentos, contabilidade e seus
 históricos são preservados. O acompanhamento mensal e o comportamento do Painel

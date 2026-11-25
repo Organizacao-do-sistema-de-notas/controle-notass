@@ -22,7 +22,7 @@ export async function listarContabilidades(_req: Request, res: Response): Promis
       include: {
         _count: {
           select: {
-            clientes: true,
+            clientes: { where: { excluidoEm: null } },
           },
         },
       },

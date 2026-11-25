@@ -2,9 +2,9 @@ import type { Prisma } from '../../generated/prisma/client.ts';
 
 // Serialize reads and writes for this client so concurrent changes cannot record
 // the same stale previous accounting firm. Both client update routes use this lock.
-export async function bloquearCliente(tx: Prisma.TransactionClient, id: number) {
+export async function bloquearCliente(tx: Prisma.TransactionClient, id: number, incluirExcluidos = false) {
   await tx.$queryRaw`SELECT "id" FROM "Cliente" WHERE "id" = ${id} FOR UPDATE`;
-  return tx.cliente.findUnique({ where: { id }, include: { contabilidade: true } });
+  return tx.cliente.findUnique({ where: { id, ...(incluirExcluidos ? {} : { excluidoEm: null }) }, include: { contabilidade: true } });
 }
 
 type Vinculo = {
