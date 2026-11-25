@@ -2,6 +2,8 @@
 
 Data: 25/11/2026. Branch: `feature/vinculo-manual-fichas`.
 Base: `feature/botoes-ornamentados`, commit `2e3e4c2`.
+Inclui também o ajuste visual `5b5415e`: botões azuis do Excel no estilo original
+e molduras mínimas nos seletores de status.
 
 ## Comportamento
 
@@ -67,7 +69,7 @@ fictícios. O helper confirma host, porta e prefixo antes de aplicar as sete
 migrações existentes nesse banco vazio. Não foram acessados bancos do projeto
 em uso, da empresa ou do Confere; não houve importação de clientes reais.
 
-Continuam pendentes a publicação autorizada desta branch e a validação na
-instalação Windows e, posteriormente, no Xubuntu. Não foi executado um novo
+Publicação desta branch autorizada pelo usuário em 25/11/2026. Continua pendente
+a validação na instalação Windows e, posteriormente, no Xubuntu. Não foi executado um novo
 build completo das imagens Docker ou teste de restauração de backup nesta etapa.
 O roteiro de uso está em [VINCULO_FICHAS.md](VINCULO_FICHAS.md).
