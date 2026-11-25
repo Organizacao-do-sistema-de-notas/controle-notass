@@ -1,7 +1,0 @@
-.excel-vinculo-ficha { display: grid; gap: 10px; margin-top: 16px; padding: 14px; border: 1px solid #d8e3f0; border-radius: 8px; background: #f7faff; }
-.excel-vinculo-ficha > strong { font-size: 13px; }
-.excel-vinculo-ficha p, .excel-vinculo-ficha > small { margin: 0; font-size: 12px; line-height: 1.5; color: #61718a; }
-.excel-vinculo-ficha .excel-form-field { margin: 0; }
-.excel-ficha-atalho { display: block; width: fit-content; margin-top: 6px; padding: 4px 8px; background: #f7faff; color: #3a608f; font-size: 11px; --largura-moldura: 6px; }
-.excel-vinculo-conflito { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding: 12px; background: #fff7e8; border: 1px solid #ecd2a6; border-radius: 7px; }
-.excel-vinculo-conflito p { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.5; color: #7f5b25; }

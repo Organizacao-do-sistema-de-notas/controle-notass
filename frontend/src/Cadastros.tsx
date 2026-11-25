@@ -259,7 +259,7 @@ export function Cadastros({ abaInicial, aoFechar, aoAtualizar }: {
                 {(aba === "clientes" ? clientes.length : contabilidades.length) === 0 ? "Nenhum cadastro ainda. Use o botão acima para começar." : "Nenhum resultado para estes filtros."}
               </li>}
             </ul>
-            {aba === "clientes" && <p className="cadastros-nota">Esta lista reúne os clientes cadastrados no sistema. A tabela Excel mantém seus registros separados.</p>}
+            {aba === "clientes" && <p className="cadastros-nota">Este é o mesmo cadastro usado no Excel e nas fichas. Cada cliente é cadastrado uma única vez.</p>}
           </section>
           <section className="cadastros-editor" aria-label="Editar cadastro">
             {erro && <p className="cadastros-mensagem erro" role="alert">{erro}</p>}

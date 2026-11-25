@@ -49,6 +49,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
   const [contabilidadeId, setContabilidadeId] = useState("");
   const [nomes, setNomes] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [adicionais, setAdicionais] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [autor, setAutor] = useState(() => localStorage.getItem("controle-notas-autor") || "");
   const [salvando, setSalvando] = useState(false);
@@ -61,12 +62,16 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
     frequencia !== ficha.frequenciaAcesso
     || contabilidadeId !== (ficha.contabilidadeId === null ? "" : String(ficha.contabilidadeId))
     || observacoes.trim() !== (ficha.observacoesPermanentes ?? "")
+    || adicionais.trim() !== (ficha.informacoesAdicionais ?? "").trim()
     || mensagem.trim() !== (ficha.modeloMensagem ?? "")
     || JSON.stringify(nomesParaLista(nomes).sort()) !== JSON.stringify(ficha.nomesAlternativos.map(item => item.nome).sort())
   );
   const procedimentoOriginal = ficha?.procedimentos.find(item => item.id === procedimentoId);
   const procedimentoAlterado = tituloProcedimento.trim() !== (procedimentoOriginal?.titulo ?? "")
     || descricaoProcedimento.trim() !== (procedimentoOriginal?.descricao ?? "");
+  const edicaoAtual = useRef({ bloqueado: false, ficha: null as FichaCliente | null });
+  const geracaoFicha = useRef(0);
+  edicaoAtual.current = { bloqueado: salvando || fichaAlterada || procedimentoAlterado || procedimentoId !== null, ficha };
 
   useEffect(() => {
     if (!fichaAlterada && !procedimentoAlterado && !salvando) return;
@@ -101,6 +106,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
     setContabilidadeId(dados.contabilidadeId === null ? "" : String(dados.contabilidadeId));
     setNomes(dados.nomesAlternativos.map((nome) => nome.nome).join("\n"));
     setObservacoes(dados.observacoesPermanentes ?? "");
+    setAdicionais(dados.informacoesAdicionais ?? "");
     setMensagem(dados.modeloMensagem ?? "");
   }
 
@@ -137,6 +143,28 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
     return () => { ativo = false; };
   }, [clienteId, tentativaLeitura]);
 
+  useEffect(() => {
+    if (carregandoLista || carregandoFicha) return;
+    let ativo = true, buscando = false;
+    const atualizar = async () => {
+      if (buscando || edicaoAtual.current.bloqueado || document.hidden) return;
+      buscando = true;
+      const geracao = geracaoFicha.current;
+      try {
+        const lista = await listarClientes();
+        if (!ativo || geracao !== geracaoFicha.current || edicaoAtual.current.bloqueado) return;
+        setClientes(lista);
+        if (clienteId !== null && edicaoAtual.current.ficha) {
+          const atualizada = await obterFichaCliente(clienteId);
+          if (ativo && geracao === geracaoFicha.current && !edicaoAtual.current.bloqueado) preencherFicha(atualizada);
+        }
+      } catch { /* Preserve the current view and all drafts during a polling failure. */ }
+      finally { buscando = false; }
+    };
+    const timer = window.setInterval(() => void atualizar(), 2000);
+    return () => { ativo = false; window.clearInterval(timer); };
+  }, [clienteId, carregandoLista, carregandoFicha]);
+
   const resultados = useMemo(() => {
     const termo = normalizar(busca.trim());
     if (!termo) return clientes;
@@ -146,25 +174,41 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
       return buscarEm === "NOME" ? peloNome : buscarEm === "APELIDOS" ? peloApelido : peloNome || peloApelido;
     });
   }, [clientes, busca, buscarEm]);
+  const nomesRepetidos = useMemo(() => {
+    const contagens = new Map<string, number>();
+    for (const cliente of clientes) contagens.set(cliente.nome, (contagens.get(cliente.nome) ?? 0) + 1);
+    return new Set([...contagens].filter(([, total]) => total > 1).map(([nome]) => nome));
+  }, [clientes]);
 
   async function recarregarFicha(id: number) {
-    setFicha(await obterFichaCliente(id));
+    const dados = await obterFichaCliente(id);
+    if (fichaAlterada) setFicha(anterior => anterior ? { ...anterior, procedimentos: dados.procedimentos, historicoContabilidades: dados.historicoContabilidades } : dados);
+    else preencherFicha(dados);
   }
 
   async function salvarFicha() {
     if (!ficha || salvando) return;
+    geracaoFicha.current++;
     setSalvando(true);
     setErro("");
     setAviso("");
     try {
-      const dados = await atualizarFichaCliente(ficha.id, {
-        frequenciaAcesso: frequencia,
-        observacoesPermanentes: observacoes,
-        modeloMensagem: mensagem,
-        nomesAlternativos: nomesParaLista(nomes),
-        contabilidadeId: contabilidadeId === "" ? null : Number(contabilidadeId),
-        autor: autor.trim() || undefined,
-      });
+      const campos: Parameters<typeof atualizarFichaCliente>[1] = {};
+      if (frequencia !== ficha.frequenciaAcesso) campos.frequenciaAcesso = frequencia;
+      if (observacoes.trim() !== (ficha.observacoesPermanentes ?? "")) campos.observacoesPermanentes = observacoes;
+      if (adicionais.trim() !== (ficha.informacoesAdicionais ?? "").trim()) {
+        campos.informacoesAdicionais = adicionais;
+        campos.valoresAnteriores = { informacoesAdicionais: ficha.informacoesAdicionais ?? "" };
+      }
+      if (mensagem.trim() !== (ficha.modeloMensagem ?? "")) campos.modeloMensagem = mensagem;
+      if (JSON.stringify(nomesParaLista(nomes).sort()) !== JSON.stringify(ficha.nomesAlternativos.map(item => item.nome).sort())) {
+        campos.nomesAlternativos = nomesParaLista(nomes);
+        campos.valoresAnteriores = { ...campos.valoresAnteriores, nomesAlternativos: ficha.nomesAlternativos.map(item => item.nome) };
+      }
+      const firma = contabilidadeId === "" ? null : Number(contabilidadeId);
+      if (firma !== ficha.contabilidadeId) campos.contabilidadeId = firma;
+      if (!Object.keys(campos).length) { setAviso("Ficha salva no banco de dados."); return; }
+      const dados = await atualizarFichaCliente(ficha.id, { ...campos, autor: autor.trim() || undefined });
       preencherFicha(dados);
       setClientes((atuais) => atuais.map((cliente) => cliente.id === dados.id ? dados : cliente));
       setAviso("Ficha salva no banco de dados.");
@@ -177,6 +221,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
 
   async function salvarProcedimento() {
     if (!ficha || !tituloProcedimento.trim() || !descricaoProcedimento.trim()) return;
+    geracaoFicha.current++;
     setSalvando(true);
     setErro("");
     setAviso("");
@@ -210,6 +255,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
 
   async function alternarProcedimento(item: ProcedimentoCliente) {
     if (!ficha) return;
+    geracaoFicha.current++;
     setSalvando(true);
     setErro("");
     setAviso("");
@@ -248,7 +294,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
         }}>
         <header className="ficha-header">
           <div>
-            <span className="ficha-eyebrow">Cadastro centralizado · PostgreSQL</span>
+            <span className="ficha-eyebrow">Cadastro único de clientes</span>
             <h2 id="ficha-titulo">Fichas dos clientes</h2>
             <p>Informações permanentes, procedimentos, contabilidade e mensagens.</p>
           </div>
@@ -284,16 +330,18 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
                     }}>
                     <span className="ficha-item-nome">{cliente.nome}</span>
                     {cliente.confere && <small className="ficha-item-codigo">Confere #{cliente.confere.codigo}</small>}
+                    {!cliente.confere && nomesRepetidos.has(cliente.nome) && <small className="ficha-item-codigo">Cadastro #{cliente.id}</small>}
                   </button>
                 ))}
                 {resultados.length === 0 && <p>Nenhum cliente encontrado no PostgreSQL.</p>}
               </div>
             )}
-            <p className="ficha-nota">Use Alterar Cliente no Excel para escolher manualmente a ficha de cada linha. O vínculo preserva os dados mensais e não associa empresas automaticamente pelo nome.</p>
+            <p className="ficha-nota">Este é o mesmo cadastro usado no Excel e no menu Clientes. Cada cliente tem uma única ficha, identificada pelo código do cadastro.</p>
           </aside>
 
           <div className="ficha-detalhes">
             {erro && <p role="alert" className="ficha-mensagem erro">{erro}</p>}
+            {erro.startsWith("Outro computador alterou") && <button type="button" className="ficha-botao" disabled={salvando} onClick={() => { if (podeSair()) setTentativaLeitura(atual => atual + 1); }}>Recarregar ficha após revisar</button>}
             {aviso && <p role="status" className="ficha-mensagem sucesso">{aviso}</p>}
 
             {carregandoFicha && <p>Carregando ficha do cliente...</p>}
@@ -305,6 +353,7 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
               <>
                 <fieldset className="ficha-edicao" disabled={salvando}>
                 <h3 className="ficha-cliente-nome">{ficha.nome}</h3>
+                <p className="ficha-identificacao">Cadastro #{ficha.id}</p>
                 {ficha.confere && <p className="ficha-identificacao">Código no Confere: {ficha.confere.codigo}</p>}
                 <div className="ficha-campos-duplos">
                   <label className="ficha-campo">
@@ -332,6 +381,11 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
                   Anotações permanentes
                   <textarea rows={4} maxLength={20000} value={observacoes} onChange={(evento) => setObservacoes(evento.target.value)} placeholder="Informações importantes deste cliente..." />
                 </label>
+                <label className="ficha-campo">
+                  Informações adicionais
+                  <textarea rows={4} maxLength={20000} value={adicionais} onChange={evento => setAdicionais(evento.target.value)} placeholder="Particularidades e orientações deste cliente..." />
+                </label>
+                <p className="ficha-descricao">Estas informações também aparecem no botão ? do cliente no Excel.</p>
                 <label className="ficha-campo">
                   Modelo manual de mensagem à contabilidade
                   <textarea rows={5} maxLength={20000} value={mensagem} onChange={(evento) => setMensagem(evento.target.value)} placeholder="Primeira NF-e: [preencher]\nÚltima NF-e: [preencher]..." />

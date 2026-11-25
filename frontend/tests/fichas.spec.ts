@@ -190,7 +190,7 @@ test('Excel preserva aviso, prioridades, pesquisa e cadastro local; Painel conti
   await expect(page.getByRole('button', { name: /Fichas dos\s*Clientes/ })).toBeFocused();
   const after = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('controle-notas-excel'))));
   expect(after).toEqual(before);
-  await page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...').fill('Compre bem');
+  await page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...').fill(outro.nome);
   await expect(page.locator('.excel-table-row')).toHaveCount(1);
   await page.getByRole('button', { name: 'Painel', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Controle de Notas', exact: true })).toBeVisible();
@@ -216,7 +216,7 @@ test('cadastro pelo Painel fica disponível na ficha sem importar a tabela Excel
   await page.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
   await expect(page.locator('.form-modal')).toHaveCount(0);
   await page.getByRole('button', { name: 'Excel', exact: true }).click();
-  await expect(page.locator('.excel-client-name').filter({ hasText: nome })).toHaveCount(0);
+  await expect(page.locator('.excel-client-name').filter({ hasText: nome })).toHaveCount(1);
   await page.getByRole('button', { name: /Fichas dos\s*Clientes/ }).click();
   await page.getByLabel('Buscar no banco').fill(nome);
   await page.getByRole('button', { name: nome, exact: true }).click();

@@ -28,7 +28,7 @@ export function useExcelCompartilhado() {
   const atualizar = useCallback(async () => {
     const geracao = geracaoLeitura.current;
     try { const resposta = await consultarExcel(carregadoRef.current ? atual.current : undefined); if (geracao === geracaoLeitura.current) aplicar(resposta); }
-    catch { if (ativo.current && geracao === geracaoLeitura.current) { setConectado(false); setErro("Não foi possível acessar os dados compartilhados. Confira a conexão com o notebook e tente novamente."); } }
+    catch (e) { if (ativo.current && geracao === geracaoLeitura.current) { setConectado(false); setErro(e instanceof ErroExcel && e.status === 400 ? e.message : "Não foi possível acessar os dados compartilhados. Confira a conexão com o notebook e tente novamente."); } }
   }, [aplicar]);
   useEffect(() => {
     ativo.current = true;

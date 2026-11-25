@@ -8,19 +8,20 @@ export type EstadoExcel = {
   nomesBusca: Record<string, string[]>;
   informacoesClientes: Record<string, string>;
   vinculosClientes: Record<string, number>;
+  clientesInativos: string[];
   avisosExtras: AvisoExtra[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
-  | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string }
+  | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type DivergenciaExcel = { caminho: string[]; atual: unknown; local: unknown };
 export class DadosExcelInvalidos extends Error {}
 export class ConflitoExcel extends Error {
   constructor(public caminhos: string[][]) { super("Outro computador alterou estes dados. Confira o conteúdo salvo antes de tentar novamente."); }
 }
-export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, vinculosClientes: {}, avisosExtras: [], registros: {} });
+export const estadoVazio = (): EstadoExcel => ({ clientesExtras: [], nomesAlterados: {}, nomesBusca: {}, informacoesClientes: {}, vinculosClientes: {}, clientesInativos: [], avisosExtras: [], registros: {} });
 const proprio = (obj: object, chave: string) => Object.hasOwn(obj, chave);
 function objeto(valor: unknown): valor is Record<string, unknown> { return !!valor && typeof valor === "object" && !Array.isArray(valor); }
 function exigir(condicao: unknown, mensagem = "Dados do controle Excel inválidos."): asserts condicao {
@@ -40,7 +41,9 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  const inativos = proprio(valor, "clientesInativos") ? valor.clientesInativos : [];
+  exigir(Array.isArray(inativos) && inativos.every(chaveValida));
   const vinculos = proprio(valor, "vinculosClientes") ? valor.vinculosClientes : {};
   exigir(objeto(vinculos));
   for (const [chave, id] of Object.entries(vinculos)) exigir(chaveValida(chave) && idFichaValido(id));
@@ -64,15 +67,16 @@ export function validarEstado(valor: unknown): EstadoExcel {
       exigir(statusValido(registro.status) && texto(registro.observacao));
     }
   }
-  return { ...structuredClone(valor), vinculosClientes: structuredClone(vinculos) } as EstadoExcel;
+  return { ...structuredClone(valor), vinculosClientes: structuredClone(vinculos), clientesInativos: structuredClone(inativos) } as EstadoExcel;
 }
 export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
   for (const op of valor) {
     exigir(objeto(op));
     if (op.tipo === "incluirCliente") {
-      campos(op, ["tipo", "nome", "apelidos", "informacoes"]);
+      campos(op, ["tipo", "nome", "apelidos", "informacoes", "idCriacao"]);
       exigir(chaveValida(op.nome) && nomes(op.apelidos) && texto(op.informacoes));
+      exigir(op.idCriacao === undefined || chaveValida(op.idCriacao));
     } else if (op.tipo === "incluirAviso") {
       campos(op, ["tipo", "aviso"]); validarAviso(op.aviso);
     } else {

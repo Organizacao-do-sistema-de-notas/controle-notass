@@ -3,18 +3,18 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
 import { bloquearCliente, registrarTrocaContabilidade } from "../services/historico-contabilidade.service.ts";
+import { garantirCadastroUnico } from "../excel/cadastro-unico.ts";
 
 export async function listarClientes(_req: Request, res: Response): Promise<void> {
   try {
+    await garantirCadastroUnico();
     const clientes = await prisma.cliente.findMany({
       include: {
         contabilidade: true,
         confere: { select: { codigo: true } },
         nomesAlternativos: { select: { nome: true } },
       },
-      orderBy: {
-        nome: "asc",
-      },
+      orderBy: [{ nome: "asc" }, { id: "asc" }],
     });
 
     res.json(clientes);

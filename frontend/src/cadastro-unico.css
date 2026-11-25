@@ -1,0 +1,5 @@
+.excel-client-name { flex-wrap: wrap; column-gap: 8px; }
+.excel-client-label { min-width: 0; overflow-wrap: anywhere; }
+.excel-client-aliases { flex-basis: 100%; }
+.excel-ficha-atalho { display: block; width: fit-content; margin-top: 6px; padding: 4px 8px; background: #f7faff; color: #3a608f; font-size: 11px; --largura-moldura: 6px; }
+.excel-cliente-inativo { display: inline-block; margin-top: 6px; font-size: 11px; color: #788699; }

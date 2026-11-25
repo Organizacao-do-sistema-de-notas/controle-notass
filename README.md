@@ -173,9 +173,10 @@ as anotações, apelidos, procedimentos e pendências existentes são preservado
 
 Em **Contabilidades**, cadastre ou edite o nome de um escritório mantendo os
 clientes vinculados. Os nomes já registrados nos históricos são preservados.
-Os dados do cadastro central e da tabela Excel são preservados separadamente.
-Em **Excel → Alterar Cliente**, é possível escolher manualmente uma ficha e
-abrir essa ficha pelo atalho na linha. Veja [VINCULO_FICHAS.md](VINCULO_FICHAS.md).
+Excel, fichas e menu Clientes utilizam um único cadastro. Criar ou alterar um
+cliente em uma tela disponibiliza o mesmo cliente nas outras, com o mesmo ID.
+Nome, apelidos e informações adicionais são compartilhados automaticamente.
+Veja [CADASTRO_UNICO.md](CADASTRO_UNICO.md).
 
 Na ficha individual, fechar, trocar de cliente ou substituir uma edição de
 procedimento pede confirmação quando há texto não salvo. Cancelar a confirmação
@@ -202,9 +203,9 @@ Faça isso nos navegadores que tenham registros próprios, revisando as divergê
 O botão **Baixar cópia dos dados locais** exporta os originais para um JSON privado.
 
 Preferências de visualização/mês e a identificação da importação permanecem locais.
-As linhas do Excel podem ser vinculadas manualmente às fichas, pelo identificador
-do cadastro. Não há associação automática de empresas por nome nem cópia de campos
-entre os dois cadastros. Xaxim Gás e os três mercados
+Cada cliente cadastrado tem automaticamente uma linha no Excel e uma ficha,
+identificadas pelo mesmo ID. A ordem da lista e o nome não definem a identidade
+de uma empresa. Xaxim Gás e os três mercados
 prioritários mantêm o comportamento anterior.
 
 A nova migração apenas cria `ExcelCompartilhado`; não modifica linhas das tabelas

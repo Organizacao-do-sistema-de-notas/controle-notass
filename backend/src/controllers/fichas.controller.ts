@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { isDeepStrictEqual } from "node:util";
 
 import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId as idPositivo } from "../utils/validacao-cliente.ts";
@@ -6,6 +7,7 @@ import { bloquearCliente, ContabilidadeNaoEncontrada, registrarTrocaContabilidad
 
 const frequencias = ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"] as const;
 type Frequencia = (typeof frequencias)[number];
+class ConflitoFicha extends Error { constructor() { super("Outro computador alterou o cadastro deste cliente. Seu rascunho foi mantido; confira a ficha atual antes de salvar novamente."); } }
 
 function textoOpcional(valor: unknown, limite: number): string | null | undefined {
   if (valor === undefined) return undefined;
@@ -45,7 +47,13 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
     if (!corpoValido(corpo)) {
       res.status(400).json({ erro: "Dados inválidos." }); return;
     }
-    const { frequenciaAcesso, observacoesPermanentes, modeloMensagem, nomesAlternativos, contabilidadeId, autor } = corpo;
+    const { frequenciaAcesso, observacoesPermanentes, informacoesAdicionais, modeloMensagem, nomesAlternativos, contabilidadeId, autor, valoresAnteriores } = corpo;
+    if (valoresAnteriores !== undefined && (!corpoValido(valoresAnteriores) || Object.keys(valoresAnteriores).some(chave => !["informacoesAdicionais", "nomesAlternativos"].includes(chave))
+      || (valoresAnteriores.informacoesAdicionais !== undefined && (typeof valoresAnteriores.informacoesAdicionais !== "string" || valoresAnteriores.informacoesAdicionais.length > 20000))
+      || (valoresAnteriores.nomesAlternativos !== undefined && (!Array.isArray(valoresAnteriores.nomesAlternativos) || valoresAnteriores.nomesAlternativos.length > 30 || valoresAnteriores.nomesAlternativos.some((nome: unknown) => typeof nome !== "string" || nome.length > 200))))) {
+      res.status(400).json({ erro: "Valores anteriores inválidos." }); return;
+    }
+    const nomesAnteriores = valoresAnteriores && Array.isArray(valoresAnteriores.nomesAlternativos) ? valoresAnteriores.nomesAlternativos as string[] : undefined;
     if (contabilidadeId !== undefined && contabilidadeId !== null && !idValido(contabilidadeId)) {
       res.status(400).json({ erro: "contabilidadeId inválido." }); return;
     }
@@ -56,6 +64,7 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
       res.status(400).json({ erro: "Frequência inválida." }); return;
     }
     const observacoes = textoOpcional(observacoesPermanentes, 20000);
+    const adicionais = textoOpcional(informacoesAdicionais, 20000);
     const modelo = textoOpcional(modeloMensagem, 20000);
     let nomes: string[] | undefined;
     if (nomesAlternativos !== undefined) {
@@ -65,12 +74,19 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
       }
       nomes = [...new Set((nomesAlternativos as string[]).map(nome => nome.trim()))];
     }
-    if (frequenciaAcesso === undefined && observacoes === undefined && modelo === undefined && nomes === undefined && contabilidadeId === undefined) {
+    if (frequenciaAcesso === undefined && observacoes === undefined && adicionais === undefined && modelo === undefined && nomes === undefined && contabilidadeId === undefined) {
       res.status(400).json({ erro: "Nenhum campo de ficha informado." }); return;
     }
     const ficha = await prisma.$transaction(async tx => {
       const existente = await bloquearCliente(tx, id);
       if (!existente) return null;
+      if (adicionais !== undefined && valoresAnteriores?.informacoesAdicionais !== undefined
+        && valoresAnteriores.informacoesAdicionais !== (existente.informacoesAdicionais ?? "")
+        && (adicionais ?? "") !== (existente.informacoesAdicionais ?? "")) throw new ConflitoFicha();
+      if (nomes !== undefined && nomesAnteriores !== undefined) {
+        const atuais = (await tx.clienteNomeAlternativo.findMany({ where: { clienteId: id } })).map(item => item.nome).sort();
+        if (!isDeepStrictEqual([...nomesAnteriores].sort(), atuais) && !isDeepStrictEqual([...nomes].sort(), atuais)) throw new ConflitoFicha();
+      }
       if (contabilidadeId !== undefined && contabilidadeId !== null &&
           !await tx.contabilidade.findUnique({ where: { id: contabilidadeId } })) {
         throw new ContabilidadeNaoEncontrada();
@@ -78,7 +94,7 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
       const atualizado = await tx.cliente.update({
         where: { id },
         data: { frequenciaAcesso: frequenciaAcesso as Frequencia | undefined,
-          observacoesPermanentes: observacoes, modeloMensagem: modelo, contabilidadeId },
+          observacoesPermanentes: observacoes, informacoesAdicionais: adicionais, modeloMensagem: modelo, contabilidadeId },
         include: { contabilidade: true },
       });
       await registrarTrocaContabilidade(tx, existente, atualizado, autor);
@@ -102,6 +118,7 @@ export async function atualizarFichaCliente(req: Request, res: Response): Promis
     if (!ficha) { res.status(404).json({ erro: "Cliente não encontrado." }); return; }
     res.json(ficha);
   } catch (erro) {
+    if (erro instanceof ConflitoFicha) { res.status(409).json({ erro: erro.message }); return; }
     if (erro instanceof ContabilidadeNaoEncontrada) {
       res.status(404).json({ erro: erro.message }); return;
     }

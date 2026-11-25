@@ -49,6 +49,7 @@ model Cliente {
   pendencias                Pendencia[]
   frequenciaAcesso          FrequenciaAcesso @default(NAO_DEFINIDA)
   observacoesPermanentes    String?           @db.Text
+  informacoesAdicionais     String?           @db.Text
   modeloMensagem            String?           @db.Text
   nomesAlternativos         ClienteNomeAlternativo[]
   procedimentos             ProcedimentoCliente[]
@@ -153,8 +154,8 @@ model ContabilidadeConfere {
   @@index([contabilidadeId])
 }
 
-// Shared state of the existing Excel view. No automatic name-based association
-// with Cliente: its legacy identities and the central registry stay separate.
+// Monthly Excel data and notices. Client identities and editable registration
+// fields come from Cliente; old snapshots are retained for the safe transition.
 model ExcelCompartilhado {
   id           String   @id
   instancia    String   @default(uuid())

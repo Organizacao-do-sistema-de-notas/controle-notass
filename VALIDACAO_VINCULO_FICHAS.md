@@ -1,5 +1,8 @@
 # Validação do vínculo manual entre Excel e fichas
 
+> Registro histórico. A versão seguinte utiliza [cadastro único](CADASTRO_UNICO.md).
+> Os resultados abaixo se referem exclusivamente à implementação do vínculo manual.
+
 Data: 25/11/2026. Branch: `feature/vinculo-manual-fichas`.
 Base: `feature/botoes-ornamentados`, commit `2e3e4c2`.
 Inclui também o ajuste visual `5b5415e`: botões azuis do Excel no estilo original

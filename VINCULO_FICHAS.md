@@ -1,5 +1,8 @@
 # Vincular uma linha do Excel à ficha de um cliente
 
+> Documento histórico da versão com vínculo manual. O recurso foi substituído
+> pelo [cadastro único](CADASTRO_UNICO.md), que dispensa esta etapa.
+
 1. Cadastre o cliente em **⋯ → Clientes**, se ele ainda não existir no cadastro.
 2. Na visão **Excel**, abra **Alterar Cliente** e selecione a linha desejada.
 3. Em **Buscar ficha para vincular**, procure por nome, apelido, código do cadastro

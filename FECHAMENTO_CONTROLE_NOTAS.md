@@ -17,16 +17,16 @@ integrações de IA e automação de instalações ficam para uma etapa futura.
 | Compartilhamento | Dois computadores acessam a mesma API e recebem os dados salvos, com revisão de conflitos |
 | Persistência e backup | Reiniciar serviços conserva o banco; gerar cópia em pasta privada e guardar em outro dispositivo |
 
-## Vínculo manual entre Excel e fichas
+## Cadastro único de clientes
 
-Em 25/11/2026, o usuário escolheu permitir o vínculo manual de cada linha do Excel
-com uma ficha central. A escolha é feita em **Excel → Alterar Cliente** e salva
-junto das alterações da linha. O atalho **Abrir ficha #…** consulta a ficha pelo ID.
-Empresas com nomes iguais são identificadas pelo código do cadastro.
+Excel, fichas e menu Clientes usam os mesmos clientes e IDs. Criar um cliente
+em qualquer ponto de cadastro o disponibiliza nas outras telas automaticamente.
+Nome, apelidos e informações adicionais são compartilhados; o atalho **Abrir
+ficha #…** consulta diretamente a ficha do cliente. Não existe etapa de vínculo.
 
-Vincular, trocar e desvincular preserva os campos dos dois cadastros, os registros
-mensais e os históricos. Não há associação automática por nome, importação de
-clientes reais ou acesso ao banco do Confere. Veja [VINCULO_FICHAS.md](VINCULO_FICHAS.md).
+A transição preserva os registros mensais, históricos e uma cópia do estado
+antigo. Identidades não são fundidas pela posição na lista ou pelo nome. Veja
+[CADASTRO_UNICO.md](CADASTRO_UNICO.md).
 
 ## Roteiro de validação manual
 
@@ -39,13 +39,13 @@ no notebook e no computador principal ainda depende do retorno do usuário.
    campos e vínculos devem permanecer. Testar os filtros de situação e contabilidade.
 3. Em **Excel → Fichas dos Clientes**, buscar o cliente e cadastrar um apelido,
    uma anotação e um procedimento. Salvar, fechar e reabrir para conferir.
-4. Em **Excel → Alterar Cliente**, selecionar a linha fictícia e escolher a ficha
-   correta em **Ficha vinculada**. Salvar, abrir a ficha pelo atalho da linha e
-   conferir os dados. Desvincular selecionando **Sem ficha vinculada** e confirmar
-   que os meses, observações e a ficha permanecem intactos.
+4. Criar um cliente fictício no Excel e conferir sua presença no menu Clientes
+   e na ficha, com o mesmo ID. Alterar nome e apelidos em **Alterar Cliente** e
+   informações adicionais na ficha; conferir as alterações na outra tela.
+   Renomear deve manter os registros mensais e a ficha do mesmo cliente.
 5. Digitar uma alteração sem salvar na ficha. Ao trocar de cliente, fechar ou usar Escape,
    cancelar a confirmação deve conservar o texto. Descartar deve exigir confirmação.
-6. Na lista Excel, incluir um cliente fictício próprio dessa visão. Usar seu apelido
+6. Na lista Excel, incluir um cliente fictício. Usar seu apelido
    na pesquisa, mudar status e observação, trocar o mês e retornar. O mês original
    deve conservar os valores e o outro mês manter os seus próprios registros.
 7. Abrir **?**, clicar em **Alterar**, salvar informações adicionais e reler.
@@ -70,6 +70,6 @@ revisando divergências. Não limpar o armazenamento do navegador para contornar
 ## Critério de conclusão
 
 Concluir a revisão automatizada, corrigir falhas encontradas e obter a validação
-dos fluxos acima, incluindo o vínculo manual, nos dois
+dos fluxos acima, incluindo o cadastro único, nos dois
 computadores. Até esse retorno, a validação em uso permanece pendente.
 Autenticação e publicação na Internet não fazem parte desta versão local.

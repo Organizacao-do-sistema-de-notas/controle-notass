@@ -138,6 +138,8 @@ export function obterFichaCliente(id: number): Promise<FichaCliente> {
 export function atualizarFichaCliente(id: number, dados: {
   frequenciaAcesso?: FrequenciaAcesso;
   observacoesPermanentes?: string | null;
+  informacoesAdicionais?: string | null;
+  valoresAnteriores?: { informacoesAdicionais?: string; nomesAlternativos?: string[] };
   modeloMensagem?: string | null;
   nomesAlternativos?: string[];
   contabilidadeId?: number | null;

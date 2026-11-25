@@ -10,9 +10,16 @@ export const test = base.extend<{ excelIsolado: void }>({
     const require = createRequire(new URL('../../backend/package.json', import.meta.url));
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: url.toString() });
-    try { await pool.query('DELETE FROM "ExcelCompartilhado" WHERE id=$1', ['principal']); }
-    finally { await pool.end(); }
-    await use();
+    const existentes = (await pool.query('SELECT id FROM "Cliente"')).rows.map((item: { id: number }) => item.id);
+    await pool.query('DELETE FROM "ExcelCompartilhado" WHERE id=$1', ['principal']);
+    try { await use(); }
+    finally {
+      // Remove only clients created by this browser case, never the baseline.
+      await pool.query('DELETE FROM "ClienteConfere" WHERE "clienteId" <> ALL($1::int[])', [existentes]);
+      await pool.query('DELETE FROM "Cliente" WHERE id <> ALL($1::int[])', [existentes]);
+      await pool.query('DELETE FROM "ExcelCompartilhado" WHERE id=$1', ['principal']);
+      await pool.end();
+    }
   }, { auto: true }],
 });
 export { expect };

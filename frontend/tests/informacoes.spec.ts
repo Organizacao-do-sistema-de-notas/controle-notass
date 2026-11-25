@@ -71,13 +71,15 @@ test('cadastro guarda informações permanentes e mantém observações e status
   const filtro = page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...');
   await filtro.fill(nome);
   const row = page.locator('.excel-table-row');
+  await expect(row).toHaveCount(1);
+  const chave = (await row.getAttribute('data-chave-cliente'))!;
   await row.getByRole('textbox', { name: `Observação mensal de ${nome}`, exact: true }).fill('Pendência fictícia de novembro');
   await row.getByRole('button', { name: /Pendente/ }).click();
   await row.getByRole('button', { name: 'OK', exact: true }).click();
   await botaoInfo(page, nome).click();
   await expect(page.getByRole('dialog', { name: nome, exact: true }).locator('.cliente-info-texto')).toHaveValue(texto);
   await page.getByRole('button', { name: 'Fechar informações adicionais', exact: true }).click();
-  await expect.poll(async () => (await (await request.get('http://127.0.0.1:3010/excel/estado')).json()).estado.registros['2026-11']?.[nome]?.observacao).toBe('Pendência fictícia de novembro');
+  await expect.poll(async () => (await (await request.get('http://127.0.0.1:3010/excel/estado')).json()).estado.registros['2026-11']?.[chave]?.observacao).toBe('Pendência fictícia de novembro');
   await page.reload();
   await filtro.fill(nome);
   await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).selectOption('2026-12');
@@ -89,7 +91,9 @@ test('cadastro guarda informações permanentes e mantém observações e status
   await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).selectOption('2026-11');
   await expect(row.getByRole('textbox', { name: `Observação mensal de ${nome}`, exact: true })).toHaveValue('Pendência fictícia de novembro');
   await expect(row.locator('.excel-status-trigger')).toContainText('OK');
-  expect(await (await request.get('http://127.0.0.1:3010/clientes')).json()).toEqual(apiAntes);
+  const apiDepois = await (await request.get('http://127.0.0.1:3010/clientes')).json();
+  expect(apiDepois).toHaveLength(apiAntes.length + 1);
+  expect(apiDepois.find((c: { nome: string }) => c.nome === nome).informacoesAdicionais).toBe(texto);
 });
 
 test('cada cliente conserva suas informações ao renomear, inclusive nomes exibidos iguais, e pode limpar o texto', async ({ page }) => {

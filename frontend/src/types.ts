@@ -127,6 +127,7 @@ export interface HistoricoContabilidadeCliente {
 export interface FichaCliente extends Cliente {
   frequenciaAcesso: FrequenciaAcesso;
   observacoesPermanentes: string | null;
+  informacoesAdicionais: string | null;
   modeloMensagem: string | null;
   nomesAlternativos: NomeAlternativoCliente[];
   procedimentos: ProcedimentoCliente[];

@@ -11,7 +11,7 @@ const { prisma } = await import('../src/lib/prisma.ts');
 const pool = new Pool({ connectionString: url.toString() });
 let server: Server;
 let base: string;
-let contagens: unknown;
+let cadastrosOriginais: { id: number; nome: string }[];
 const tag = `Codex Excel ficticio ${Date.now()}`;
 const definir = (caminho: string[], valor: unknown, anterior: unknown) => ({ tipo: 'definir', caminho, valor, anterior });
 async function requisitar(path: string, method = 'GET', data?: unknown, status = 200) {
@@ -23,7 +23,7 @@ const ler = () => requisitar('/excel/estado');
 const alterar = (alteracoes: unknown[], status = 200) => requisitar('/excel/estado', 'PATCH', { alteracoes }, status);
 before(async () => {
   await prepararBancoDeTeste(pool);
-  contagens = (await pool.query('SELECT (SELECT count(*) FROM "Cliente")::int clientes, (SELECT count(*) FROM "Pendencia")::int pendencias')).rows;
+  cadastrosOriginais = (await pool.query('SELECT id, nome FROM "Cliente" ORDER BY id')).rows;
   server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
   const address = server.address(); assert.ok(address && typeof address !== 'string'); base = `http://127.0.0.1:${address.port}`;
 });
@@ -32,13 +32,16 @@ after(async () => {
   await prisma.$disconnect(); await pool.end();
 });
 test('Excel: estado compartilhado e revisão são lidos por sessões independentes', async () => {
-  const inicial = await ler(); assert.equal(inicial.revisao, 0); assert.deepEqual(inicial.estado, estadoVazio());
+  const inicial = await ler();
+  const clientes = await requisitar('/clientes');
+  assert.deepEqual(Object.values(inicial.estado.vinculosClientes).sort(), clientes.map((c: { id: number }) => c.id).sort());
+  assert.deepEqual(inicial.estado.registros, {});
   await Promise.all([
     alterar([definir(['informacoes', tag], 'Texto compartilhado', '')]),
     alterar([definir(['informacoes', `${tag} criação simultânea`], 'Segundo texto', '')]),
   ]);
   const salvo = await ler();
-  assert.ok(salvo.instancia); assert.equal(salvo.revisao, 2);
+  assert.ok(salvo.instancia); assert.equal(salvo.revisao, inicial.revisao + 2);
   assert.equal((await ler()).estado.informacoesClientes[tag], 'Texto compartilhado');
   const inalterado = await requisitar(`/excel/estado?revisao=${salvo.revisao}&instancia=${salvo.instancia}`);
   assert.equal(inalterado.estado, null);
@@ -49,7 +52,7 @@ test('Excel: conflito não sobrescreve informação nem aplica parcialmente o re
   const conflito = await alterar([definir(['nome', tag], 'Nome que não deve ser aplicado', tag), definir(['informacoes', tag], 'Versão atrasada', 'Texto compartilhado')], 409);
   assert.equal(conflito.estado.informacoesClientes[tag], 'Versão atualizada');
   const depois = await ler(); assert.deepEqual(depois, antes);
-  assert.equal(depois.estado.nomesAlterados[tag], undefined);
+  assert.equal(depois.estado.nomesAlterados[tag], tag);
   const repetido = await alterar([definir(['informacoes', tag], 'Versão atualizada', 'Texto compartilhado')]);
   assert.equal(repetido.revisao, antes.revisao);
 });
@@ -84,75 +87,9 @@ test('Excel: validação recusa tipos, datas, campos extras e caminhos inseguros
   await requisitar('/excel/importar', 'POST', { estado: { ...estadoVazio(), desconhecido: true } }, 400);
   assert.deepEqual(await ler(), antes);
 });
-test('Excel: cadastros centrais e dados legados anteriores à migração permanecem intactos', async () => {
-  const depois = (await pool.query('SELECT (SELECT count(*) FROM "Cliente")::int clientes, (SELECT count(*) FROM "Pendencia")::int pendencias')).rows;
-  assert.deepEqual(depois, contagens);
+test('Excel: os cadastros anteriores e as pendências legadas permanecem intactos', async () => {
+  const depois = (await pool.query('SELECT id, nome FROM "Cliente" WHERE id=ANY($1::int[]) ORDER BY id', [cadastrosOriginais.map(c => c.id)])).rows;
+  assert.deepEqual(depois, cadastrosOriginais);
   const legado = await pool.query('SELECT observacao FROM "Pendencia" WHERE observacao=$1', ['Preservar pendência fictícia anterior à migration']);
   assert.equal(legado.rows.length, 1);
-});
-
-test('Excel: vínculo manual por ID preserva homônimos, meses, ficha e histórico ao trocar e desvincular', async () => {
-  const nome = `${tag} linha vinculada`;
-  const contaA = await requisitar('/contabilidades', 'POST', { nome: `${tag} firma A` }, 201);
-  const contaB = await requisitar('/contabilidades', 'POST', { nome: `${tag} firma B` }, 201);
-  const a = await requisitar('/clientes', 'POST', { nome: `${tag} homônimo`, contabilidadeId: contaA.id }, 201);
-  const b = await requisitar('/clientes', 'POST', { nome: a.nome }, 201);
-  await requisitar(`/clientes/${a.id}/ficha`, 'PATCH', { observacoesPermanentes: 'Preservar ficha', contabilidadeId: contaB.id, autor: 'Teste fictício' });
-  await requisitar(`/clientes/${a.id}/procedimentos`, 'POST', { titulo: 'Preservar procedimento', descricao: 'Instrução fictícia' }, 201);
-  const ficha = await requisitar(`/clientes/${a.id}/ficha`);
-  assert.equal(ficha.historicoContabilidades.length, 1);
-  await alterar([
-    { tipo: 'incluirCliente', nome, apelidos: ['Apelido da linha'], informacoes: 'Preservar informações do Excel' },
-    definir(['registro', '2026-10', nome, 'status'], 'OK', 'PENDENTE'),
-    definir(['registro', '2026-11', nome, 'observacao'], 'Preservar mês seguinte', ''),
-  ]);
-  // Old stored JSON without the new field must remain readable, without a migration.
-  const anterior = await ler();
-  const { vinculosClientes: _vinculos, ...legado } = anterior.estado;
-  await pool.query('UPDATE "ExcelCompartilhado" SET dados=$1::jsonb WHERE id=$2', [JSON.stringify(legado), 'principal']);
-  assert.deepEqual(await ler(), anterior);
-  const vinculado = await alterar([definir(['vinculo', nome], a.id, null)]);
-  assert.equal(vinculado.estado.vinculosClientes[nome], a.id);
-  const repetido = await alterar([definir(['vinculo', nome], a.id, null)]);
-  assert.equal(repetido.revisao, vinculado.revisao);
-  await alterar([definir(['nome', nome], 'Outro nome no Excel', nome)]);
-  assert.equal((await ler()).estado.vinculosClientes[nome], a.id);
-  await alterar([definir(['vinculo', nome], b.id, a.id)]);
-  await alterar([definir(['vinculo', nome], null, b.id)]);
-  const depois = (await ler()).estado;
-  assert.equal(depois.vinculosClientes[nome], undefined);
-  assert.deepEqual(depois.registros, anterior.estado.registros);
-  assert.deepEqual(depois.informacoesClientes, anterior.estado.informacoesClientes);
-  assert.deepEqual(depois.nomesBusca, anterior.estado.nomesBusca);
-  assert.deepEqual(await requisitar(`/clientes/${a.id}/ficha`), ficha);
-  assert.equal((await requisitar(`/clientes/${b.id}`)).id, b.id);
-});
-
-test('Excel: vínculos inválidos e importados são recusados sem aplicar parcialmente o lote', async () => {
-  const nome = `${tag} vínculo inválido`;
-  const cliente = await requisitar('/clientes', 'POST', { nome }, 201);
-  const antes = await ler();
-  for (const id of [0, -1, 1.2, '1', true, 2147483648, {}]) {
-    await alterar([definir(['vinculo', nome], id, null)], 400);
-  }
-  await alterar([definir(['vinculo', '__proto__'], cliente.id, null)], 400);
-  await alterar([definir(['nome', nome], 'Não aplicar este nome', nome), definir(['vinculo', nome], 2147483647, null)], 400);
-  await requisitar('/excel/importar', 'POST', { estado: { ...estadoVazio(), vinculosClientes: { [nome]: cliente.id } } }, 400);
-  assert.deepEqual(await ler(), antes);
-  await alterar([definir(['vinculo', nome], cliente.id, null)]);
-  const local = estadoVazio(); local.informacoesClientes[nome] = 'Importação legada sem vínculos';
-  const importado = await requisitar('/excel/importar', 'POST', { estado: local });
-  assert.equal(importado.estado.vinculosClientes[nome], cliente.id);
-});
-
-test('Excel: vínculo concorrente exige revisão e não associa a mesma linha a dois clientes', async () => {
-  const nome = `${tag} vínculo concorrente`;
-  const a = await requisitar('/clientes', 'POST', { nome: `${nome} A` }, 201);
-  const b = await requisitar('/clientes', 'POST', { nome: `${nome} B` }, 201);
-  const respostas = await Promise.all([a.id, b.id].map(id => fetch(base + '/excel/estado', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alteracoes: [definir(['vinculo', nome], id, null)] }) })));
-  assert.deepEqual(respostas.map(r => r.status).sort(), [200, 409]);
-  const salvo = (await ler()).estado.vinculosClientes[nome];
-  assert.ok([a.id, b.id].includes(salvo));
-  await alterar([definir(['vinculo', `${nome} outra linha`], a.id, null)]);
-  assert.equal((await ler()).estado.vinculosClientes[nome], salvo);
 });
