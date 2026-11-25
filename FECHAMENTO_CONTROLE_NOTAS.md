@@ -3,23 +3,22 @@
 A prioridade atual é concluir e validar o controle de notas. Base de conhecimento,
 integrações de IA e automação de instalações ficam para uma etapa futura.
 
-Em 25/11/2026, o cadastro único foi publicado na branch
-`feature/cadastro-unico-clientes`, commit `61e230a`. A revisão seguinte dos
-rascunhos de formulários está somente na branch local
-`feature/revisao-formularios-basicos`, sem publicação, e aguarda o próximo lote
-de testes. Veja [REVISAO_FORMULARIOS_BASICOS.md](REVISAO_FORMULARIOS_BASICOS.md).
+Em 25/11/2026, o usuário pediu para retomar os testes e atualizar o servidor Linux.
+O lote foi reunido na branch `teste/controle-basico-linux`, mantendo a main
+separada. Ele contém cadastro único (`61e230a`), proteção dos formulários do
+Excel (`34b729a`), exclusão de clientes (`1ec9820`) e proteção do Painel (`e48bee5`).
+As menções de “sem publicação” nos relatórios dessas etapas descrevem sua
+preparação anterior à distribuição deste lote de testes.
 
-A branch local `feature/exclusao-clientes` continua essa revisão com o botão
-de exclusão nas duas visualizações, preservando históricos. Os testes focados
-estão registrados em [EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md); a suíte completa
-e os testes no Windows continuam pendentes. Esta branch também não foi publicada.
+O procedimento com backup está em [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md).
+Resultados do lote: [VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md).
+A validação física no Linux do usuário continua pendente até ele executar os
+comandos. Alterações futuras seguem sem publicação automática.
+A prioridade de validação agora é o servidor Linux já instalado.
 
-A revisão local atual está na branch `feature/protecao-formularios-painel`,
-baseada no commit `1ec9820`, e inclui todas as alterações acima. Ela protege
-cadastros e mensagens do Painel contra descarte acidental e fechamento durante
-gravação. Os seis cenários com API simulada passaram; resultados e próximo lote
-estão em [REVISAO_FORMULARIOS_PAINEL.md](REVISAO_FORMULARIOS_PAINEL.md).
-Nenhuma dessas revisões locais deve ser publicada sem nova autorização.
+Relatórios de implementação: [cadastro único](VALIDACAO_CADASTRO_UNICO.md),
+[formulários do Excel](REVISAO_FORMULARIOS_BASICOS.md),
+[exclusão](EXCLUSAO_CLIENTES.md) e [formulários do Painel](REVISAO_FORMULARIOS_PAINEL.md).
 
 ## Escopo da versão básica
 

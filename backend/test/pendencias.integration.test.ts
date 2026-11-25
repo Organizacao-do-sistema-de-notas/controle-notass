@@ -29,19 +29,20 @@ async function request(path: string, method = 'GET', body?: unknown, status = 20
 }
 const criar = (competencia: string) => request('/pendencias', 'POST', { clienteId: cliente, competencia }, 201);
 
-// Hold only a synthetic row so both HTTP requests are genuinely waiting on the
-// database before releasing them. This reproduces stale reads deterministically.
+// Writes now lock Cliente before Pendencia to coordinate with client exclusion.
+// Hold that synthetic client's row so every request is waiting at the same
+// entry point before release; the history assertions still verify real ordering.
 async function simultaneas(id: number, tarefas: Array<() => Promise<unknown>>) {
   const bloqueio = await pool.connect();
   await bloqueio.query('BEGIN');
-  await bloqueio.query('SELECT id FROM "Pendencia" WHERE id=$1 FOR UPDATE', [id]);
+  await bloqueio.query('SELECT c.id FROM "Cliente" c JOIN "Pendencia" p ON p."clienteId"=c.id WHERE p.id=$1 FOR UPDATE OF c', [id]);
   const chamadas = tarefas.map(tarefa => tarefa());
   const resultados = Promise.allSettled(chamadas);
   let erro: unknown;
   try {
     let prontas = false;
     for (let i = 0; i < 100; i++) {
-      const { rows } = await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND wait_event_type='Lock' AND query LIKE '%Pendencia%'");
+      const { rows } = await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND wait_event_type='Lock' AND query LIKE '%Cliente%'");
       if (rows[0].n >= tarefas.length) { prontas = true; break; }
       await setTimeout(20);
     }

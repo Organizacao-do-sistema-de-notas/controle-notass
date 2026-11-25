@@ -4,6 +4,10 @@ Esta instalação usa Docker Engine com Compose e PowerShell (`pwsh`). Node,
 PostgreSQL e as dependências do projeto ficam nos containers. O usuário atual
 precisa conseguir acessar o Docker local por `/var/run/docker.sock`.
 
+Se o projeto já está instalado, usar [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md)
+para atualizar a mesma pasta e banco. O procedimento atende também ao clone
+antigo com uma única branch e realiza o backup antes das migrações.
+
 ## Clonar e iniciar com banco vazio
 
 Confira as ferramentas:
@@ -25,7 +29,7 @@ sudo apt install git
 Clone em uma pasta nova. O comando não sobrescreve pastas existentes:
 
 ```bash
-git clone --branch instalacao/xubuntu-docker --single-branch https://github.com/Organizacao-do-sistema-de-notas/controle-notass.git controle-notas-xubuntu
+git clone --branch teste/controle-basico-linux --single-branch https://github.com/Organizacao-do-sistema-de-notas/controle-notass.git controle-notas-xubuntu
 cd controle-notas-xubuntu
 bash ./INICIAR-LINUX.sh --banco-vazio
 ```
@@ -43,10 +47,9 @@ necessária para baixar imagens e dependências.
 Quando aparecer **Sistema pronto**, abra <http://localhost:5173>.
 
 O banco começa **sem clientes e contabilidades**. Use cadastros fictícios nos
-testes. Os registros reais importados continuam no ambiente Codex; esta branch
-não inclui backups, CSVs, senhas locais ou dados de clientes. A visualização
-Excel antiga pode mostrar os exemplos locais que já fazem parte da aplicação;
-eles não indicam uma importação no PostgreSQL.
+testes. Esta branch não inclui backups, CSVs, senhas locais ou dados de clientes.
+Excel, fichas e menu Clientes usam o mesmo cadastro; os exemplos antigos não
+são inseridos como clientes reais no banco.
 
 ## Reiniciar e preservar os testes
 

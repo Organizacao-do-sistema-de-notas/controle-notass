@@ -10,9 +10,11 @@ um banco local vazio, siga [LEIA-ME-LINUX.md](LEIA-ME-LINUX.md).
 O escopo atual e o roteiro para concluir a versão básica estão em
 [FECHAMENTO_CONTROLE_NOTAS.md](FECHAMENTO_CONTROLE_NOTAS.md).
 
-A revisão local inclui **Excluir cliente** no Excel e no Painel, preservando
-históricos no banco. Ela ainda não foi publicada. Funcionamento e verificação
-estão em [EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md).
+O lote da branch `teste/controle-basico-linux` reúne cadastro único, **Excluir
+cliente** nas duas visualizações e proteção de formulários. Para atualizar uma
+instalação Linux existente com backup, seguir
+[ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md). A validação do lote está em
+[VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md).
 
 Se recebeu o pacote privado com backup do Codex, siga
 [LEIA-ME-WINDOWS.md](LEIA-ME-WINDOWS.md) e execute `INICIAR-WINDOWS.bat`.
