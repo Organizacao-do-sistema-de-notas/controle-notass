@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { ExcluirCliente } from "./ExcluirCliente";
 
 import {
@@ -49,9 +49,13 @@ interface EditorMensagem {
   pendenciaId: number;
   clienteNome: string;
   mensagem: string;
+  mensagemOriginal: string;
   linkWhatsApp: string | null;
   salvando: boolean;
 }
+
+type PendenciasEdicao = { gravando: boolean; rascunhos: boolean };
+type BasePendencia = { clienteId: string; competencia: string; status: StatusPendencia; responsavel: string; observacao: string };
 
 interface ModalHistorico {
   clienteNome: string;
@@ -91,7 +95,9 @@ function formatarValorHistorico(valor: string | null): string {
   return valor;
 }
 
-export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
+export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
+  revisaoCadastros?: number; aoPendenciasAlteradas?: (estado: PendenciasEdicao) => void;
+}) {
   const [competencias, setCompetencias] = useState<string[]>([]);
   const [competencia, setCompetencia] = useState("");
   const [painel, setPainel] = useState<PainelMensal | null>(null);
@@ -125,10 +131,70 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   const [pendenciaResponsavel, setPendenciaResponsavel] = useState("");
   const [pendenciaObservacao, setPendenciaObservacao] = useState("");
   const [salvandoPendencia, setSalvandoPendencia] = useState(false);
+  const [basePendencia, setBasePendencia] = useState<BasePendencia | null>(null);
 
   const [historicoModal, setHistoricoModal] = useState<ModalHistorico | null>(null);
   const geracaoCompetencias = useRef(0);
   const geracaoPainel = useRef(0);
+  const formulario = useRef<HTMLElement>(null);
+  const botaoFormulario = useRef<HTMLElement | null>(null);
+  const gravacaoEmAndamento = useRef(false);
+  const clienteComRascunho = modalCliente && Boolean(clienteNome || clienteContabilidadeId);
+  const contabilidadeComRascunho = modalContabilidade && Boolean(contabilidadeNome);
+  const pendenciaComRascunho = modalPendencia && basePendencia !== null && (
+    pendenciaClienteId !== basePendencia.clienteId || pendenciaCompetencia !== basePendencia.competencia
+    || pendenciaStatus !== basePendencia.status || pendenciaResponsavel !== basePendencia.responsavel
+    || pendenciaObservacao !== basePendencia.observacao
+  );
+  const mensagemComRascunho = editor !== null && editor.mensagem !== editor.mensagemOriginal;
+  const temRascunhos = clienteComRascunho || contabilidadeComRascunho || pendenciaComRascunho || mensagemComRascunho;
+  const gravando = salvandoCliente || salvandoContabilidade || salvandoPendencia || Boolean(editor?.salvando) || alterandoStatusId !== null;
+  const formularioAberto = modalCliente || modalContabilidade || modalPendencia || editor !== null;
+  const aberturaBloqueada = gravando || carregandoCadastros || carregandoMensagem || formularioAberto;
+
+  useEffect(() => { aoPendenciasAlteradas?.({ gravando, rascunhos: temRascunhos }); }, [gravando, temRascunhos, aoPendenciasAlteradas]);
+  useEffect(() => () => { aoPendenciasAlteradas?.({ gravando: false, rascunhos: false }); }, [aoPendenciasAlteradas]);
+  useEffect(() => {
+    if (!gravando && !temRascunhos) return;
+    const proteger = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
+    window.addEventListener("beforeunload", proteger);
+    return () => window.removeEventListener("beforeunload", proteger);
+  }, [gravando, temRascunhos]);
+  useEffect(() => {
+    if (!formularioAberto) return;
+    const anterior = botaoFormulario.current ?? document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    formulario.current?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")?.focus();
+    return () => {
+      document.body.style.overflow = overflow;
+      if (anterior instanceof HTMLElement && anterior.isConnected) anterior.focus();
+    };
+  }, [formularioAberto]);
+  useEffect(() => { if (formularioAberto && gravando) formulario.current?.focus(); }, [formularioAberto, gravando]);
+
+  function podeDescartar(alterado: boolean, contexto: string) {
+    return !gravacaoEmAndamento.current && !gravando
+      && (!alterado || window.confirm(`Descartar as alterações não salvas ${contexto}?`));
+  }
+  function guardarBotaoFormulario() {
+    botaoFormulario.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  function fecharCliente() { if (podeDescartar(clienteComRascunho, "deste cliente")) { setModalCliente(false); setErro(null); } }
+  function fecharContabilidade() { if (podeDescartar(contabilidadeComRascunho, "desta contabilidade")) { setModalContabilidade(false); setErro(null); } }
+  function fecharPendencia() { if (podeDescartar(pendenciaComRascunho, "desta pendência")) { setModalPendencia(false); setErro(null); } }
+  function fecharMensagem() { if (podeDescartar(mensagemComRascunho, "desta mensagem")) { setEditor(null); setErro(null); } }
+  function tecladoFormulario(evento: KeyboardEvent<HTMLElement>, fechar: () => void) {
+    if (evento.key === "Escape") { evento.preventDefault(); evento.stopPropagation(); fechar(); }
+    if (evento.key !== "Tab") return;
+    const elementos = Array.from(evento.currentTarget.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)",
+    ));
+    const primeiro = elementos[0], ultimo = elementos[elementos.length - 1];
+    if (!primeiro) { evento.preventDefault(); evento.currentTarget.focus(); }
+    else if (evento.shiftKey && (document.activeElement === primeiro || document.activeElement === evento.currentTarget)) { evento.preventDefault(); ultimo.focus(); }
+    else if (!evento.shiftKey && document.activeElement === ultimo) { evento.preventDefault(); primeiro.focus(); }
+  }
 
   async function carregarCompetencias() {
     const geracao = ++geracaoCompetencias.current;
@@ -225,6 +291,8 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   }, [painel, filtroStatus]);
 
   async function abrirEditorMensagem(item: PendenciaPainel) {
+    if (aberturaBloqueada) return;
+    guardarBotaoFormulario();
     try {
       setCarregandoMensagem(true);
       setErro(null);
@@ -233,6 +301,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
         pendenciaId: dados.pendenciaId,
         clienteNome: dados.cliente.nome,
         mensagem: dados.mensagem ?? criarModeloMensagem(dados.cliente.nome),
+        mensagemOriginal: dados.mensagem ?? criarModeloMensagem(dados.cliente.nome),
         linkWhatsApp: dados.linkWhatsApp,
         salvando: false,
       });
@@ -244,7 +313,8 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   }
 
   async function salvarMensagem() {
-    if (!editor) return;
+    if (!editor || gravacaoEmAndamento.current || gravando) return;
+    gravacaoEmAndamento.current = true;
 
     try {
       setEditor({ ...editor, salvando: true });
@@ -258,14 +328,17 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
       setEditor({
         ...editor,
         mensagem: dados.mensagem ?? "",
+        mensagemOriginal: dados.mensagem ?? "",
         linkWhatsApp: dados.linkWhatsApp,
-        salvando: false,
+        salvando: true,
       });
       setAviso("Mensagem salva.");
       await carregarPainel(competencia);
     } catch (error) {
-      setEditor({ ...editor, salvando: false });
       setErro(error instanceof Error ? error.message : "Erro ao salvar mensagem.");
+    } finally {
+      gravacaoEmAndamento.current = false;
+      setEditor(atual => atual ? { ...atual, salvando: false } : atual);
     }
   }
 
@@ -279,7 +352,8 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   }
 
   async function alterarStatus(item: PendenciaPainel, novoStatus: StatusPendencia) {
-    if (novoStatus === item.status) return;
+    if (novoStatus === item.status || gravacaoEmAndamento.current || gravando) return;
+    gravacaoEmAndamento.current = true;
 
     try {
       setAlterandoStatusId(item.id);
@@ -290,6 +364,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao atualizar status.");
     } finally {
+      gravacaoEmAndamento.current = false;
       setAlterandoStatusId(null);
     }
   }
@@ -300,6 +375,8 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
   }
 
   async function abrirNovoCliente() {
+    if (aberturaBloqueada) return;
+    guardarBotaoFormulario();
     setClienteNome("");
     setClienteContabilidadeId("");
     await carregarCadastros();
@@ -327,7 +404,8 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
 
   async function salvarNovoCliente(event: FormEvent) {
     event.preventDefault();
-    if (!clienteNome.trim()) return;
+    if (!clienteNome.trim() || gravacaoEmAndamento.current || gravando) return;
+    gravacaoEmAndamento.current = true;
 
     try {
       setSalvandoCliente(true);
@@ -342,18 +420,23 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao cadastrar cliente.");
     } finally {
+      gravacaoEmAndamento.current = false;
       setSalvandoCliente(false);
     }
   }
 
   function abrirNovaContabilidade() {
+    if (aberturaBloqueada) return;
+    guardarBotaoFormulario();
+    setErro(null);
     setContabilidadeNome("");
     setModalContabilidade(true);
   }
 
   async function salvarNovaContabilidade(event: FormEvent) {
     event.preventDefault();
-    if (!contabilidadeNome.trim()) return;
+    if (!contabilidadeNome.trim() || gravacaoEmAndamento.current || gravando) return;
+    gravacaoEmAndamento.current = true;
 
     try {
       setSalvandoContabilidade(true);
@@ -365,11 +448,14 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao cadastrar contabilidade.");
     } finally {
+      gravacaoEmAndamento.current = false;
       setSalvandoContabilidade(false);
     }
   }
 
   async function abrirNovaPendencia() {
+    if (aberturaBloqueada) return;
+    guardarBotaoFormulario();
     const dados = await carregarCadastros();
     const ativos = (dados?.listaClientes ?? clientes).filter((cliente) => cliente.ativo);
 
@@ -378,12 +464,14 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     setPendenciaStatus("PENDENTE");
     setPendenciaResponsavel(autor.trim());
     setPendenciaObservacao("");
+    setBasePendencia({ clienteId: ativos[0] ? String(ativos[0].id) : "", competencia: competencia || competenciaAtual(), status: "PENDENTE", responsavel: autor.trim(), observacao: "" });
     setModalPendencia(true);
   }
 
   async function salvarNovaPendencia(event: FormEvent) {
     event.preventDefault();
-    if (!pendenciaClienteId || !pendenciaCompetencia) return;
+    if (!pendenciaClienteId || !pendenciaCompetencia || gravacaoEmAndamento.current || gravando) return;
+    gravacaoEmAndamento.current = true;
 
     try {
       setSalvandoPendencia(true);
@@ -397,10 +485,11 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
         autor: autor.trim() || undefined,
       });
 
-      const lista = await listarCompetencias();
-      setCompetencias(lista);
       setModalPendencia(false);
       setAviso("Pendência criada.");
+
+      const lista = await listarCompetencias();
+      setCompetencias(lista);
 
       if (pendenciaCompetencia === competencia) {
         await carregarPainel(pendenciaCompetencia);
@@ -410,6 +499,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao criar pendência.");
     } finally {
+      gravacaoEmAndamento.current = false;
       setSalvandoPendencia(false);
     }
   }
@@ -496,16 +586,16 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
 
           <div className="toolbar-spacer" />
 
-          <button className="button secondary" onClick={abrirNovaContabilidade}>
+          <button className="button secondary" disabled={aberturaBloqueada} onClick={abrirNovaContabilidade}>
             Nova contabilidade
           </button>
-          <button className="button secondary" onClick={() => void abrirNovoCliente()}>
+          <button className="button secondary" disabled={aberturaBloqueada} onClick={() => void abrirNovoCliente()}>
             Novo cliente
           </button>
-          <button className="button secondary" onClick={() => setExclusaoAberta(true)}>
+          <button className="button secondary" disabled={aberturaBloqueada} onClick={() => setExclusaoAberta(true)}>
             Excluir cliente
           </button>
-          <button className="button primary" onClick={() => void abrirNovaPendencia()}>
+          <button className="button primary" disabled={aberturaBloqueada} onClick={() => void abrirNovaPendencia()}>
             Nova pendência
           </button>
         </section>
@@ -590,7 +680,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                     <select
                       aria-label={`Status de ${item.cliente.nome}`}
                       value={item.status}
-                      disabled={alterandoStatusId === item.id}
+                      disabled={gravando}
                       onChange={(event) =>
                         void alterarStatus(item, event.target.value as StatusPendencia)
                       }
@@ -605,7 +695,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                     <button
                       className="button primary"
                       onClick={() => void abrirEditorMensagem(item)}
-                      disabled={carregandoMensagem}
+                      disabled={aberturaBloqueada}
                     >
                       {item.temMensagemContador ? "Editar mensagem" : "Criar mensagem"}
                     </button>
@@ -632,12 +722,15 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
 
       {exclusaoAberta && <ExcluirCliente aoFechar={() => setExclusaoAberta(false)} aoExcluir={aposExcluirCliente} />}
       {editor && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setEditor(null)}>
+        <div className="modal-backdrop" role="presentation" onMouseDown={fecharMensagem}>
           <section
+            ref={formulario}
             className="message-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="message-title"
+            aria-busy={gravando} tabIndex={-1}
+            onKeyDown={evento => tecladoFormulario(evento, fecharMensagem)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
@@ -645,7 +738,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span className="eyebrow">Mensagem para o contador</span>
                 <h2 id="message-title">{editor.clienteNome}</h2>
               </div>
-              <button className="close-button" onClick={() => setEditor(null)} aria-label="Fechar">
+              <button className="close-button" disabled={gravando} onClick={fecharMensagem} aria-label="Fechar mensagem">
                 ×
               </button>
             </div>
@@ -656,14 +749,16 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
             </p>
 
             <textarea
+              aria-label="Mensagem para o contador"
+              disabled={gravando}
               value={editor.mensagem}
               onChange={(event) => setEditor({ ...editor, mensagem: event.target.value })}
               rows={14}
-              autoFocus
             />
 
+            {erro && <p className="alert error" role="alert">{erro}</p>}
             <div className="modal-actions">
-              <button className="button secondary" onClick={() => setEditor(null)}>
+              <button className="button secondary" disabled={gravando} onClick={fecharMensagem}>
                 Cancelar
               </button>
               <button
@@ -683,7 +778,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
               <button
                 className="button primary"
                 onClick={() => void salvarMensagem()}
-                disabled={editor.salvando}
+                disabled={gravando}
               >
                 {editor.salvando ? "Salvando..." : "Salvar mensagem"}
               </button>
@@ -693,18 +788,21 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
       )}
 
       {modalCliente && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalCliente(false)}>
+        <div className="modal-backdrop" role="presentation" onMouseDown={fecharCliente}>
           <form
+            ref={elemento => { formulario.current = elemento; }}
             className="message-modal form-modal"
+            role="dialog" aria-modal="true" aria-labelledby="painel-novo-cliente" aria-busy={gravando} tabIndex={-1}
+            onKeyDown={evento => tecladoFormulario(evento, fecharCliente)}
             onSubmit={(event) => void salvarNovoCliente(event)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
               <div>
                 <span className="eyebrow">Cadastro</span>
-                <h2>Novo cliente</h2>
+                <h2 id="painel-novo-cliente">Novo cliente</h2>
               </div>
-              <button type="button" className="close-button" onClick={() => setModalCliente(false)}>
+              <button type="button" className="close-button" aria-label="Fechar novo cliente" disabled={gravando} onClick={fecharCliente}>
                 ×
               </button>
             </div>
@@ -714,9 +812,9 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span>Nome do cliente</span>
                 <input
                   value={clienteNome}
+                  disabled={gravando}
                   onChange={(event) => setClienteNome(event.target.value)}
                   placeholder="Ex.: Mercado Rondinense"
-                  autoFocus
                   required
                 />
               </label>
@@ -726,7 +824,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <select
                   value={clienteContabilidadeId}
                   onChange={(event) => setClienteContabilidadeId(event.target.value)}
-                  disabled={carregandoCadastros}
+                  disabled={carregandoCadastros || gravando}
                 >
                   <option value="">Sem contabilidade vinculada</option>
                   {contabilidades.map((item) => (
@@ -738,11 +836,12 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
               </label>
             </div>
 
+            {erro && <p className="alert error" role="alert">{erro}</p>}
             <div className="modal-actions">
-              <button type="button" className="button secondary" onClick={() => setModalCliente(false)}>
+              <button type="button" className="button secondary" disabled={gravando} onClick={fecharCliente}>
                 Cancelar
               </button>
-              <button className="button primary" disabled={salvandoCliente || !clienteNome.trim()}>
+              <button className="button primary" disabled={gravando || !clienteNome.trim()}>
                 {salvandoCliente ? "Salvando..." : "Cadastrar cliente"}
               </button>
             </div>
@@ -754,22 +853,26 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
         <div
           className="modal-backdrop"
           role="presentation"
-          onMouseDown={() => setModalContabilidade(false)}
+          onMouseDown={fecharContabilidade}
         >
           <form
+            ref={elemento => { formulario.current = elemento; }}
             className="message-modal form-modal compact-modal"
+            role="dialog" aria-modal="true" aria-labelledby="painel-nova-contabilidade" aria-busy={gravando} tabIndex={-1}
+            onKeyDown={evento => tecladoFormulario(evento, fecharContabilidade)}
             onSubmit={(event) => void salvarNovaContabilidade(event)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
               <div>
                 <span className="eyebrow">Cadastro</span>
-                <h2>Nova contabilidade</h2>
+                <h2 id="painel-nova-contabilidade">Nova contabilidade</h2>
               </div>
               <button
                 type="button"
                 className="close-button"
-                onClick={() => setModalContabilidade(false)}
+                aria-label="Fechar nova contabilidade" disabled={gravando}
+                onClick={fecharContabilidade}
               >
                 ×
               </button>
@@ -779,22 +882,24 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
               <span>Nome da contabilidade</span>
               <input
                 value={contabilidadeNome}
+                disabled={gravando}
                 onChange={(event) => setContabilidadeNome(event.target.value)}
                 placeholder="Ex.: Contabilidade Silva"
-                autoFocus
                 required
               />
             </label>
 
+            {erro && <p className="alert error" role="alert">{erro}</p>}
             <div className="modal-actions">
               <button
                 type="button"
                 className="button secondary"
-                onClick={() => setModalContabilidade(false)}
+                disabled={gravando}
+                onClick={fecharContabilidade}
               >
                 Cancelar
               </button>
-              <button className="button primary" disabled={salvandoContabilidade || !contabilidadeNome.trim()}>
+              <button className="button primary" disabled={gravando || !contabilidadeNome.trim()}>
                 {salvandoContabilidade ? "Salvando..." : "Cadastrar"}
               </button>
             </div>
@@ -803,18 +908,21 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
       )}
 
       {modalPendencia && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalPendencia(false)}>
+        <div className="modal-backdrop" role="presentation" onMouseDown={fecharPendencia}>
           <form
+            ref={elemento => { formulario.current = elemento; }}
             className="message-modal form-modal"
+            role="dialog" aria-modal="true" aria-labelledby="painel-nova-pendencia" aria-busy={gravando} tabIndex={-1}
+            onKeyDown={evento => tecladoFormulario(evento, fecharPendencia)}
             onSubmit={(event) => void salvarNovaPendencia(event)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
               <div>
                 <span className="eyebrow">Acompanhamento mensal</span>
-                <h2>Nova pendência</h2>
+                <h2 id="painel-nova-pendencia">Nova pendência</h2>
               </div>
-              <button type="button" className="close-button" onClick={() => setModalPendencia(false)}>
+              <button type="button" className="close-button" aria-label="Fechar nova pendência" disabled={gravando} onClick={fecharPendencia}>
                 ×
               </button>
             </div>
@@ -829,7 +937,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <select
                   value={pendenciaClienteId}
                   onChange={(event) => setPendenciaClienteId(event.target.value)}
-                  disabled={carregandoCadastros}
+                  disabled={carregandoCadastros || gravando}
                   required
                 >
                   <option value="">Selecione um cliente</option>
@@ -848,6 +956,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span>Competência</span>
                 <input
                   type="month"
+                  disabled={gravando}
                   value={pendenciaCompetencia}
                   onChange={(event) => setPendenciaCompetencia(event.target.value)}
                   required
@@ -858,6 +967,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span>Status inicial</span>
                 <select
                   value={pendenciaStatus}
+                  disabled={gravando}
                   onChange={(event) => setPendenciaStatus(event.target.value as StatusPendencia)}
                 >
                   {statusDisponiveis.map((status) => (
@@ -872,6 +982,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span>Responsável</span>
                 <input
                   value={pendenciaResponsavel}
+                  disabled={gravando}
                   onChange={(event) => setPendenciaResponsavel(event.target.value)}
                   placeholder="Quem ficará responsável"
                 />
@@ -881,6 +992,7 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
                 <span>Observação interna</span>
                 <textarea
                   rows={4}
+                  disabled={gravando}
                   value={pendenciaObservacao}
                   onChange={(event) => setPendenciaObservacao(event.target.value)}
                   placeholder="Ex.: Aguardando cliente liberar acesso ao computador."
@@ -894,13 +1006,14 @@ export function App({ revisaoCadastros = 0 }: { revisaoCadastros?: number }) {
               </div>
             )}
 
+            {erro && <p className="alert error" role="alert">{erro}</p>}
             <div className="modal-actions">
-              <button type="button" className="button secondary" onClick={() => setModalPendencia(false)}>
+              <button type="button" className="button secondary" disabled={gravando} onClick={fecharPendencia}>
                 Cancelar
               </button>
               <button
                 className="button primary"
-                disabled={salvandoPendencia || !pendenciaClienteId || !pendenciaCompetencia}
+                disabled={gravando || !pendenciaClienteId || !pendenciaCompetencia}
               >
                 {salvandoPendencia ? "Criando..." : "Criar pendência"}
               </button>

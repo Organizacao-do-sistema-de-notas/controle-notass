@@ -40,6 +40,7 @@ export function RootApp() {
   const [revisaoCadastros, setRevisaoCadastros] = useState(0);
   const botaoCadastros = useRef<HTMLButtonElement>(null);
   const [pendenciasExcel, setPendenciasExcel] = useState({ gravando: false, rascunhos: false });
+  const [pendenciasPainel, setPendenciasPainel] = useState({ gravando: false, rascunhos: false });
   const [modo, setModo] = useState<ModoTela>(() => {
     return localStorage.getItem("controle-notas-modo") === "excel" ? "excel" : "painel";
   });
@@ -50,9 +51,11 @@ export function RootApp() {
   const mesesDisponiveis = useMemo(() => gerarMeses(competenciaExcel), [competenciaExcel]);
 
   function trocarModo(novoModo: ModoTela) {
-    if (modo === "excel" && novoModo !== "excel") {
-      if (pendenciasExcel.gravando) return;
-      if (pendenciasExcel.rascunhos && !window.confirm("Há alterações ainda não salvas no Excel. Deseja sair e descartar os rascunhos?")) return;
+    if (novoModo !== modo) {
+      const pendencias = modo === "excel" ? pendenciasExcel : pendenciasPainel;
+      const nome = modo === "excel" ? "Excel" : "Painel";
+      if (pendencias.gravando) return;
+      if (pendencias.rascunhos && !window.confirm(`Há alterações ainda não salvas no ${nome}. Deseja sair e descartar os rascunhos?`)) return;
     }
     setModo(novoModo);
     localStorage.setItem("controle-notas-modo", novoModo);
@@ -107,6 +110,7 @@ export function RootApp() {
               <button
                 type="button"
                 className={modo === "excel" ? "mode-button active" : "mode-button"}
+                disabled={modo === "painel" && pendenciasPainel.gravando}
                 onClick={() => trocarModo("excel")}
               >
                 Excel
@@ -117,7 +121,7 @@ export function RootApp() {
         </div>
       </nav>
 
-      {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} /> : <ExcelViewV2 competencia={competenciaExcel} aoPendenciasAlteradas={setPendenciasExcel} />}
+      {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} aoPendenciasAlteradas={setPendenciasPainel} /> : <ExcelViewV2 competencia={competenciaExcel} aoPendenciasAlteradas={setPendenciasExcel} />}
       {cadastroAberto && <Cadastros abaInicial={cadastroAberto}
         aoFechar={() => {
           setCadastroAberto(null);

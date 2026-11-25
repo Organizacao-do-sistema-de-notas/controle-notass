@@ -14,6 +14,13 @@ de exclusão nas duas visualizações, preservando históricos. Os testes focado
 estão registrados em [EXCLUSAO_CLIENTES.md](EXCLUSAO_CLIENTES.md); a suíte completa
 e os testes no Windows continuam pendentes. Esta branch também não foi publicada.
 
+A revisão local atual está na branch `feature/protecao-formularios-painel`,
+baseada no commit `1ec9820`, e inclui todas as alterações acima. Ela protege
+cadastros e mensagens do Painel contra descarte acidental e fechamento durante
+gravação. Os seis cenários com API simulada passaram; resultados e próximo lote
+estão em [REVISAO_FORMULARIOS_PAINEL.md](REVISAO_FORMULARIOS_PAINEL.md).
+Nenhuma dessas revisões locais deve ser publicada sem nova autorização.
+
 ## Escopo da versão básica
 
 | Fluxo | O que conferir |
@@ -77,6 +84,10 @@ no notebook e no computador principal ainda depende do retorno do usuário.
     nome antes de confirmar. Cancelar deve mantê-lo. Confirmar deve retirá-lo das
     listas e totais nas duas visualizações. Testar também uma falha de conexão
     e uma observação pendente no outro computador, conforme o relatório da exclusão.
+13. No Painel, digitar nos formulários de novo cliente, contabilidade, pendência
+    e mensagem. Recusar o descarte pelo X, Escape ou recarga deve preservar o
+    texto. Durante gravação, conferir bloqueio de fechamento e de troca para o
+    Excel. Falha deve mostrar o erro na janela e permitir uma nova tentativa.
 
 Se um navegador ainda tiver registros antigos, seguir a importação explícita em
 [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md), guardando os originais e
