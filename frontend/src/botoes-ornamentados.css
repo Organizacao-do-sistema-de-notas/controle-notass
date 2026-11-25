@@ -1,5 +1,5 @@
 /* Uma linha contínua e encaixes nos cantos; o centro do SVG é transparente. */
-#root button:not(.priority-toggle) {
+#root button:not(.priority-toggle, .excel-toolbar-button) {
   border: 1px solid transparent;
   border-radius: 0;
   border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 9px) / 2px stretch;
@@ -16,9 +16,15 @@
   --largura-moldura: 5.5px;
 }
 
-#root .excel-status-option,
 #root .cadastros-menu-opcoes button {
   --largura-moldura: 6.5px;
+}
+
+/* Os status mantêm só uma moldura mínima, sem alterar a cor ou o texto. */
+#root button.excel-status-trigger,
+#root button.excel-status-option {
+  --largura-moldura: 3px;
+  border-image-outset: 0;
 }
 
 /* Painel e Excel compartilham a moldura e a junção do divisor central. */
