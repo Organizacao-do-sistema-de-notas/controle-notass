@@ -2,14 +2,14 @@
   <defs>
     <g id="canto" fill="none" stroke-linejoin="miter">
       <path id="encaixe" d="M2 9V3H8L12 7V12L7 17H3V13H7L16 4V1 M1 16H4L13 7H18V8H24 M14 11L10 15V20H8V24"/>
-      <use href="#encaixe" stroke="#252936" stroke-width="3.5"/>
-      <use href="#encaixe" stroke="#b8bdca" stroke-width="1.5"/>
+      <use href="#encaixe" stroke="#9aa9bf" stroke-width="3.5"/>
+      <use href="#encaixe" stroke="#e3e9f1" stroke-width="1.5"/>
     </g>
   </defs>
   <g fill="none">
     <path id="linha" d="M24 8H72 M88 24V72 M72 88H24 M8 72V24"/>
-    <use href="#linha" stroke="#252936" stroke-width="3.5"/>
-    <use href="#linha" stroke="#b8bdca" stroke-width="1.5"/>
+    <use href="#linha" stroke="#9aa9bf" stroke-width="3.5"/>
+    <use href="#linha" stroke="#e3e9f1" stroke-width="1.5"/>
   </g>
   <use href="#canto"/>
   <use href="#canto" transform="translate(96 0) scale(-1 1)"/>
