@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { RootApp } from "./RootApp";
 import "./styles.css";
 import "./excel-view.css";
+import "./botoes-ornamentados.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -1,0 +1,50 @@
+/* Nine-slice framing preserves the corner ornaments on wide and small buttons.
+   Only the one-pixel border occupies layout space; the SVG center is transparent.
+   The priority toggle remains part of its containing card. */
+#root button:not(.priority-toggle) {
+  border: 1px solid transparent;
+  border-radius: 0;
+  border-image: url("./assets/moldura-botao.svg") 16 / var(--largura-moldura, 10px) / 2px stretch;
+  background-clip: padding-box;
+  clip-path: none;
+}
+
+#root .cliente-info-botao,
+#root .cadastros-menu-botao,
+#root .excel-modal-close,
+#root .close-button,
+#root button[aria-label^="Fechar"],
+#root button[aria-label^="Limpar"] {
+  --largura-moldura: 5px;
+}
+
+#root .excel-status-option,
+#root .cadastros-menu-opcoes button {
+  --largura-moldura: 6px;
+}
+
+/* Text actions and tabs need room for the corners, like the other buttons. */
+#root .cadastros-link { padding: 5px 10px; }
+#root .cadastros-abas button { padding-inline: 12px; }
+
+#root .cliente-info-salvar {
+  background: linear-gradient(#237b46, #175d34);
+  color: #fff;
+}
+
+#root .cliente-info-salvar::before,
+#root .cliente-info-salvar::after { display: none; }
+
+#root button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+}
+
+@media (forced-colors: active) {
+  #root button:not(.priority-toggle) {
+    border-image: none;
+    border-color: ButtonText;
+    background-image: none;
+  }
+  #root button:focus-visible { outline-color: Highlight; }
+}
