@@ -2,7 +2,7 @@
 #root button:not(.priority-toggle) {
   border: 1px solid transparent;
   border-radius: 0;
-  border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 10px) / 2px stretch;
+  border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 9px) / 2px stretch;
   background-clip: padding-box;
   clip-path: none;
 }
@@ -13,12 +13,12 @@
 #root .close-button,
 #root button[aria-label^="Fechar"],
 #root button[aria-label^="Limpar"] {
-  --largura-moldura: 6px;
+  --largura-moldura: 5.5px;
 }
 
 #root .excel-status-option,
 #root .cadastros-menu-opcoes button {
-  --largura-moldura: 7px;
+  --largura-moldura: 6.5px;
 }
 
 /* Painel e Excel compartilham a moldura e a junção do divisor central. */
@@ -35,22 +35,22 @@
   inset: 0;
   z-index: 2;
   border: 1px solid transparent;
-  border-image: url("./assets/moldura-botao.svg") 24 / 10px / 2px stretch;
+  border-image: url("./assets/moldura-botao.svg") 24 / 9px / 2px stretch;
   pointer-events: none;
 }
 
 #root .mode-switcher-segmented::after {
   content: "";
   position: absolute;
-  top: -4.5px;
-  bottom: -4.5px;
+  top: -4.25px;
+  bottom: -4.25px;
   left: 50%;
   z-index: 3;
-  width: 10px;
+  width: 9px;
   transform: translateX(-50%);
   background:
-    url("./assets/juncao-moldura.svg") center top / 10px 12px no-repeat,
-    url("./assets/juncao-moldura.svg") center bottom / 10px 12px no-repeat;
+    url("./assets/juncao-moldura.svg") center top / 9px 10.5px no-repeat,
+    url("./assets/juncao-moldura.svg") center bottom / 9px 10.5px no-repeat;
   pointer-events: none;
 }
 
@@ -64,11 +64,11 @@
 #root .mode-switcher-segmented > .mode-button + .mode-button::before {
   content: "";
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 6.5px;
+  bottom: 6.5px;
   left: -1px;
   width: 1px;
-  background: #c3cedd;
+  background: #b3c1d3;
   pointer-events: none;
 }
 
