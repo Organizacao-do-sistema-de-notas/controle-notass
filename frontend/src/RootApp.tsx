@@ -52,7 +52,7 @@ export function RootApp() {
   function trocarModo(novoModo: ModoTela) {
     if (modo === "excel" && novoModo !== "excel") {
       if (pendenciasExcel.gravando) return;
-      if (pendenciasExcel.rascunhos && !window.confirm("Há observações ainda não salvas. Deseja sair e descartar o texto pendente?")) return;
+      if (pendenciasExcel.rascunhos && !window.confirm("Há alterações ainda não salvas no Excel. Deseja sair e descartar os rascunhos?")) return;
     }
     setModo(novoModo);
     localStorage.setItem("controle-notas-modo", novoModo);

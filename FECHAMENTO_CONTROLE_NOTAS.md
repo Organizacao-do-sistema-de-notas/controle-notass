@@ -3,6 +3,12 @@
 A prioridade atual é concluir e validar o controle de notas. Base de conhecimento,
 integrações de IA e automação de instalações ficam para uma etapa futura.
 
+Em 25/11/2026, o cadastro único foi publicado na branch
+`feature/cadastro-unico-clientes`, commit `61e230a`. A revisão seguinte dos
+rascunhos de formulários está somente na branch local
+`feature/revisao-formularios-basicos`, sem publicação, e aguarda o próximo lote
+de testes. Veja [REVISAO_FORMULARIOS_BASICOS.md](REVISAO_FORMULARIOS_BASICOS.md).
+
 ## Escopo da versão básica
 
 | Fluxo | O que conferir |

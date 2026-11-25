@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
 import { InformacoesCliente } from "./InformacoesCliente";
@@ -61,6 +61,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [prioridadeAberta, setPrioridadeAberta] = useState(false);
   const [modalCliente, setModalCliente] = useState<"incluir" | "alterar" | null>(null);
   const [modalAviso, setModalAviso] = useState<"incluir" | "alterar" | null>(null);
+  const formularioRef = useRef<HTMLElement>(null);
 
   const [novoCliente, setNovoCliente] = useState("");
   const [novasInformacoes, setNovasInformacoes] = useState("");
@@ -76,6 +77,22 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [avisoSelecionado, setAvisoSelecionado] = useState("");
   const [avisoAlteradoTitulo, setAvisoAlteradoTitulo] = useState("");
   const [avisoAlteradoTexto, setAvisoAlteradoTexto] = useState("");
+
+  const clienteComRascunho = modalCliente === "incluir"
+    ? Boolean(novoCliente || novosNomesBusca || novasInformacoes)
+    : modalCliente === "alterar" && (
+      clienteAlteradoNome !== baseFormulario.nome
+      || clienteAlteradoNomesBusca !== baseFormulario.apelidos.join("\n")
+      || clienteAlteradoInformacoes !== baseFormulario.informacoes
+    );
+  const avisoComRascunho = modalAviso === "incluir"
+    ? Boolean(novoAvisoTitulo || novoAvisoTexto)
+    : modalAviso === "alterar" && (
+      avisoAlteradoTitulo !== (baseAviso?.titulo ?? "")
+      || avisoAlteradoTexto !== (baseAviso?.texto ?? "")
+    );
+  const temRascunhos = observacoes.pendente || clienteComRascunho || avisoComRascunho;
+  const formularioAberto = modalCliente !== null || modalAviso !== null;
 
   const clientes = clientesExtras;
 
@@ -96,14 +113,58 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   useEffect(() => {
     setStatusAberto(null);
   }, [competencia]);
-  useEffect(() => { aoPendenciasAlteradas?.({ gravando: ocupado, rascunhos: observacoes.pendente }); }, [ocupado, observacoes.pendente, aoPendenciasAlteradas]);
+  useEffect(() => { aoPendenciasAlteradas?.({ gravando: ocupado, rascunhos: temRascunhos }); }, [ocupado, temRascunhos, aoPendenciasAlteradas]);
   useEffect(() => () => { aoPendenciasAlteradas?.({ gravando: false, rascunhos: false }); }, [aoPendenciasAlteradas]);
   useEffect(() => {
-    if (!ocupado && !observacoes.pendente) return;
+    if (!ocupado && !temRascunhos) return;
     const proteger = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
     window.addEventListener("beforeunload", proteger);
     return () => window.removeEventListener("beforeunload", proteger);
-  }, [ocupado, observacoes.pendente]);
+  }, [ocupado, temRascunhos]);
+  useEffect(() => {
+    if (!formularioAberto) return;
+    const anterior = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    formularioRef.current?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")?.focus();
+    return () => {
+      document.body.style.overflow = overflow;
+      if (anterior instanceof HTMLElement && anterior.isConnected) anterior.focus();
+    };
+  }, [formularioAberto]);
+  useEffect(() => {
+    if (formularioAberto && (ocupado || !disponivel)) formularioRef.current?.focus();
+  }, [formularioAberto, ocupado, disponivel]);
+
+  function fecharFormularioCliente() {
+    if (ocupado || (clienteComRascunho && !window.confirm("Descartar as alterações não salvas deste cliente?"))) return;
+    setModalCliente(null);
+    setNovoCliente(""); setNovosNomesBusca(""); setNovasInformacoes(""); setErroCliente("");
+  }
+
+  function fecharFormularioAviso() {
+    if (ocupado || (avisoComRascunho && !window.confirm("Descartar as alterações não salvas deste aviso?"))) return;
+    setModalAviso(null);
+    setNovoAvisoTitulo(""); setNovoAvisoTexto(""); setErroAviso("");
+  }
+
+  function tecladoFormulario(evento: KeyboardEvent<HTMLElement>, fechar: () => void) {
+    if (evento.key === "Escape") {
+      evento.preventDefault(); evento.stopPropagation(); fechar();
+    }
+    if (evento.key !== "Tab") return;
+    const elementos = Array.from(evento.currentTarget.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)",
+    ));
+    const primeiro = elementos[0];
+    const ultimo = elementos[elementos.length - 1];
+    if (!primeiro) { evento.preventDefault(); evento.currentTarget.focus(); }
+    else if (evento.shiftKey && (document.activeElement === primeiro || document.activeElement === evento.currentTarget)) {
+      evento.preventDefault(); ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+      evento.preventDefault(); primeiro.focus();
+    }
+  }
 
   function nomeExibido(chave: string) {
     return nomesAlterados[chave] || chave;
@@ -162,6 +223,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   }
 
   function trocarClienteSelecionado(chave: string) {
+    if (chave === clienteSelecionado || ocupado) return;
+    if (clienteComRascunho && !window.confirm("Descartar as alterações não salvas antes de selecionar outro cliente?")) return;
     setClienteSelecionado(chave);
     setClienteAlteradoNome(nomeExibido(chave));
     setClienteAlteradoNomesBusca((nomesBusca[chave] || []).join("\n"));
@@ -208,6 +271,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   }
 
   function trocarAvisoSelecionado(id: string) {
+    if (id === avisoSelecionado || ocupado) return;
+    if (avisoComRascunho && !window.confirm("Descartar as alterações não salvas antes de selecionar outro aviso?")) return;
     const aviso = avisosExtras.find((item) => item.id === id);
     setAvisoSelecionado(id);
     setAvisoAlteradoTitulo(aviso?.titulo ?? "");
@@ -421,14 +486,16 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       </main>
 
       {modalCliente === "incluir" && (
-        <div className="excel-modal-backdrop" onMouseDown={() => { if (!ocupado) setModalCliente(null); }}>
-          <section className="excel-modal excel-modal-clientes" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="excel-modal-backdrop" onMouseDown={fecharFormularioCliente}>
+          <section ref={formularioRef} className="excel-modal excel-modal-clientes" role="dialog" aria-modal="true"
+            aria-labelledby="excel-incluir-cliente" aria-busy={ocupado} tabIndex={-1}
+            onKeyDown={(evento) => tecladoFormulario(evento, fecharFormularioCliente)} onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
-              <div><span className="excel-eyebrow">Novo cliente</span><h2>Incluir cliente</h2></div>
-              <button className="excel-modal-close" disabled={ocupado} onClick={() => setModalCliente(null)}>×</button>
+              <div><span className="excel-eyebrow">Novo cliente</span><h2 id="excel-incluir-cliente">Incluir cliente</h2></div>
+              <button className="excel-modal-close" aria-label="Fechar formulário de cliente" disabled={ocupado} onClick={fecharFormularioCliente}>×</button>
             </div>
             <fieldset className="excel-form-group" disabled={ocupado || !disponivel}>
-            <label className="excel-form-field"><span>Nome principal</span><input value={novoCliente} onChange={(event) => setNovoCliente(event.target.value)} placeholder="Ex.: Mercado Central" autoFocus /></label>
+            <label className="excel-form-field"><span>Nome principal</span><input value={novoCliente} onChange={(event) => setNovoCliente(event.target.value)} placeholder="Ex.: Mercado Central" /></label>
             <label className="excel-form-field">
               <span>Outros nomes para pesquisa</span>
               <textarea rows={4} value={novosNomesBusca} onChange={(event) => setNovosNomesBusca(event.target.value)} placeholder={"Um nome por linha. Ex.:\nRazão Social Ltda\nMercado do João\nCentral Alimentos"} />
@@ -441,7 +508,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             </fieldset>
             {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
-              <button className="excel-action-button" disabled={ocupado} onClick={() => setModalCliente(null)}>Cancelar</button>
+              <button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioCliente}>Cancelar</button>
               <button className="excel-action-button primary" onClick={() => void incluirCliente()} disabled={!novoCliente.trim() || ocupado || !disponivel}>{ocupado ? "Salvando..." : "Incluir"}</button>
             </div>
           </section>
@@ -449,11 +516,13 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       )}
 
       {modalCliente === "alterar" && (
-        <div className="excel-modal-backdrop" onMouseDown={() => { if (!ocupado) setModalCliente(null); }}>
-          <section className="excel-modal excel-modal-clientes" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="excel-modal-backdrop" onMouseDown={fecharFormularioCliente}>
+          <section ref={formularioRef} className="excel-modal excel-modal-clientes" role="dialog" aria-modal="true"
+            aria-labelledby="excel-alterar-cliente" aria-busy={ocupado} tabIndex={-1}
+            onKeyDown={(evento) => tecladoFormulario(evento, fecharFormularioCliente)} onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
-              <div><span className="excel-eyebrow">Cadastro de cliente</span><h2>Alterar cliente</h2></div>
-              <button className="excel-modal-close" disabled={ocupado} onClick={() => setModalCliente(null)}>×</button>
+              <div><span className="excel-eyebrow">Cadastro de cliente</span><h2 id="excel-alterar-cliente">Alterar cliente</h2></div>
+              <button className="excel-modal-close" aria-label="Fechar formulário de cliente" disabled={ocupado} onClick={fecharFormularioCliente}>×</button>
             </div>
             <fieldset className="excel-form-group" disabled={ocupado || !disponivel}>
             <label className="excel-form-field">
@@ -475,7 +544,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             </fieldset>
             {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
-              <button className="excel-action-button" disabled={ocupado} onClick={() => setModalCliente(null)}>Cancelar</button>
+              <button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioCliente}>Cancelar</button>
               <button className="excel-action-button primary" onClick={() => void salvarAlteracaoCliente()} disabled={!clienteAlteradoNome.trim() || ocupado || !disponivel}>{ocupado ? "Salvando..." : "Salvar alteração"}</button>
             </div>
           </section>
@@ -483,30 +552,34 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       )}
 
       {modalAviso === "incluir" && (
-        <div className="excel-modal-backdrop" onMouseDown={() => { if (!ocupado) setModalAviso(null); }}>
-          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="excel-modal-heading"><div><span className="excel-eyebrow">Novo aviso</span><h2>Incluir aviso fixo</h2></div><button className="excel-modal-close" disabled={ocupado} onClick={() => setModalAviso(null)}>×</button></div>
+        <div className="excel-modal-backdrop" onMouseDown={fecharFormularioAviso}>
+          <section ref={formularioRef} className="excel-modal" role="dialog" aria-modal="true"
+            aria-labelledby="excel-incluir-aviso" aria-busy={ocupado} tabIndex={-1}
+            onKeyDown={(evento) => tecladoFormulario(evento, fecharFormularioAviso)} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="excel-modal-heading"><div><span className="excel-eyebrow">Novo aviso</span><h2 id="excel-incluir-aviso">Incluir aviso fixo</h2></div><button className="excel-modal-close" aria-label="Fechar formulário de aviso" disabled={ocupado} onClick={fecharFormularioAviso}>×</button></div>
             <fieldset className="excel-form-group" disabled={ocupado || !disponivel}>
-            <label className="excel-form-field"><span>Título</span><input value={novoAvisoTitulo} onChange={(event) => setNovoAvisoTitulo(event.target.value)} placeholder="Ex.: Envio manual" autoFocus /></label>
+            <label className="excel-form-field"><span>Título</span><input value={novoAvisoTitulo} onChange={(event) => setNovoAvisoTitulo(event.target.value)} placeholder="Ex.: Envio manual" /></label>
             <label className="excel-form-field"><span>Aviso</span><textarea rows={5} value={novoAvisoTexto} onChange={(event) => setNovoAvisoTexto(event.target.value)} placeholder="Digite a informação que deve ficar sempre visível..." /></label>
             </fieldset>
             {erroAviso && <p role="alert" className="excel-cliente-erro">{erroAviso}</p>}
-            <div className="excel-modal-actions"><button className="excel-action-button" disabled={ocupado} onClick={() => setModalAviso(null)}>Cancelar</button><button className="excel-action-button primary" onClick={() => void incluirAviso()} disabled={!novoAvisoTitulo.trim() || !novoAvisoTexto.trim() || ocupado || !disponivel}>Incluir aviso</button></div>
+            <div className="excel-modal-actions"><button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioAviso}>Cancelar</button><button className="excel-action-button primary" onClick={() => void incluirAviso()} disabled={!novoAvisoTitulo.trim() || !novoAvisoTexto.trim() || ocupado || !disponivel}>Incluir aviso</button></div>
           </section>
         </div>
       )}
 
       {modalAviso === "alterar" && (
-        <div className="excel-modal-backdrop" onMouseDown={() => { if (!ocupado) setModalAviso(null); }}>
-          <section className="excel-modal" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="excel-modal-heading"><div><span className="excel-eyebrow">Avisos extras</span><h2>Alterar aviso</h2></div><button className="excel-modal-close" disabled={ocupado} onClick={() => setModalAviso(null)}>×</button></div>
+        <div className="excel-modal-backdrop" onMouseDown={fecharFormularioAviso}>
+          <section ref={formularioRef} className="excel-modal" role="dialog" aria-modal="true"
+            aria-labelledby="excel-alterar-aviso" aria-busy={ocupado} tabIndex={-1}
+            onKeyDown={(evento) => tecladoFormulario(evento, fecharFormularioAviso)} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="excel-modal-heading"><div><span className="excel-eyebrow">Avisos extras</span><h2 id="excel-alterar-aviso">Alterar aviso</h2></div><button className="excel-modal-close" aria-label="Fechar formulário de aviso" disabled={ocupado} onClick={fecharFormularioAviso}>×</button></div>
             <fieldset className="excel-form-group" disabled={ocupado || !disponivel}>
             <label className="excel-form-field"><span>Aviso</span><select value={avisoSelecionado} onChange={(event) => trocarAvisoSelecionado(event.target.value)}>{avisosExtras.map((aviso) => <option key={aviso.id} value={aviso.id}>{aviso.titulo}</option>)}</select></label>
             <label className="excel-form-field"><span>Título</span><input value={avisoAlteradoTitulo} onChange={(event) => setAvisoAlteradoTitulo(event.target.value)} /></label>
             <label className="excel-form-field"><span>Aviso</span><textarea rows={5} value={avisoAlteradoTexto} onChange={(event) => setAvisoAlteradoTexto(event.target.value)} /></label>
             </fieldset>
             {erroAviso && <p role="alert" className="excel-cliente-erro">{erroAviso}</p>}
-            <div className="excel-modal-actions"><button className="excel-action-button" disabled={ocupado} onClick={() => setModalAviso(null)}>Cancelar</button><button className="excel-action-button primary" onClick={() => void salvarAlteracaoAviso()} disabled={!avisoAlteradoTitulo.trim() || !avisoAlteradoTexto.trim() || ocupado || !disponivel}>Salvar alteração</button></div>
+            <div className="excel-modal-actions"><button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioAviso}>Cancelar</button><button className="excel-action-button primary" onClick={() => void salvarAlteracaoAviso()} disabled={!avisoAlteradoTitulo.trim() || !avisoAlteradoTexto.trim() || ocupado || !disponivel}>Salvar alteração</button></div>
           </section>
         </div>
       )}
