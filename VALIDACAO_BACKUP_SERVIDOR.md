@@ -1,5 +1,40 @@
 # Validação — backup do servidor
 
+## Correção de compatibilidade com Windows PowerShell — 26/11/2026
+
+O usuário relatou que a atualização Windows recusou o banco durante o backup,
+antes das migrações. A consulta antiga foi executada com o modo de argumentos
+nativos `Legacy` do PowerShell 7.4.13, em Linux: as aspas duplas dos identificadores
+foram removidas e um banco válido retornou exatamente a mesma recusa.
+
+A consulta agora usa `format('%I', ...)` no PostgreSQL para preservar os nomes
+das tabelas. Permanecem as verificações do daemon local, projeto, volume,
+DATABASE_URL, banco, PostgreSQL 17 e presença das três tabelas base. Em caso de
+recusa, a mensagem informa banco, versão principal e tabelas ausentes, sem senha.
+
+Comando: `python3 scripts/testar-backup-servidor.py`, com Docker local,
+PostgreSQL 17 e PowerShell 7.4.13. Resultado: **9 testes aprovados**. Incluem:
+
+- Backup e restauração em outro banco fictício, com quantidades e hashes iguais
+  nas 11 tabelas; preservação da configuração e dos backups anteriores.
+- Backup bem-sucedido no modo nativo `Legacy`, que falhava com a consulta antiga.
+- Recusa quando cada uma das três tabelas base está ausente, também em `Legacy`;
+  nenhum backup é marcado como concluído e a mensagem identifica a tabela.
+- Recusas por URL externa, configuração ausente, banco parado, destino no código
+  e tentativa de empacotar backup privado, além da falha simulada de cópia.
+
+Os testes criaram projetos Docker novos e usaram somente registros fictícios.
+A simulação de tabelas ausentes renomeou e devolveu os nomes apenas no banco
+isolado de teste, conferindo a preservação dos registros após cada caso. Os
+containers foram encerrados; volumes e diagnósticos fictícios foram preservados.
+Também passaram o parser PowerShell, a sintaxe Python e `git diff --check`.
+
+Não houve mudanças em frontend, backend, schema ou migrações. O PowerShell 5.1
+e o Docker Desktop físicos do usuário ainda precisam confirmar a execução;
+o modo `Legacy` reproduziu o problema e validou a correção neste ambiente Linux.
+
+## Validação original
+
 Data: 18/11/2026. Branch: `feature/backup-servidor`.
 Base: `feature/excel-compartilhado`, commit `0d593a7`.
 

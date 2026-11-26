@@ -77,11 +77,28 @@ try {
     $volumeInfo = @(((Invoke-Docker -DockerArguments @('volume', 'inspect', $volume.name)) -join "`n") | ConvertFrom-Json)[0]
     if ($volumeInfo.Labels.'com.docker.compose.project' -ne $projectName) { throw 'O volume nao pertence ao projeto local.' }
     $connection = @('-h', '/var/run/postgresql', '-p', '5432', '-U', 'controle_notas', '-d', 'controle_notas')
+    # Build quoted SQL identifiers on PostgreSQL: Windows PowerShell 5.1 removes
+    # embedded double quotes when passing native command arguments to docker.exe.
     $sql = @'
-SELECT jsonb_build_object('banco', current_database(), 'instancia', (SELECT system_identifier::text FROM pg_control_system()), 'postgresMajor', current_setting('server_version_num')::int / 10000, 'aplicacao', to_regclass('public."Cliente"') IS NOT NULL AND to_regclass('public."Contabilidade"') IS NOT NULL AND to_regclass('public."_prisma_migrations"') IS NOT NULL);
+WITH tabelas AS (
+    SELECT nome, to_regclass(format('public.%I', nome)) AS relacao
+    FROM (VALUES ('Cliente'), ('Contabilidade'), ('_prisma_migrations')) AS esperadas(nome)
+)
+SELECT jsonb_build_object(
+    'banco', current_database(),
+    'instancia', (SELECT system_identifier::text FROM pg_control_system()),
+    'postgresMajor', current_setting('server_version_num')::int / 10000,
+    'aplicacao', bool_and(relacao IS NOT NULL),
+    'tabelasAusentes', COALESCE(jsonb_agg(nome) FILTER (WHERE relacao IS NULL), '[]'::jsonb)
+)
+FROM tabelas;
 '@
     $state = ((Invoke-Docker -DockerArguments (@('exec', $ContainerId, 'psql') + $connection + @('-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-c', $sql))) -join "`n") | ConvertFrom-Json
-    if ($state.banco -ne 'controle_notas' -or $state.postgresMajor -ne 17 -or !$state.aplicacao) { throw 'Banco nao reconhecido como uma instalacao local do Controle de Notas.' }
+    if ($state.banco -ne 'controle_notas' -or $state.postgresMajor -ne 17 -or !$state.aplicacao) {
+        $missingTables = @($state.tabelasAusentes) -join ', '
+        if (!$missingTables) { $missingTables = 'nenhuma' }
+        throw ('Banco nao reconhecido como uma instalacao local do Controle de Notas. Banco: {0}; PostgreSQL: {1}; tabelas ausentes: {2}.' -f $state.banco, $state.postgresMajor, $missingTables)
+    }
 
     $defaultDestination = Join-Path $ProjectRoot 'backups'
     if (!$Destino) { $Destino = $defaultDestination }

@@ -30,6 +30,8 @@ class BackupServidor(unittest.TestCase):
             target = cls.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
+        cls.legacy_launcher = cls.workspace / 'backup-legacy.ps1'
+        cls.legacy_launcher.write_text("$PSNativeCommandArgumentPassing = 'Legacy'\n& (Join-Path $PSScriptRoot 'projeto/scripts/Backup-Banco.ps1') @args\nexit $LASTEXITCODE\n")
         cls.env_file = cls.root / '.env.docker'
         cls.env_file.write_text('POSTGRES_PASSWORD=' + cls.password + '\nCOMPOSE_PROJECT_NAME=' + cls.project + '\n')
         cls.env_file.chmod(0o600)
@@ -74,11 +76,12 @@ INSERT INTO "ExcelCompartilhado"(id, instancia, dados) VALUES ('principal', 'ins
     def snapshot(cls, database='controle_notas'):
         return json.loads(cls.sql((ROOT / 'scripts/windows/validar-dados.sql').read_text(), database))['tabelas']
 
-    def backup(self, *args, env=None):
+    def backup(self, *args, env=None, legacy=False):
         variables = os.environ.copy()
         variables.update({'DOCKER_HOST': 'tcp://invalid.example:2375', 'COMPOSE_PROJECT_NAME': 'projeto-errado'})
         variables.update(env or {})
-        result = subprocess.run(['bash', str(self.root / 'BACKUP-LINUX.sh'), *args], cwd=self.workspace, env=variables, text=True, capture_output=True)
+        command = [PWSH, '-NoLogo', '-NoProfile', '-File', str(self.legacy_launcher)] if legacy else ['bash', str(self.root / 'BACKUP-LINUX.sh')]
+        result = subprocess.run([*command, *args], cwd=self.workspace, env=variables, text=True, capture_output=True)
         self.assertNotIn(self.password, result.stdout + result.stderr)
         return result
 
@@ -116,6 +119,30 @@ INSERT INTO "ExcelCompartilhado"(id, instancia, dados) VALUES ('principal', 'ins
         self.assertEqual(self.snapshot(), self.original)
         leftovers = subprocess.check_output(self.cli + ['exec', self.container, 'find', '/tmp', '-maxdepth', '1', '-name', 'controle-notas-*'])
         self.assertFalse(leftovers.strip())
+
+    def test_01b_argumentos_nativos_legacy(self):
+        # Legacy reproduces the native argument handling of Windows PowerShell 5.1.
+        result = self.backup(legacy=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('Backup concluido:', result.stdout)
+        self.assertEqual(self.snapshot(), self.original)
+
+    def test_01c_tabela_base_ausente_recusada(self):
+        # Only reversible DDL in this newly created, synthetic test database.
+        for table in ['Cliente', 'Contabilidade', '_prisma_migrations']:
+            with self.subTest(tabela=table):
+                completed = sorted((self.root / 'backups').glob('*/backup.json'))
+                temporary = 'tabela_teste_' + secrets.token_hex(6)
+                self.sql(f'ALTER TABLE "{table}" RENAME TO {temporary};')
+                try:
+                    result = self.backup(legacy=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('Banco nao reconhecido', result.stdout)
+                    self.assertIn(table, result.stdout)
+                    self.assertEqual(sorted((self.root / 'backups').glob('*/backup.json')), completed)
+                finally:
+                    self.sql(f'ALTER TABLE {temporary} RENAME TO "{table}";')
+                self.assertEqual(self.snapshot(), self.original)
 
     def test_02_falha_na_copia_nao_conclui_nem_substitui_backup(self):
         tools = self.workspace / 'ferramentas'; tools.mkdir()

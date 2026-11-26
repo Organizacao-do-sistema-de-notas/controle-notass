@@ -52,3 +52,17 @@ pelo Git. Se houver erro, conservar a saída para diagnóstico.
 O atualizador atende também a clones com uma única branch, buscando a referência
 explicitamente e usando fast-forward. A main não participa da atualização.
 A instalação física no Windows ainda depende da execução pelo usuário.
+
+## Interrupção na identificação do banco
+
+A consulta do backup foi corrigida em 26/11/2026 para o tratamento de argumentos
+do Windows PowerShell 5.1. As aspas dos nomes das tabelas agora são construídas
+no PostgreSQL; antes, o PowerShell podia removê-las e fazer uma instalação válida
+ser recusada como banco desconhecido.
+
+Se a atualização anterior parou nessa verificação, as migrações não foram
+executadas e o backend e frontend permanecem parados. Execute novamente o bloco
+acima para buscar a correção e refazer o backup, usando o mesmo banco e volume.
+Se a recusa persistir, a mensagem agora informa banco, versão principal do
+PostgreSQL e tabelas ausentes, sem mostrar credenciais. Preserve essa saída para
+diagnóstico antes de qualquer migração; não recrie o banco nem remova volumes.

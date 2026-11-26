@@ -19,6 +19,13 @@ dos botões. A atualização da instalação Windows existente está em
 O teste físico desse ajuste no Windows continua pendente. Novas alterações
 seguem sem publicação automática.
 
+Em 26/11/2026, a atualização Windows foi interrompida na identificação do banco,
+antes das migrações. A consulta do backup foi corrigida para os argumentos
+nativos do Windows PowerShell; nove testes de backup passaram, incluindo o modo
+`Legacy` e a recusa de tabelas ausentes. A retomada no Windows e seus resultados
+ainda precisam de confirmação do usuário. Detalhes em
+[VALIDACAO_BACKUP_SERVIDOR.md](VALIDACAO_BACKUP_SERVIDOR.md).
+
 Relatórios de implementação: [cadastro único](VALIDACAO_CADASTRO_UNICO.md),
 [formulários do Excel](REVISAO_FORMULARIOS_BASICOS.md),
 [exclusão](EXCLUSAO_CLIENTES.md) e [formulários do Painel](REVISAO_FORMULARIOS_PAINEL.md).
