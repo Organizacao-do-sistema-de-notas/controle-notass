@@ -2,7 +2,7 @@
 #root button:not(.priority-toggle, .excel-toolbar-button) {
   border: 1px solid transparent;
   border-radius: 0;
-  border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 9px) / 2px stretch;
+  border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 7.5px) / 1.5px stretch;
   background-clip: padding-box;
   clip-path: none;
 }
@@ -13,17 +13,17 @@
 #root .close-button,
 #root button[aria-label^="Fechar"],
 #root button[aria-label^="Limpar"] {
-  --largura-moldura: 5.5px;
+  --largura-moldura: 4.5px;
 }
 
 #root .cadastros-menu-opcoes button {
-  --largura-moldura: 6.5px;
+  --largura-moldura: 5.5px;
 }
 
 /* Os status mantêm só uma moldura mínima, sem alterar a cor ou o texto. */
 #root button.excel-status-trigger,
 #root button.excel-status-option {
-  --largura-moldura: 3px;
+  --largura-moldura: 2.5px;
   border-image-outset: 0;
 }
 
@@ -41,22 +41,22 @@
   inset: 0;
   z-index: 2;
   border: 1px solid transparent;
-  border-image: url("./assets/moldura-botao.svg") 24 / 9px / 2px stretch;
+  border-image: url("./assets/moldura-botao.svg") 24 / 7.5px / 1.5px stretch;
   pointer-events: none;
 }
 
 #root .mode-switcher-segmented::after {
   content: "";
   position: absolute;
-  top: -4.25px;
-  bottom: -4.25px;
+  top: -3.5px;
+  bottom: -3.5px;
   left: 50%;
   z-index: 3;
-  width: 9px;
+  width: 7.5px;
   transform: translateX(-50%);
   background:
-    url("./assets/juncao-moldura.svg") center top / 9px 10.5px no-repeat,
-    url("./assets/juncao-moldura.svg") center bottom / 9px 10.5px no-repeat;
+    url("./assets/juncao-moldura.svg") center top / 7.5px 8.75px no-repeat,
+    url("./assets/juncao-moldura.svg") center bottom / 7.5px 8.75px no-repeat;
   pointer-events: none;
 }
 
@@ -70,10 +70,10 @@
 #root .mode-switcher-segmented > .mode-button + .mode-button::before {
   content: "";
   position: absolute;
-  top: 6.5px;
-  bottom: 6.5px;
-  left: -1px;
-  width: 1px;
+  top: 5.5px;
+  bottom: 5.5px;
+  left: -0.625px;
+  width: 1.25px;
   background: #b3c1d3;
   pointer-events: none;
 }

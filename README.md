@@ -15,6 +15,8 @@ cliente** nas duas visualizações e proteção de formulários. Para atualizar 
 instalação Linux existente com backup, seguir
 [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md). A validação do lote está em
 [VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md).
+Para atualizar a instalação existente em `D:\Projetos\controle-notass`, usar
+[ATUALIZACAO_WINDOWS.md](ATUALIZACAO_WINDOWS.md), com backup e Docker Desktop local.
 
 Se recebeu o pacote privado com backup do Codex, siga
 [LEIA-ME-WINDOWS.md](LEIA-ME-WINDOWS.md) e execute `INICIAR-WINDOWS.bat`.

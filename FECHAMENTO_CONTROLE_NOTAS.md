@@ -12,9 +12,12 @@ preparação anterior à distribuição deste lote de testes.
 
 O procedimento com backup está em [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md).
 Resultados do lote: [VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md).
-A validação física no Linux do usuário continua pendente até ele executar os
-comandos. Alterações futuras seguem sem publicação automática.
-A prioridade de validação agora é o servidor Linux já instalado.
+O usuário confirmou em 25/11/2026 que o sistema está funcionando no Linux.
+O ajuste visual seguinte engrossa ligeiramente as linhas e reduz os ornamentos
+dos botões. A atualização da instalação Windows existente está em
+[ATUALIZACAO_WINDOWS.md](ATUALIZACAO_WINDOWS.md), preservando configuração e banco.
+O teste físico desse ajuste no Windows continua pendente. Novas alterações
+seguem sem publicação automática.
 
 Relatórios de implementação: [cadastro único](VALIDACAO_CADASTRO_UNICO.md),
 [formulários do Excel](REVISAO_FORMULARIOS_BASICOS.md),

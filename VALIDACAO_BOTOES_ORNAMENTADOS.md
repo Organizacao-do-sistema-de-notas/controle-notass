@@ -1,5 +1,39 @@
 # Validação das bordas dos botões
 
+## Ajuste de espessura e tamanho em 25/11/2026
+
+Após confirmar o sistema funcionando no Linux, o usuário pediu linhas um pouco
+mais grossas e ornamentos menores, autorizando a publicação e a atualização do
+Windows. A revisão usa a base `66221a2` e é preparada na branch
+`style/linhas-ornamentos-botoes`, para distribuição pela branch de testes
+`teste/controle-basico-linux`.
+
+A moldura padrão passa de 9 para 7,5 px; os ornamentos centrais de 9×10,5 para
+7,5×8,75 px, cerca de 17% menores. O traço das linhas do SVG passa de 3,5 para
+5 unidades, compensando a escala menor e aumentando ligeiramente a espessura
+percebida. A junção central acompanha essa espessura. Cores e desenho dos
+encaixes são preservados. Ícones e atalhos também recebem ornamentos menores;
+status mantém moldura mínima (2,5 px) e os botões azuis do Excel conservam o
+estilo original, sem moldura ornamental.
+
+`npm run build` aprovou TypeScript e Vite. A revisão no Chromium usou API simulada,
+sem banco, em 1440×950 e 390×844: junção e cantos conferidos, botões azuis sem
+moldura, status discreto, sem erros JavaScript ou rolagem horizontal no celular.
+Capturas em `/workspace/entregas/linhas-ornamentos-menores/`.
+
+A suíte completa de 95 testes foi aprovada na base `66221a2`, conforme
+[VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md). Ela não foi
+repetida para este ajuste de CSS/SVG. Não houve mudança de lógica, backend,
+schema, migrações, dependências ou lockfiles nesta revisão.
+
+O arquivo `ATUALIZAR-WINDOWS.ps1` e o guia
+[ATUALIZACAO_WINDOWS.md](ATUALIZACAO_WINDOWS.md) preparam a atualização com backup
+e Docker Desktop local. A sintaxe do script e do comando de inicialização foi
+validada com PowerShell 7.4.13 portátil, obtido da distribuição oficial com
+SHA-256 conferido. A recusa de execução fora do Windows também foi confirmada,
+antes de qualquer chamada Git/Docker. O teste físico da instalação Windows
+continua pendente; não foi executada atualização no computador do usuário.
+
 ## Correção visual posterior
 
 A revisão substitui a moldura dupla por uma linha única com encaixes nos cantos.

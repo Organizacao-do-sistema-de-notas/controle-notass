@@ -4,9 +4,9 @@
     <path id="bracos" d="M5 5V10L1 14 5 18V23 M19 5V10L23 14 19 18V23 M12 0V4 M12 24V28"/>
   </defs>
   <g fill="none" stroke-linejoin="miter">
-    <use href="#bracos" stroke="#8798af" stroke-width="3"/>
-    <use href="#centro" fill="#f8fafc" stroke="#8798af" stroke-width="3"/>
-    <use href="#bracos" stroke="#c3cedd" stroke-width="1.5"/>
-    <use href="#centro" stroke="#c3cedd" stroke-width="1.5"/>
+    <use href="#bracos" stroke="#8798af" stroke-width="4"/>
+    <use href="#centro" fill="#f8fafc" stroke="#8798af" stroke-width="4"/>
+    <use href="#bracos" stroke="#c3cedd" stroke-width="2"/>
+    <use href="#centro" stroke="#c3cedd" stroke-width="2"/>
   </g>
 </svg>

@@ -74,8 +74,10 @@ usuário. O `pwsh` nativo e o comando `BACKUP-LINUX.sh` não foram executados ne
 ensaio; a cópia e a restauração fictícias usaram diretamente as ferramentas do
 PostgreSQL 17 no container. O comando de backup existente não foi modificado.
 
-A confirmação física da atualização, dos dados e do acesso pelos computadores
-do usuário continua pendente. Seguir [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md).
+O usuário informou em 25/11/2026 que o sistema está funcionando corretamente no
+Linux. Esse retorno confirma o uso no servidor; não é um novo ensaio automatizado
+de cada item da tabela. Seguir [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md) nas
+próximas atualizações.
 Não houve merge na main. A distribuição é limitada à branch de testes pedida
 para esta atualização; novas funcionalidades continuam sem publicação automática.
 
