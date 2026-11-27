@@ -2,6 +2,8 @@ import { API_URL } from "./api";
 export type StatusExcel = "PENDENTE" | "AGUARDANDO" | "EM_ATENDIMENTO" | "OK";
 export type RegistroMensal = { status: StatusExcel; observacao: string };
 export type AvisoExtra = { id: string; titulo: string; texto: string };
+export type MercadoFixo = "Bom dia filial" | "Bom dia Matriz" | "Compre bem";
+export type StatusMercado = "PENDENTE" | "CONCLUIDO";
 export type EstadoExcel = {
   clientesExtras: string[]; nomesAlterados: Record<string, string>; nomesBusca: Record<string, string[]>;
   informacoesClientes: Record<string, string>; vinculosClientes: Record<string, number>; clientesInativos: string[]; avisosExtras: AvisoExtra[];
@@ -11,8 +13,11 @@ export type EstadoExcel = {
   ordemAvisos?: string[];
   avisosExcluidos?: AvisoExtra[];
   ordemClientesPainel?: number[];
+  controleMercados?: Record<string, Partial<Record<MercadoFixo, StatusMercado>>>;
+  clientesSomenteMercados?: number[];
 };
 export type AlteracaoExcel =
+  | { tipo: "definirMercado"; competencia: string; mercado: MercadoFixo; status: StatusMercado; anterior: StatusMercado }
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }

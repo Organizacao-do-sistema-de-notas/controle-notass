@@ -3,13 +3,13 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
 import { bloquearCliente, registrarTrocaContabilidade } from "../services/historico-contabilidade.service.ts";
-import { acessarCadastro, ExclusaoClienteRecusada, garantirCadastroUnico } from "../excel/cadastro-unico.ts";
+import { acessarCadastro, ExclusaoClienteRecusada } from "../excel/cadastro-unico.ts";
 
 export async function listarClientes(_req: Request, res: Response): Promise<void> {
   try {
-    await garantirCadastroUnico();
+    const cadastro = await acessarCadastro();
     const clientes = await prisma.cliente.findMany({
-      where: { excluidoEm: null },
+      where: { excluidoEm: null, id: { notIn: cadastro.estado.clientesSomenteMercados ?? [] } },
       include: {
         contabilidade: true,
         confere: { select: { codigo: true } },

@@ -155,3 +155,15 @@ o cadastro e a ordem manual vale em todos os meses, conforme confirmado pelo
 usuário. A atualização e validação nos computadores ainda dependem da execução
 dos atualizadores com backup. Detalhes em
 [CARTOES_E_EXCLUSOES.md](CARTOES_E_EXCLUSOES.md).
+
+## Mercados e inclusão no Painel — correção em revisão
+
+O usuário confirmou o funcionamento da última publicação e identificou dois
+erros: alternar os mercados criava clientes comuns, e incluir no Excel não
+criava a pendência no Painel. A correção está na branch
+`fix/mercados-separados-inclusao-painel`, sem publicação automática. O usuário
+autorizou deixar os mercados gerados pelo erro apenas no controle fixo,
+preservando seus cadastros e registros antigos. A inclusão mensal passa a
+contemplar o Painel na mesma transação, com reparação das inclusões antigas
+incompletas e sem sobrescrever pendências existentes. Detalhes em
+[CORRECAO_MERCADOS_E_INCLUSAO.md](CORRECAO_MERCADOS_E_INCLUSAO.md).

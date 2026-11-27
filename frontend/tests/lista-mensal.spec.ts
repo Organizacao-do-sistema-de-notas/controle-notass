@@ -21,6 +21,28 @@ async function incluir(page: Page, cliente: { id: number; nome: string }, pesqui
   await expect(dialog).toHaveCount(0);
 }
 
+test('incluir cadastro existente no Excel também o mostra no Painel do mesmo mês, uma vez e com o mesmo ID', async ({ page, request }) => {
+  const c = await (await request.post(api + '/clientes', { data: { nome: `Codex inclusão Excel e Painel ${Date.now()}` } })).json();
+  await request.patch(`${api}/clientes/${c.id}/ficha`, { data: { frequenciaAcesso: 'EVENTUAL' } });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Excel', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).selectOption('2026-11');
+  await expect(linha(page, c.id)).toHaveCount(0);
+  await incluir(page, c);
+  await expect(linha(page, c.id)).toBeVisible();
+  await page.getByRole('button', { name: 'Painel', exact: true }).click();
+  const mes = page.getByRole('combobox', { name: 'Competência', exact: true });
+  await mes.selectOption('2026-11');
+  const card = page.locator(`.pendencia-card[data-cliente-id="${c.id}"]`);
+  await expect(card).toHaveCount(1); await expect(card).toContainText(c.nome);
+  await expect(card.getByRole('combobox')).toHaveValue('PENDENTE');
+  await mes.selectOption('2026-12'); await expect(card).toHaveCount(0);
+  await mes.selectOption('2026-11'); await expect(card).toBeVisible();
+  await page.reload(); await expect(card).toBeVisible();
+  const existentes = await (await request.get(`${api}/pendencias?clienteId=${c.id}`)).json();
+  expect(existentes).toHaveLength(1); expect(existentes[0].competencia).toBe('2026-11');
+});
+
 test('mensais aparecem todo mês; eventuais e não definidos só nos meses incluídos, compartilhados entre navegadores', async ({ page, request, browser }) => {
   const tag = `Codex lista mensal ${Date.now()}`;
   async function criar(sufixo: string, frequenciaAcesso: string) {
@@ -92,11 +114,13 @@ test('alterar a frequência em outro computador mantém visível uma observaçã
 });
 
 test('olho pequeno ao lado de Atualizar mostra e oculta os indicadores; cards mantêm as ações', async ({ page, request }) => {
+  // Measure the compact card in a month without unrelated taller neighbours.
+  const competencia = '2026-08';
   const c = await (await request.post(api + '/clientes', { data: { nome: `Codex Painel compacto ${Date.now()}` } })).json();
-  await request.post(api + '/pendencias', { data: { clienteId: c.id, competencia: '2026-11' } });
+  await request.post(api + '/pendencias', { data: { clienteId: c.id, competencia } });
   await page.goto('/');
   await page.getByRole('button', { name: 'Painel', exact: true }).click();
-  await page.getByRole('combobox').first().selectOption('2026-11');
+  await page.getByRole('combobox').first().selectOption(competencia);
   await expect(page.locator('.pendencia-card').filter({ hasText: c.nome })).toBeVisible();
   await expect(page.locator('.summary-grid')).toHaveCount(0);
   const olho = page.getByRole('button', { name: 'Mostrar indicadores', exact: true });

@@ -20,7 +20,8 @@ O usuário autorizou a publicação desta etapa na branch
   Durante a gravação, os botões e Escape não interrompem a exclusão; falhas
   mantêm a confirmação aberta e permitem tentar novamente.
 - O controle dos três mercados alterna apenas entre **Pendente** e **Concluído**.
-  A alteração usa o registro do mês aberto e não replica o estado em outro mês.
+  A correção posterior separa a gravação dos clientes comuns, mantendo o estado
+  por mês. Ver [CORRECAO_MERCADOS_E_INCLUSAO.md](CORRECAO_MERCADOS_E_INCLUSAO.md).
 - No Painel, o estado fica destacado no topo direito do card. **Pendente**
   recebe vermelho forte, próximo ao Excel. O seletor inferior foi removido;
   **Histórico** fica à esquerda e **Criar/Editar mensagem** à direita.

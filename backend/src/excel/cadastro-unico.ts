@@ -3,10 +3,9 @@ import { isDeepStrictEqual } from "node:util";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { bloquearCliente } from "../services/historico-contabilidade.service.ts";
-import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, importarAusentes, ordemDosAvisos, validarEstado, type AlteracaoExcel, type EstadoExcel } from "./estado.ts";
+import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, importarAusentes, mercadosFixos, ordemDosAvisos, validarEstado, type AlteracaoExcel, type EstadoExcel, type MercadoFixo, type RegistroMensal } from "./estado.ts";
 
 const principal = "principal";
-const mercados = ["Bom dia filial", "Bom dia Matriz", "Compre bem"];
 export class ExclusaoClienteRecusada extends Error {
   constructor(public status: 404 | 409, mensagem: string) { super(mensagem); }
 }
@@ -17,6 +16,7 @@ type Base = {
   origens: Record<string, number>;
   criacoes: Record<string, { id: number; assinatura: string }>;
   prioridades: Record<string, number>;
+  controleMercadosSeparado?: boolean;
 };
 const json = (valor: unknown) => valor as Prisma.InputJsonValue;
 const assinatura = (valor: unknown) => createHash("sha256").update(JSON.stringify(valor)).digest("hex");
@@ -38,23 +38,58 @@ async function criar(tx: Prisma.TransactionClient, base: Base, nome: string, ape
   if (origem) base.origens[origem] = cliente.id;
   return { id: cliente.id, chave };
 }
+function separarMercados(base: Base) {
+  if (base.controleMercadosSeparado) return;
+  base.estado.controleMercados ??= {};
+  base.estado.clientesSomenteMercados ??= [];
+  for (const mercado of mercadosFixos) {
+    // Only the reserved legacy origin identifies a control-created record.
+    // A normal customer with the same name and its own ID is not reclassified.
+    const legadoId = base.origens[mercado] ?? base.estado.vinculosClientes[mercado];
+    if (legadoId && !base.estado.clientesSomenteMercados.includes(legadoId)) base.estado.clientesSomenteMercados.push(legadoId);
+    const id = legadoId ?? base.prioridades[mercado];
+    const chaves = [mercado, ...Object.keys(base.estado.vinculosClientes).filter(chave => base.estado.vinculosClientes[chave] === id)];
+    for (const [mes, registros] of Object.entries(base.estado.registros)) {
+      const registro = chaves.map(chave => registros[chave]).find(Boolean);
+      if (!registro) continue;
+      base.estado.controleMercados[mes] ??= {};
+      base.estado.controleMercados[mes][mercado] ??= registro.status === "OK" ? "CONCLUIDO" : "PENDENTE";
+    }
+  }
+  base.controleMercadosSeparado = true;
+}
+async function garantirPendencia(tx: Prisma.TransactionClient, id: number, competencia: string, registro: RegistroMensal) {
+  exigir(await bloquearCliente(tx, id), "Cliente não encontrado. Atualize a lista.");
+  const existente = await tx.pendencia.findUnique({ where: { clienteId_competencia: { clienteId: id, competencia } } });
+  if (existente) return existente;
+  const status = ({ PENDENTE: "PENDENTE", AGUARDANDO: "AGUARDANDO_CLIENTE", EM_ATENDIMENTO: "EM_ATENDIMENTO", OK: "CONCLUIDO" } as const)[registro.status];
+  return tx.pendencia.create({ data: {
+    clienteId: id, competencia, status, observacao: registro.observacao || null,
+    concluidoEm: status === "CONCLUIDO" ? new Date() : null,
+    historico: { create: [{ tipo: "CRIACAO", valorNovo: status }, ...(registro.observacao ? [{ tipo: "OBSERVACAO" as const, valorNovo: registro.observacao }] : [])] },
+  } });
+}
 async function projetar(tx: Prisma.TransactionClient, base: Base) {
+  separarMercados(base);
   const clientes = await listar(tx);
   const porId = new Map<number, string>();
   for (const [chave, id] of Object.entries(base.estado.vinculosClientes)) {
     base.origens[chave] ??= id;
     if (!porId.has(id)) porId.set(id, chave);
   }
-  const idsAtuais = clientes.filter(cliente => cliente.excluidoEm === null).map(cliente => cliente.id).sort((a, b) => a - b);
+  const exclusivos = base.estado.clientesSomenteMercados ?? [];
+  const idsAtuais = clientes.filter(cliente => cliente.excluidoEm === null && !exclusivos.includes(cliente.id)).map(cliente => cliente.id).sort((a, b) => a - b);
   const ordemAnterior = base.estado.ordemClientesPainel ?? [];
   const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras,
     avisosExcluidos: base.estado.avisosExcluidos ?? [], ordemAvisos: ordemDosAvisos(base.estado),
+    controleMercados: base.estado.controleMercados ?? {}, clientesSomenteMercados: exclusivos,
     ordemClientesPainel: [...ordemAnterior.filter(id => idsAtuais.includes(id)), ...idsAtuais.filter(id => !ordemAnterior.includes(id))] };
   estado.frequenciasClientes = {};
   estado.clientesPorCompetencia = {};
   for (const cliente of clientes) {
-    if (cliente.excluidoEm !== null) continue;
+    if (cliente.excluidoEm !== null || exclusivos.includes(cliente.id)) continue;
     const chave = porId.get(cliente.id) ?? `cliente:${cliente.id}`;
+    base.origens[chave] ??= cliente.id;
     estado.clientesExtras.push(chave);
     estado.vinculosClientes[chave] = cliente.id;
     estado.frequenciasClientes[chave] = cliente.frequenciaAcesso;
@@ -63,16 +98,24 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
     estado.informacoesClientes[chave] = cliente.informacoesAdicionais ?? "";
     if (!cliente.ativo) estado.clientesInativos.push(chave);
   }
-  // Existing monthly work in the Painel also counts as an inclusion in Excel.
-  // Status, observations and history retain their existing storage and behavior.
-  const pendencias = await tx.pendencia.findMany({ where: { cliente: { excluidoEm: null } }, select: { clienteId: true, competencia: true }, orderBy: [{ competencia: "asc" }, { clienteId: "asc" }] });
+  const pendencias = await tx.pendencia.findMany({ where: { cliente: { excluidoEm: null }, clienteId: { notIn: exclusivos } }, select: { clienteId: true, competencia: true }, orderBy: [{ competencia: "asc" }, { clienteId: "asc" }] });
+  const existentes = new Set(pendencias.map(item => `${item.clienteId}:${item.competencia}`));
+  const faltantes = Object.entries(estado.registros).flatMap(([mes, registros]) => Object.entries(registros).flatMap(([chave, registro]) => {
+    const id = estado.vinculosClientes[chave];
+    return id && !existentes.has(`${id}:${mes}`) ? [{ id, mes, registro }] : [];
+  })).sort((a, b) => a.id - b.id || a.mes.localeCompare(b.mes));
+  for (const item of faltantes) {
+    await garantirPendencia(tx, item.id, item.mes, item.registro);
+    pendencias.push({ clienteId: item.id, competencia: item.mes });
+  }
+  pendencias.sort((a, b) => a.competencia.localeCompare(b.competencia) || a.clienteId - b.clienteId);
   const chavesAtuais = new Map(Object.entries(estado.vinculosClientes).map(([chave, id]) => [id, chave]));
   for (const pendencia of pendencias) {
     const chave = chavesAtuais.get(pendencia.clienteId);
     if (chave) (estado.clientesPorCompetencia[pendencia.competencia] ??= []).push(chave);
   }
   base.estado = estado;
-  for (const mercado of mercados) {
+  for (const mercado of mercadosFixos) {
     if (base.prioridades[mercado]) continue;
     const candidatos = clientes.filter(cliente => cliente.excluidoEm === null && cliente.nome === mercado);
     const origem = base.origens[mercado];
@@ -92,6 +135,7 @@ async function carregar(tx: Prisma.TransactionClient, dados: unknown): Promise<B
   const base: Base = { versao: 2, estado: structuredClone(estado), legado: structuredClone(dados), origens: {}, criacoes: {}, prioridades: {} };
   const primeira = new Map<number, string>();
   for (const chave of chaves(estado)) {
+    if (mercadosFixos.includes(chave as MercadoFixo) && !estado.vinculosClientes[chave]) continue;
     let id = estado.vinculosClientes[chave];
     const nome = estado.nomesAlterados[chave] ?? chave;
     const apelidos = estado.nomesBusca[chave] ?? [];
@@ -133,6 +177,7 @@ async function chaveDoCliente(tx: Prisma.TransactionClient, base: Base, chave: s
     return existente;
   }
   exigir(!/^cliente:/.test(chave), "Cliente não encontrado. Atualize a lista.");
+  exigir(!mercadosFixos.includes(chave as MercadoFixo), "O controle fixo dos mercados não cria clientes.");
   // Compatibility for saved rows/old browser requests, never a match by name.
   return (await criar(tx, base, chave, [], "", chave)).chave;
 }
@@ -142,8 +187,11 @@ async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: Alte
     if (op.tipo === "incluirClienteMes") {
       const chave = Object.keys(base.estado.vinculosClientes).find(chave => base.estado.vinculosClientes[chave] === op.clienteId);
       exigir(chave && await bloquearCliente(tx, op.clienteId), "Cliente não encontrado. Atualize a lista.");
+      const atual = base.estado.registros[op.competencia]?.[chave] ?? { status: "PENDENTE" as const, observacao: "" };
+      const pendencia = await garantirPendencia(tx, op.clienteId, op.competencia, atual);
       base.estado.registros[op.competencia] ??= {};
-      base.estado.registros[op.competencia][chave] ??= { status: "PENDENTE", observacao: "" };
+      const status = ({ PENDENTE: "PENDENTE", AGUARDANDO_CLIENTE: "AGUARDANDO", EM_ATENDIMENTO: "EM_ATENDIMENTO", CONCLUIDO: "OK" } as const)[pendencia.status];
+      base.estado.registros[op.competencia][chave] ??= { status, observacao: pendencia.observacao ?? "" };
     } else if (op.tipo === "incluirCliente") {
       validarCadastro(op.nome, op.apelidos, op.informacoes);
       const hash = assinatura({ nome: op.nome, apelidos: op.apelidos, informacoes: op.informacoes });
@@ -160,6 +208,15 @@ async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: Alte
     } else if (op.tipo === "definir") {
       exigir(op.caminho[0] !== "vinculo", "O cadastro agora é único. Atualize a página: não é necessário vincular ou desvincular fichas.");
       const caminho = [...op.caminho];
+      if (caminho[0] === "registro" && caminho[3] === "status") {
+        const mercado = mercadosFixos.find(nome => nome === caminho[2] || (base.estado.clientesSomenteMercados?.includes(base.prioridades[nome])
+          && (caminho[2] === `cliente:${base.prioridades[nome]}` || base.origens[caminho[2]] === base.prioridades[nome])));
+        if (mercado) {
+          ops.push({ tipo: "definirMercado", competencia: caminho[1], mercado,
+            status: op.valor === "OK" ? "CONCLUIDO" : "PENDENTE", anterior: op.anterior === "OK" ? "CONCLUIDO" : "PENDENTE" });
+          continue;
+        }
+      }
       if (["nome", "apelidos", "informacoes", "registro"].includes(caminho[0])) {
         const posicao = caminho[0] === "registro" ? 2 : 1;
         caminho[posicao] = await chaveDoCliente(tx, base, caminho[posicao]);
@@ -194,8 +251,16 @@ async function importar(tx: Prisma.TransactionClient, base: Base, local: EstadoE
   exigir(!Object.keys(local.vinculosClientes).length, "Não importe identificadores de fichas de outro banco.");
   const convertido = estadoVazio();
   convertido.avisosExtras = local.avisosExtras;
+  convertido.controleMercados = structuredClone(local.controleMercados ?? {});
   let criados = 0;
   for (const origem of chaves(local)) {
+    if (mercadosFixos.includes(origem as MercadoFixo)) {
+      for (const [mes, registros] of Object.entries(local.registros)) if (registros[origem]) {
+        convertido.controleMercados[mes] ??= {};
+        convertido.controleMercados[mes][origem as MercadoFixo] ??= registros[origem].status === "OK" ? "CONCLUIDO" : "PENDENTE";
+      }
+      continue;
+    }
     let chave: string;
     const conhecido = base.estado.vinculosClientes[origem] ?? base.origens[origem];
     if (conhecido) chave = await chaveDoCliente(tx, base, origem);

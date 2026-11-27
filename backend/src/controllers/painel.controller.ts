@@ -10,8 +10,9 @@ function competenciaValida(valor: unknown): valor is string {
 
 export async function listarCompetencias(_req: Request, res: Response): Promise<void> {
   try {
+    const cadastro = await acessarCadastro();
     const registros = await prisma.pendencia.findMany({
-      where: { cliente: { excluidoEm: null } },
+      where: { cliente: { excluidoEm: null }, clienteId: { notIn: cadastro.estado.clientesSomenteMercados ?? [] } },
       distinct: ["competencia"],
       select: {
         competencia: true,
@@ -45,6 +46,7 @@ export async function obterPainelMensal(req: Request, res: Response): Promise<vo
     const pendencias = await prisma.pendencia.findMany({
       where: {
         competencia,
+        clienteId: { notIn: cadastro.estado.clientesSomenteMercados ?? [] },
         cliente: { excluidoEm: null },
       },
       include: {

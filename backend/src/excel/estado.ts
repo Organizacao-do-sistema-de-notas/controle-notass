@@ -2,6 +2,9 @@ import { isDeepStrictEqual } from "node:util";
 export type StatusExcel = "PENDENTE" | "AGUARDANDO" | "EM_ATENDIMENTO" | "OK";
 export type RegistroMensal = { status: StatusExcel; observacao: string };
 export type AvisoExtra = { id: string; titulo: string; texto: string };
+export const mercadosFixos = ["Bom dia filial", "Bom dia Matriz", "Compre bem"] as const;
+export type MercadoFixo = (typeof mercadosFixos)[number];
+export type StatusMercado = "PENDENTE" | "CONCLUIDO";
 export type EstadoExcel = {
   clientesExtras: string[];
   nomesAlterados: Record<string, string>;
@@ -15,9 +18,12 @@ export type EstadoExcel = {
   ordemAvisos?: string[];
   avisosExcluidos?: AvisoExtra[];
   ordemClientesPainel?: number[];
+  controleMercados?: Record<string, Partial<Record<MercadoFixo, StatusMercado>>>;
+  clientesSomenteMercados?: number[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
+  | { tipo: "definirMercado"; competencia: string; mercado: MercadoFixo; status: StatusMercado; anterior: StatusMercado }
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
@@ -58,7 +64,15 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos", "avisosExcluidos", "ordemClientesPainel"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos", "avisosExcluidos", "ordemClientesPainel", "controleMercados", "clientesSomenteMercados"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  if (proprio(valor, "clientesSomenteMercados")) exigir(listaDeIds(valor.clientesSomenteMercados));
+  if (proprio(valor, "controleMercados")) {
+    exigir(objeto(valor.controleMercados));
+    for (const [mes, mercados] of Object.entries(valor.controleMercados)) {
+      exigir(mesValido(mes) && objeto(mercados));
+      for (const [nome, status] of Object.entries(mercados)) exigir(mercadosFixos.includes(nome as MercadoFixo) && ["PENDENTE", "CONCLUIDO"].includes(status as string));
+    }
+  }
   if (proprio(valor, "ordemAvisos")) exigir(listaDeChaves(valor.ordemAvisos));
   if (proprio(valor, "ordemClientesPainel")) exigir(listaDeIds(valor.ordemClientesPainel));
   if (proprio(valor, "avisosExcluidos")) {
@@ -105,7 +119,11 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
   for (const op of valor) {
     exigir(objeto(op));
-    if (op.tipo === "ordenarPainel") {
+    if (op.tipo === "definirMercado") {
+      campos(op, ["tipo", "competencia", "mercado", "status", "anterior"]);
+      exigir(typeof op.competencia === "string" && mesValido(op.competencia) && mercadosFixos.includes(op.mercado as MercadoFixo)
+        && ["PENDENTE", "CONCLUIDO"].includes(op.status as string) && ["PENDENTE", "CONCLUIDO"].includes(op.anterior as string));
+    } else if (op.tipo === "ordenarPainel") {
       campos(op, ["tipo", "ordem", "anterior"]); exigir(listaDeIds(op.ordem) && listaDeIds(op.anterior));
     } else if (op.tipo === "excluirAviso") {
       campos(op, ["tipo", "aviso"]); validarAviso(op.aviso);
@@ -173,7 +191,14 @@ const igual = isDeepStrictEqual;
 export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel[]): EstadoExcel {
   const proximo = structuredClone(atual);
   for (const op of alteracoes) {
-    if (op.tipo === "excluirAviso") {
+    if (op.tipo === "definirMercado") {
+      const atual = proximo.controleMercados?.[op.competencia]?.[op.mercado] ?? "PENDENTE";
+      if (atual === op.status) continue;
+      if (atual !== op.anterior) throw new ConflitoExcel([["controleMercados", op.competencia, op.mercado]]);
+      proximo.controleMercados ??= {};
+      proximo.controleMercados[op.competencia] ??= {};
+      proximo.controleMercados[op.competencia][op.mercado] = op.status;
+    } else if (op.tipo === "excluirAviso") {
       const existente = proximo.avisosExtras.find(aviso => aviso.id === op.aviso.id);
       if (!existente) {
         if (proximo.avisosExcluidos?.some(aviso => igual(aviso, op.aviso))) continue;
@@ -234,6 +259,11 @@ export function importarAusentes(atual: EstadoExcel, local: EstadoExcel) {
   mesclar(proximo.nomesAlterados, local.nomesAlterados, ["nome"]);
   mesclar(proximo.nomesBusca, local.nomesBusca, ["apelidos"]);
   mesclar(proximo.informacoesClientes, local.informacoesClientes, ["informacoes"]);
+  for (const [mes, mercados] of Object.entries(local.controleMercados ?? {})) {
+    proximo.controleMercados ??= {};
+    proximo.controleMercados[mes] ??= {};
+    mesclar(proximo.controleMercados[mes], mercados, ["controleMercados", mes]);
+  }
   for (const [mes, clientes] of Object.entries(local.registros)) {
     proximo.registros[mes] ??= {};
     for (const [cliente, registro] of Object.entries(clientes)) {

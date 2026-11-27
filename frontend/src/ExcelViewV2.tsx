@@ -8,7 +8,7 @@ import { ConfirmarExclusao } from "./ConfirmarExclusao";
 import {
   LIMITE_INFORMACOES_CLIENTE,
 } from "./informacoes-cliente-storage";
-import { definir, type AvisoExtra, type AlteracaoExcel, type RegistroMensal, type StatusExcel } from "./excel-compartilhado";
+import { definir, type AvisoExtra, type AlteracaoExcel, type RegistroMensal, type StatusExcel, type MercadoFixo } from "./excel-compartilhado";
 import { useExcelCompartilhado } from "./useExcelCompartilhado";
 import { chaveObservacao, useObservacoesExcel } from "./useObservacoesExcel";
 import { baixarCopiaLocal } from "./excel-legado";
@@ -17,7 +17,7 @@ import "./cadastro-unico.css";
 
 type ExcelViewProps = { competencia: string; aoPendenciasAlteradas?: (estado: { gravando: boolean; rascunhos: boolean }) => void };
 
-const mercadosPrioritarios = ["Bom dia filial", "Bom dia Matriz", "Compre bem"];
+const mercadosPrioritarios: MercadoFixo[] = ["Bom dia filial", "Bom dia Matriz", "Compre bem"];
 const rotulosStatus: Record<StatusExcel, string> = {
   PENDENTE: "Pendente",
   AGUARDANDO: "Aguardando",
@@ -208,6 +208,13 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     setErroGeral("");
     try { await compartilhado.executar([definir(["registro", competencia, chave, "status"], status, obterRegistro(chave).status)]); }
     catch (erro) { setErroGeral(erro instanceof Error ? erro.message : "Não foi possível salvar o status."); }
+  }
+
+  async function alternarMercado(mercado: MercadoFixo) {
+    const anterior = compartilhado.estado.controleMercados?.[competencia]?.[mercado] ?? "PENDENTE";
+    setErroGeral("");
+    try { await compartilhado.executar([{ tipo: "definirMercado", competencia, mercado, anterior, status: anterior === "CONCLUIDO" ? "PENDENTE" : "CONCLUIDO" }]); }
+    catch (erro) { setErroGeral(erro instanceof Error ? erro.message : "Não foi possível salvar o estado do mercado."); }
   }
 
   function alterarObservacao(chave: string, observacao: string) {
@@ -472,16 +479,15 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                 <p>Esses três clientes são prioridade no início do mês. A meta é verificar os acessos entre os dias 1 e 3, conciliando com os atendimentos de suporte.</p>
                 <div className="priority-list">
                   {mercadosPrioritarios.map((mercado) => {
-                    const chave = compartilhado.snapshot.prioridades?.[mercado] ?? mercado;
-                    const registro = obterRegistro(chave);
+                    const concluido = compartilhado.estado.controleMercados?.[competencia]?.[mercado] === "CONCLUIDO";
                     return (
                       <div className="priority-row" key={mercado}>
-                        <span>{nomeExibido(chave)}</span>
-                        <button type="button" className={`priority-status priority-status-${registro.status === "OK" ? "ok" : "pendente"}`}
-                          disabled={!disponivel || ocupado || compartilhado.snapshot.prioridadesExcluidas?.includes(mercado)}
-                          aria-label={`Alterar estado de ${nomeExibido(chave)}`}
-                          onClick={() => void alterarStatus(chave, registro.status === "OK" ? "PENDENTE" : "OK")}>
-                          {!compartilhado.carregado ? "Aguardando dados" : compartilhado.snapshot.prioridadesExcluidas?.includes(mercado) ? "Cliente excluído" : registro.status === "OK" ? "Concluído" : "Pendente"}
+                        <span>{mercado}</span>
+                        <button type="button" className={`priority-status priority-status-${concluido ? "ok" : "pendente"}`}
+                          disabled={!disponivel || ocupado}
+                          aria-label={`Alterar estado de ${mercado}`}
+                          onClick={() => void alternarMercado(mercado)}>
+                          {!compartilhado.carregado ? "Aguardando dados" : concluido ? "Concluído" : "Pendente"}
                         </button>
                       </div>
                     );

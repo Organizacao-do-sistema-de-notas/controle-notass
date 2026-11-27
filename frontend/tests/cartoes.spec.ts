@@ -79,16 +79,28 @@ test('aviso com falha na exclusão mantém confirmação e conteúdo até repeti
   await expect(confirmar).toHaveCount(0); await expect(avisoCard(page, a.id)).toHaveCount(0);
 });
 
-test('mercados alternam somente entre Pendente e Concluído por mês', async ({ page }) => {
+test('mercados alternam por mês sem criar clientes, linhas comuns ou pendências', async ({ page, request, browser }) => {
+  const clientesAntes = await (await request.get(api + '/clientes')).json();
+  const pendenciasAntes = await (await request.get(api + '/pendencias')).json();
   await excel(page); await page.locator('.priority-toggle').click();
+  const registrosAntes = (await (await request.get(api + '/excel/estado')).json()).estado.registros;
   const botao = page.getByRole('button', { name: 'Alterar estado de Bom dia filial', exact: true });
   await expect(botao).toHaveText('Pendente'); await botao.click(); await expect(botao).toHaveText('Concluído');
   await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).selectOption('2026-12');
   await expect(botao).toHaveText('Pendente');
   await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).selectOption('2026-11');
-  await expect(botao).toHaveText('Concluído'); await botao.click(); await expect(botao).toHaveText('Pendente');
+  await expect(botao).toHaveText('Concluído');
+  const contexto = await browser.newContext();
+  try {
+    const outra = await contexto.newPage(); await excel(outra); await outra.locator('.priority-toggle').click();
+    await expect(outra.getByRole('button', { name: 'Alterar estado de Bom dia filial', exact: true })).toHaveText('Concluído');
+  } finally { await contexto.close(); }
+  await botao.click(); await expect(botao).toHaveText('Pendente');
   await expect(page.locator('.priority-list select')).toHaveCount(0);
   for (const nome of ['Bom dia filial', 'Bom dia Matriz', 'Compre bem']) await expect(page.locator('.priority-list')).toContainText(nome);
+  expect(await (await request.get(api + '/clientes')).json()).toEqual(clientesAntes);
+  expect(await (await request.get(api + '/pendencias')).json()).toEqual(pendenciasAntes);
+  expect((await (await request.get(api + '/excel/estado')).json()).estado.registros).toEqual(registrosAntes);
 });
 
 test('exclusão em andamento bloqueia repetição, Cancelar e Escape até a resposta', async ({ page, request }) => {
