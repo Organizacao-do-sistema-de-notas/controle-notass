@@ -1,7 +1,8 @@
 # Estado único e consulta de meses antigos
 
 Branch: `fix/estado-unico-consulta-mensal`, baseada na publicação `88df50a`.
-Implementação local, sem publicação automática.
+O usuário autorizou em 27/11/2026 a publicação na branch
+`teste/controle-basico-linux`, usada pelos atualizadores existentes.
 
 ## Sincronização
 
@@ -86,7 +87,7 @@ do backup da instalação em uso. Evidência local:
 ## Continuidade
 
 1. Conferir os estados nos dois sentidos, nos dois computadores, com a mesma
-   competência selecionada, depois da futura publicação autorizada.
+   competência selecionada, depois da atualização pelos scripts existentes.
 2. Conferir mensagens, exclusões, históricos, observações e arrasto, incluindo
    persistência após reinício e cópia de backup em dispositivo separado.
 3. Aplicar o layout definitivo de −1/+1 quando o usuário enviar a referência.

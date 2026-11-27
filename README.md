@@ -10,7 +10,7 @@ um banco local vazio, siga [LEIA-ME-LINUX.md](LEIA-ME-LINUX.md).
 O escopo atual e o roteiro para concluir a versão básica estão em
 [FECHAMENTO_CONTROLE_NOTAS.md](FECHAMENTO_CONTROLE_NOTAS.md).
 
-A etapa em revisão unifica o estado mensal de Excel e Painel e acrescenta
+A etapa com publicação autorizada unifica o estado mensal de Excel e Painel e acrescenta
 **⋯ → Consultar meses antigos**, mantendo a seleção rápida com 13 meses.
 Comportamento e validação em
 [ESTADO_UNICO_E_CONSULTA_MENSAL.md](ESTADO_UNICO_E_CONSULTA_MENSAL.md).

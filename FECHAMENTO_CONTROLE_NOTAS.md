@@ -169,12 +169,14 @@ contemplar o Painel na mesma transação, com reparação das inclusões antigas
 incompletas e sem sobrescrever pendências existentes. Detalhes em
 [CORRECAO_MERCADOS_E_INCLUSAO.md](CORRECAO_MERCADOS_E_INCLUSAO.md).
 
-## Estado único e consulta histórica — implementação em revisão
+## Estado único e consulta histórica — publicação autorizada
 
 O usuário identificou que os estados ainda divergiam entre Excel e Painel e
 pediu a correção seguida das próximas etapas e configurações. A implementação
 na branch `fix/estado-unico-consulta-mensal` usa a pendência mensal como referência
 única, protege o histórico e adiciona atualização automática do Painel.
+O usuário autorizou em 27/11/2026 a publicação desta etapa na branch
+`teste/controle-basico-linux`, usada pelos atualizadores com backup.
 Também foi preparada a consulta separada **⋯ → Consultar meses antigos**, sem
 ampliar a seleção rápida. A referência final dos botões −1/+1 continua pendente.
 Detalhes e validação em
