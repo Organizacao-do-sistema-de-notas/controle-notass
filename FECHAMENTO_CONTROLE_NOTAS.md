@@ -156,12 +156,13 @@ usuário. A atualização e validação nos computadores ainda dependem da execu
 dos atualizadores com backup. Detalhes em
 [CARTOES_E_EXCLUSOES.md](CARTOES_E_EXCLUSOES.md).
 
-## Mercados e inclusão no Painel — correção em revisão
+## Mercados e inclusão no Painel — publicação autorizada
 
 O usuário confirmou o funcionamento da última publicação e identificou dois
 erros: alternar os mercados criava clientes comuns, e incluir no Excel não
 criava a pendência no Painel. A correção está na branch
-`fix/mercados-separados-inclusao-painel`, sem publicação automática. O usuário
+`fix/mercados-separados-inclusao-painel`, com publicação autorizada pelo usuário
+em 27/11/2026 na branch `teste/controle-basico-linux`. O usuário
 autorizou deixar os mercados gerados pelo erro apenas no controle fixo,
 preservando seus cadastros e registros antigos. A inclusão mensal passa a
 contemplar o Painel na mesma transação, com reparação das inclusões antigas

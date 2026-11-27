@@ -1,7 +1,8 @@
 # Mercados separados e inclusão no Painel
 
 Branch: `fix/mercados-separados-inclusao-painel`, baseada em `34e4e67`.
-Etapa preparada para revisão, sem publicação automática.
+O usuário autorizou em 27/11/2026 a publicação na branch
+`teste/controle-basico-linux`, usada pelos atualizadores existentes.
 
 ## Comportamento corrigido
 
@@ -38,7 +39,7 @@ para manter a inclusão atômica. Os dados do computador do usuário não foram
 acessados. Os testes usam somente bancos PostgreSQL descartáveis, recém-criados
 em `127.0.0.1:5433`, com nomes `controle_notas_pr1_test_mercados_*` e dados fictícios.
 
-Depois de uma futura publicação autorizada, os atualizadores existentes devem
+Na atualização desta etapa, os atualizadores existentes devem
 atualizar backend e frontend juntos, mantendo o backup e o volume. Não é
 necessário excluir cadastros ou reincluir manualmente os clientes afetados.
 
@@ -70,7 +71,7 @@ fixo também é conferido em uma segunda sessão sem gerar linhas comuns.
 
 ## Conferência nos computadores
 
-1. Atualizar pelos scripts com backup quando a publicação for autorizada.
+1. Atualizar pelos scripts existentes, que executam o backup antes da atualização dos serviços.
 2. Alternar os três mercados entre Pendente e Concluído e trocar de mês.
    Os mercados devem ficar somente no controle fixo.
 3. Incluir um cliente eventual no Excel e abrir o Painel do mesmo mês.
