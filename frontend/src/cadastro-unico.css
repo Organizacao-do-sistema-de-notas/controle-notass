@@ -1,7 +1,8 @@
 .excel-client-name { flex-wrap: wrap; column-gap: 8px; }
 .excel-client-label { min-width: 0; overflow-wrap: anywhere; }
 .excel-client-aliases { flex-basis: 100%; }
-.excel-ficha-atalho { display: block; width: fit-content; margin-top: 6px; padding: 4px 8px; background: #f7faff; color: #3a608f; font-size: 11px; --largura-moldura: 5px; }
+.excel-ficha-atalho { display: inline-block; width: fit-content; margin: 0; padding: 2px 0; border: 0; background: transparent; color: #3a608f; font-size: 10px; line-height: 1.3; }
+.excel-ficha-atalho:hover { text-decoration: underline; }
 .excel-cliente-inativo { display: inline-block; margin-top: 6px; font-size: 11px; color: #788699; }
 .excel-inclusao-tabela { max-height: 260px; overflow-y: auto; border: 1px solid #dbe6f3; border-radius: 7px; }
 .excel-inclusao-tabela table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }

@@ -1,5 +1,5 @@
 /* Uma linha contínua e encaixes nos cantos; o centro do SVG é transparente. */
-#root button:not(.priority-toggle, .priority-status, .excel-toolbar-button, .painel-indicadores-toggle, .cliente-seletor-opcao, .seletor-mes-passo, .aviso-arrastar, .painel-arrastar) {
+#root button:not(.priority-toggle, .priority-status, .excel-toolbar-button, .painel-indicadores-toggle, .cliente-seletor-opcao, .seletor-mes-passo, .aviso-arrastar, .painel-arrastar, .excel-ficha-atalho) {
   border: 1px solid transparent;
   border-radius: 0;
   border-image: url("./assets/moldura-botao.svg") 24 / var(--largura-moldura, 7.5px) / 1.5px stretch;

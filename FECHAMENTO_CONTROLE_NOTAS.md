@@ -184,3 +184,19 @@ Detalhes e validação em
 As próximas entregas da base de conhecimento e IA estão organizadas em
 [BASE_CONHECIMENTO_PLANO.md](BASE_CONHECIMENTO_PLANO.md), ainda sem funcionalidades
 de IA ativas. Novas alterações permanecem sem publicação automática.
+
+## Seleção de aviso e atalho da ficha — correção em revisão
+
+Na branch `fix/aviso-selecionado-atalho-ficha`, Alterar Aviso abre o cartão
+selecionado pela borda azul, usando seu ID, em vez do primeiro aviso da lista.
+Sem seleção de um aviso editável, o botão fica desabilitado. Trocar o aviso no
+formulário também atualiza a seleção do cartão; cancelar não grava alterações.
+O atalho Abrir ficha mantém sua função e identificação do cliente, com texto
+menor, fundo transparente e sem moldura. Apenas o frontend foi alterado, sem
+mudanças no banco, na API ou nas configurações. Esta etapa ainda não foi publicada.
+
+Validação: TypeScript/Vite aprovados e 14 cenários de navegador conferidos
+(12 existentes de fichas, cartões, arrasto e exclusão; duas regressões novas
+de edição do aviso selecionado). Os dois cenários novos foram reexecutados
+depois do ajuste do nome do diálogo usado pelo teste. Todos os dados são fictícios,
+em PostgreSQL descartável criado em `127.0.0.1:5433`; nenhum banco de uso foi acessado.

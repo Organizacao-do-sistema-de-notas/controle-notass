@@ -79,6 +79,53 @@ test('aviso com falha na exclusão mantém confirmação e conteúdo até repeti
   await expect(confirmar).toHaveCount(0); await expect(avisoCard(page, a.id)).toHaveCount(0);
 });
 
+test('Alterar Aviso abre o cartão selecionado e grava apenas ele, inclusive ao trocar a seleção depois', async ({ page, request }) => {
+  const { a, b } = await avisos(request); await excel(page);
+  const alterar = page.getByRole('button', { name: /Alterar\s*Aviso/, exact: true });
+  await avisoCard(page, b.id).getByText(b.texto, { exact: true }).click();
+  await alterar.click();
+  const dialog = page.getByRole('dialog', { name: 'Alterar aviso', exact: true });
+  await expect(dialog.getByRole('combobox')).toHaveValue(b.id);
+  await expect(dialog.getByRole('textbox', { name: 'Título', exact: true })).toHaveValue(b.titulo);
+  await expect(dialog.getByRole('textbox', { name: 'Aviso', exact: true })).toHaveValue(b.texto);
+  const tituloB = b.titulo + ' editado', textoB = 'Texto atualizado somente no segundo cartão';
+  await dialog.getByRole('textbox', { name: 'Título', exact: true }).fill(tituloB);
+  await dialog.getByRole('textbox', { name: 'Aviso', exact: true }).fill(textoB);
+  await dialog.getByRole('button', { name: 'Salvar alteração', exact: true }).click();
+  await expect(dialog).toHaveCount(0); await expect(avisoCard(page, b.id)).toContainText(textoB);
+  let estado = (await (await request.get(api + '/excel/estado')).json()).estado;
+  expect(estado.avisosExtras.find((item: { id: string }) => item.id === a.id)).toEqual(a);
+  expect(estado.avisosExtras.find((item: { id: string }) => item.id === b.id)).toEqual({ ...b, titulo: tituloB, texto: textoB });
+  await avisoCard(page, a.id).getByText(a.texto, { exact: true }).click(); await alterar.click();
+  await expect(dialog.getByRole('combobox')).toHaveValue(a.id);
+  await expect(dialog.getByRole('textbox', { name: 'Aviso', exact: true })).toHaveValue(a.texto);
+  await dialog.getByRole('textbox', { name: 'Aviso', exact: true }).fill('Texto atualizado somente no primeiro cartão');
+  await dialog.getByRole('button', { name: 'Salvar alteração', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  estado = (await (await request.get(api + '/excel/estado')).json()).estado;
+  expect(estado.avisosExtras.find((item: { id: string }) => item.id === b.id)).toEqual({ ...b, titulo: tituloB, texto: textoB });
+  await page.reload();
+  await expect(avisoCard(page, a.id)).toContainText('Texto atualizado somente no primeiro cartão');
+  await expect(avisoCard(page, b.id)).toContainText(textoB);
+});
+
+test('edição exige aviso selecionado; teclado e seleção dentro do formulário mantêm o mesmo alvo sem salvar ao cancelar', async ({ page, request }) => {
+  const { a, b } = await avisos(request); await excel(page);
+  const alterar = page.getByRole('button', { name: /Alterar\s*Aviso/, exact: true });
+  await expect(alterar).toBeDisabled();
+  await page.getByRole('heading', { name: 'Xaxim Gás', exact: true }).click(); await expect(alterar).toBeDisabled();
+  await avisoCard(page, b.id).focus(); await page.keyboard.press('Space'); await alterar.click();
+  const dialog = page.getByRole('dialog', { name: 'Alterar aviso', exact: true });
+  await expect(dialog.getByRole('combobox')).toHaveValue(b.id);
+  await dialog.getByRole('combobox').selectOption(a.id);
+  await expect(dialog.getByRole('textbox', { name: 'Título', exact: true })).toHaveValue(a.titulo);
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  await expect(avisoCard(page, a.id)).toHaveClass(/aviso-selecionado/);
+  await alterar.click(); await expect(dialog.getByRole('combobox')).toHaveValue(a.id);
+  await page.getByRole('button', { name: 'Fechar formulário de aviso', exact: true }).click();
+  const estado = (await (await request.get(api + '/excel/estado')).json()).estado;
+  expect(estado.avisosExtras).toEqual([a, b]);
+});
+
 test('mercados alternam por mês sem criar clientes, linhas comuns ou pendências', async ({ page, request, browser }) => {
   const clientesAntes = await (await request.get(api + '/clientes')).json();
   const pendenciasAntes = await (await request.get(api + '/pendencias')).json();

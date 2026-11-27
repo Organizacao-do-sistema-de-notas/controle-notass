@@ -98,6 +98,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     );
   const temRascunhos = observacoes.pendente || clienteComRascunho || avisoComRascunho;
   const formularioAberto = modalCliente !== null || modalAviso !== null;
+  const avisoDoCartaoSelecionado = avisosExtras.find(aviso => `aviso:${aviso.id}` === avisoSelecionadoId);
 
   const clientes = clientesExtras;
   function estaNoMes(cliente: string, mes: string) {
@@ -282,12 +283,11 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   }
 
   function abrirAlteracaoAviso() {
-    const primeiro = avisosExtras[0];
-    if (!primeiro) return;
-    setAvisoSelecionado(primeiro.id);
-    setAvisoAlteradoTitulo(primeiro.titulo);
-    setAvisoAlteradoTexto(primeiro.texto);
-    setBaseAviso(primeiro); setErroAviso("");
+    if (!avisoDoCartaoSelecionado) return;
+    setAvisoSelecionado(avisoDoCartaoSelecionado.id);
+    setAvisoAlteradoTitulo(avisoDoCartaoSelecionado.titulo);
+    setAvisoAlteradoTexto(avisoDoCartaoSelecionado.texto);
+    setBaseAviso(avisoDoCartaoSelecionado); setErroAviso("");
     setModalAviso("alterar");
   }
 
@@ -296,6 +296,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
     if (avisoComRascunho && !window.confirm("Descartar as alterações não salvas antes de selecionar outro aviso?")) return;
     const aviso = avisosExtras.find((item) => item.id === id);
     setAvisoSelecionado(id);
+    if (aviso) setAvisoSelecionadoId(`aviso:${aviso.id}`);
     setAvisoAlteradoTitulo(aviso?.titulo ?? "");
     setAvisoAlteradoTexto(aviso?.texto ?? "");
     setBaseAviso(aviso ?? null); setErroAviso("");
@@ -501,11 +502,11 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             <button className="excel-toolbar-button" disabled={!disponivel || ocupado} onClick={() => { setErroAviso(""); setModalAviso("incluir"); }}>
               <span>Incluir<br />Aviso</span><strong aria-hidden="true">＋</strong>
             </button>
-            <button className="excel-toolbar-button" onClick={abrirAlteracaoAviso} disabled={!disponivel || ocupado || avisosExtras.length === 0}>
+            <button className="excel-toolbar-button" onClick={abrirAlteracaoAviso} disabled={!disponivel || ocupado || !avisoDoCartaoSelecionado}>
               <span>Alterar<br />Aviso</span><strong aria-hidden="true">✎</strong>
             </button>
-            <button className="excel-toolbar-button" disabled={!disponivel || ocupado || !avisosExtras.some(aviso => `aviso:${aviso.id}` === avisoSelecionadoId)}
-              onClick={() => setAvisoParaExcluir(avisosExtras.find(aviso => `aviso:${aviso.id}` === avisoSelecionadoId) ?? null)}>
+            <button className="excel-toolbar-button" disabled={!disponivel || ocupado || !avisoDoCartaoSelecionado}
+              onClick={() => setAvisoParaExcluir(avisoDoCartaoSelecionado ?? null)}>
               <span>Excluir<br />Aviso</span><strong aria-hidden="true">×</strong>
             </button>
           </div>
