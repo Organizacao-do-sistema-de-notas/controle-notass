@@ -80,6 +80,7 @@ export interface PainelMensal {
   competencia: string;
   totais: TotaisPainel;
   pendencias: PendenciaPainel[];
+  ordemClientes?: number[];
 }
 
 export interface MensagemContadorResponse {

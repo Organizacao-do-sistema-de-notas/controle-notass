@@ -4,6 +4,7 @@ import { FichasClientes } from "./FichasClientes";
 import { InformacoesCliente } from "./InformacoesCliente";
 import { ExcluirCliente } from "./ExcluirCliente";
 import { AvisosOrdenaveis } from "./AvisosOrdenaveis";
+import { ConfirmarExclusao } from "./ConfirmarExclusao";
 import {
   LIMITE_INFORMACOES_CLIENTE,
 } from "./informacoes-cliente-storage";
@@ -50,6 +51,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const disponivel = compartilhado.carregado && compartilhado.conectado;
   const [erroGeral, setErroGeral] = useState("");
   const [erroAviso, setErroAviso] = useState("");
+  const [avisoSelecionadoId, setAvisoSelecionadoId] = useState<string | null>(null);
+  const [avisoParaExcluir, setAvisoParaExcluir] = useState<AvisoExtra | null>(null);
   const [baseFormulario, setBaseFormulario] = useState({ nome: "", apelidos: [] as string[], informacoes: "" });
   const [baseAviso, setBaseAviso] = useState<AvisoExtra | null>(null);
   const [informacaoAberta, setInformacaoAberta] = useState<string | null>(null);
@@ -474,7 +477,12 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                     return (
                       <div className="priority-row" key={mercado}>
                         <span>{nomeExibido(chave)}</span>
-                        <strong className={`priority-status priority-status-${registro.status.toLowerCase()}`}>{!compartilhado.carregado ? "Aguardando dados" : compartilhado.snapshot.prioridadesExcluidas?.includes(mercado) ? "Cliente excluído" : rotulosStatus[registro.status]}</strong>
+                        <button type="button" className={`priority-status priority-status-${registro.status === "OK" ? "ok" : "pendente"}`}
+                          disabled={!disponivel || ocupado || compartilhado.snapshot.prioridadesExcluidas?.includes(mercado)}
+                          aria-label={`Alterar estado de ${nomeExibido(chave)}`}
+                          onClick={() => void alterarStatus(chave, registro.status === "OK" ? "PENDENTE" : "OK")}>
+                          {!compartilhado.carregado ? "Aguardando dados" : compartilhado.snapshot.prioridadesExcluidas?.includes(mercado) ? "Cliente excluído" : registro.status === "OK" ? "Concluído" : "Pendente"}
+                        </button>
                       </div>
                     );
                   })}
@@ -490,18 +498,26 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             <button className="excel-toolbar-button" onClick={abrirAlteracaoAviso} disabled={!disponivel || ocupado || avisosExtras.length === 0}>
               <span>Alterar<br />Aviso</span><strong aria-hidden="true">✎</strong>
             </button>
+            <button className="excel-toolbar-button" disabled={!disponivel || ocupado || !avisosExtras.some(aviso => `aviso:${aviso.id}` === avisoSelecionadoId)}
+              onClick={() => setAvisoParaExcluir(avisosExtras.find(aviso => `aviso:${aviso.id}` === avisoSelecionadoId) ?? null)}>
+              <span>Excluir<br />Aviso</span><strong aria-hidden="true">×</strong>
+            </button>
           </div>
 
           <AvisosOrdenaveis avisos={avisosExtras} ordemSalva={compartilhado.estado.ordemAvisos}
+            selecionado={avisoSelecionadoId} aoSelecionar={setAvisoSelecionadoId}
             disponivel={disponivel} ocupado={ocupado}
             aoOrdenar={(ordem, anterior) => compartilhado.executar([{ tipo: "ordenarAvisos", ordem, anterior }])} />
 
-          <section className="excel-side-card info-card">
-            <span className="excel-eyebrow">Como funciona</span><h2>Controle por mês</h2>
-            <p>Clientes mensais aparecem todo mês. Os demais aparecem apenas nos meses em que forem incluídos. Cada mês mantém seu próprio status e suas observações. Cadastros e informações adicionais são compartilhados entre os computadores.</p>
-          </section>
         </aside>
       </main>
+
+      {avisoParaExcluir && <ConfirmarExclusao aoCancelar={() => setAvisoParaExcluir(null)}
+        descricao={<p>Excluir o aviso <strong>{avisoParaExcluir.titulo}</strong>?</p>}
+        aoConfirmar={async () => {
+          await compartilhado.executar([{ tipo: "excluirAviso", aviso: avisoParaExcluir }]);
+          setAvisoParaExcluir(null); setAvisoSelecionadoId(null);
+        }} />}
 
       {modalCliente === "incluir" && (
         <div className="excel-modal-backdrop" onMouseDown={fecharFormularioCliente}>

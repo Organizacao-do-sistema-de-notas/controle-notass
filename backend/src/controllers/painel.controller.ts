@@ -2,17 +2,11 @@ import type { Request, Response } from "express";
 
 import { StatusPendencia } from "../../generated/prisma/enums.ts";
 import { prisma } from "../lib/prisma.ts";
+import { acessarCadastro } from "../excel/cadastro-unico.ts";
 
 function competenciaValida(valor: unknown): valor is string {
   return typeof valor === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
 }
-
-const ordemStatus: Record<StatusPendencia, number> = {
-  [StatusPendencia.PENDENTE]: 1,
-  [StatusPendencia.AGUARDANDO_CLIENTE]: 2,
-  [StatusPendencia.EM_ATENDIMENTO]: 3,
-  [StatusPendencia.CONCLUIDO]: 4,
-};
 
 export async function listarCompetencias(_req: Request, res: Response): Promise<void> {
   try {
@@ -45,6 +39,9 @@ export async function obterPainelMensal(req: Request, res: Response): Promise<vo
   }
 
   try {
+    const cadastro = await acessarCadastro();
+    const ordemClientes = cadastro.estado.ordemClientesPainel ?? [];
+    const posicoes = new Map(ordemClientes.map((id, indice) => [id, indice]));
     const pendencias = await prisma.pendencia.findMany({
       where: {
         competencia,
@@ -132,19 +129,12 @@ export async function obterPainelMensal(req: Request, res: Response): Promise<vo
               },
         };
       })
-      .sort((a, b) => {
-        const diferencaStatus = ordemStatus[a.status] - ordemStatus[b.status];
-
-        if (diferencaStatus !== 0) {
-          return diferencaStatus;
-        }
-
-        return b.atualizadoEm.getTime() - a.atualizadoEm.getTime();
-      });
+      .sort((a, b) => (posicoes.get(a.cliente.id) ?? a.cliente.id) - (posicoes.get(b.cliente.id) ?? b.cliente.id));
 
     res.json({
       competencia,
       totais,
+      ordemClientes,
       pendencias: itens,
     });
   } catch (erro) {

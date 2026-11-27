@@ -13,6 +13,8 @@ export type EstadoExcel = {
   clientesPorCompetencia?: Record<string, string[]>;
   avisosExtras: AvisoExtra[];
   ordemAvisos?: string[];
+  avisosExcluidos?: AvisoExtra[];
+  ordemClientesPainel?: number[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
@@ -20,6 +22,8 @@ export type AlteracaoExcel =
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
   | { tipo: "ordenarAvisos"; ordem: string[]; anterior: string[] }
+  | { tipo: "ordenarPainel"; ordem: number[]; anterior: number[] }
+  | { tipo: "excluirAviso"; aviso: AvisoExtra }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type DivergenciaExcel = { caminho: string[]; atual: unknown; local: unknown };
 export class DadosExcelInvalidos extends Error {}
@@ -40,6 +44,7 @@ const mesValido = (mes: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(mes);
 const statusValido = (valor: unknown): valor is StatusExcel => ["PENDENTE", "AGUARDANDO", "EM_ATENDIMENTO", "OK"].includes(valor as string);
 const idFichaValido = (valor: unknown): valor is number => typeof valor === "number" && Number.isInteger(valor) && valor > 0 && valor <= 2147483647;
 const listaDeChaves = (valor: unknown): valor is string[] => Array.isArray(valor) && valor.every(chaveValida) && new Set(valor).size === valor.length;
+const listaDeIds = (valor: unknown): valor is number[] => Array.isArray(valor) && valor.every(idFichaValido) && new Set(valor).size === valor.length;
 export const avisoXaxim = "fixo:xaxim-gas";
 export function ordemDosAvisos(estado: Pick<EstadoExcel, "avisosExtras" | "ordemAvisos">): string[] {
   const existentes = [avisoXaxim, ...estado.avisosExtras.map(aviso => `aviso:${aviso.id}`)];
@@ -53,8 +58,13 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos", "avisosExcluidos", "ordemClientesPainel"]); exigir(raiz.every(chave => proprio(valor, chave)));
   if (proprio(valor, "ordemAvisos")) exigir(listaDeChaves(valor.ordemAvisos));
+  if (proprio(valor, "ordemClientesPainel")) exigir(listaDeIds(valor.ordemClientesPainel));
+  if (proprio(valor, "avisosExcluidos")) {
+    exigir(Array.isArray(valor.avisosExcluidos)); valor.avisosExcluidos.forEach(validarAviso);
+    exigir(new Set(valor.avisosExcluidos.map(item => item.id)).size === valor.avisosExcluidos.length);
+  }
   if (proprio(valor, "frequenciasClientes")) {
     exigir(objeto(valor.frequenciasClientes));
     for (const [chave, frequencia] of Object.entries(valor.frequenciasClientes)) exigir(chaveValida(chave) && ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"].includes(frequencia as string));
@@ -80,6 +90,7 @@ export function validarEstado(valor: unknown): EstadoExcel {
   }
   exigir(Array.isArray(valor.avisosExtras)); valor.avisosExtras.forEach(validarAviso);
   exigir(new Set(valor.avisosExtras.map(item => item.id)).size === valor.avisosExtras.length);
+  exigir(!(valor.avisosExcluidos as AvisoExtra[] | undefined)?.some(removido => (valor.avisosExtras as AvisoExtra[]).some(ativo => ativo.id === removido.id)));
   exigir(objeto(valor.registros));
   for (const [mes, lista] of Object.entries(valor.registros)) {
     exigir(mesValido(mes) && objeto(lista));
@@ -94,7 +105,11 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
   for (const op of valor) {
     exigir(objeto(op));
-    if (op.tipo === "ordenarAvisos") {
+    if (op.tipo === "ordenarPainel") {
+      campos(op, ["tipo", "ordem", "anterior"]); exigir(listaDeIds(op.ordem) && listaDeIds(op.anterior));
+    } else if (op.tipo === "excluirAviso") {
+      campos(op, ["tipo", "aviso"]); validarAviso(op.aviso);
+    } else if (op.tipo === "ordenarAvisos") {
       campos(op, ["tipo", "ordem", "anterior"]);
       exigir(listaDeChaves(op.ordem) && listaDeChaves(op.anterior));
     } else if (op.tipo === "incluirClienteMes") {
@@ -158,7 +173,23 @@ const igual = isDeepStrictEqual;
 export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel[]): EstadoExcel {
   const proximo = structuredClone(atual);
   for (const op of alteracoes) {
-    if (op.tipo === "ordenarAvisos") {
+    if (op.tipo === "excluirAviso") {
+      const existente = proximo.avisosExtras.find(aviso => aviso.id === op.aviso.id);
+      if (!existente) {
+        if (proximo.avisosExcluidos?.some(aviso => igual(aviso, op.aviso))) continue;
+        throw new DadosExcelInvalidos("Aviso não encontrado. O aviso permanente Xaxim Gás não pode ser excluído.");
+      }
+      if (!igual(existente, op.aviso)) throw new ConflitoExcel([["aviso", op.aviso.id]]);
+      (proximo.avisosExcluidos ??= []).push(structuredClone(existente));
+      proximo.avisosExtras = proximo.avisosExtras.filter(aviso => aviso.id !== op.aviso.id);
+      proximo.ordemAvisos = ordemDosAvisos(proximo);
+    } else if (op.tipo === "ordenarPainel") {
+      const atual = proximo.ordemClientesPainel ?? [];
+      if (igual(atual, op.ordem)) continue;
+      if (!igual(atual, op.anterior)) throw new ConflitoExcel([["ordemClientesPainel"]]);
+      exigir(op.ordem.length === atual.length && op.ordem.every(id => atual.includes(id)), "A ordem deve preservar todos os cadastros do Painel.");
+      proximo.ordemClientesPainel = [...op.ordem];
+    } else if (op.tipo === "ordenarAvisos") {
       const ordemAtual = ordemDosAvisos(proximo);
       if (igual(ordemAtual, op.ordem)) continue;
       if (!igual(ordemAtual, op.anterior)) throw new ConflitoExcel([["ordemAvisos"]]);
@@ -178,6 +209,7 @@ export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel
       proximo.nomesBusca[op.nome] = op.apelidos;
       proximo.informacoesClientes[op.nome] = op.informacoes;
     } else if (op.tipo === "incluirAviso") {
+      if (proximo.avisosExcluidos?.some(aviso => aviso.id === op.aviso.id)) throw new ConflitoExcel([["aviso", op.aviso.id]]);
       const existente = proximo.avisosExtras.find(item => item.id === op.aviso.id);
       if (existente && !igual(existente, op.aviso)) throw new ConflitoExcel([["aviso", op.aviso.id]]);
       if (!existente) proximo.avisosExtras.push(op.aviso);
@@ -210,6 +242,9 @@ export function importarAusentes(atual: EstadoExcel, local: EstadoExcel) {
     }
   }
   for (const aviso of local.avisosExtras) {
+    if (proximo.avisosExcluidos?.some(removido => removido.id === aviso.id)) {
+      conflitos.push({ caminho: ["aviso", aviso.id], atual: null, local: aviso }); continue;
+    }
     const existente = proximo.avisosExtras.find(item => item.id === aviso.id);
     if (!existente) { proximo.avisosExtras.push(structuredClone(aviso)); importados++; }
     else if (!igual(existente, aviso)) conflitos.push({ caminho: ["aviso", aviso.id], atual: existente, local: aviso });

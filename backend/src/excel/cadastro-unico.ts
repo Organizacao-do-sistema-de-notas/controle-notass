@@ -45,7 +45,11 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
     base.origens[chave] ??= id;
     if (!porId.has(id)) porId.set(id, chave);
   }
-  const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras, ordemAvisos: ordemDosAvisos(base.estado) };
+  const idsAtuais = clientes.filter(cliente => cliente.excluidoEm === null).map(cliente => cliente.id).sort((a, b) => a - b);
+  const ordemAnterior = base.estado.ordemClientesPainel ?? [];
+  const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras,
+    avisosExcluidos: base.estado.avisosExcluidos ?? [], ordemAvisos: ordemDosAvisos(base.estado),
+    ordemClientesPainel: [...ordemAnterior.filter(id => idsAtuais.includes(id)), ...idsAtuais.filter(id => !ordemAnterior.includes(id))] };
   estado.frequenciasClientes = {};
   estado.clientesPorCompetencia = {};
   for (const cliente of clientes) {

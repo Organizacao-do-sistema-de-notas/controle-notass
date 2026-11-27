@@ -1,102 +1,39 @@
-import { useId, useRef, useState, type PointerEvent } from "react";
+import { useId } from "react";
 import type { AvisoExtra } from "./excel-compartilhado";
+import { moverNaOrdem, useArrastoCartoes } from "./useArrastoCartoes";
 import "./avisos-ordenaveis.css";
 
-type Destino = { id: string; depois: boolean };
-type Arrasto = { id: string; ponteiro: number; x: number; y: number; ativo: boolean; ordem: string[] };
 const xaxim = "fixo:xaxim-gas";
-function mover(ordem: string[], origem: string, destino: Destino): string[] {
-  if (origem === destino.id) return ordem;
-  const resultado = ordem.filter(id => id !== origem);
-  resultado.splice(resultado.indexOf(destino.id) + Number(destino.depois), 0, origem);
-  return resultado;
-}
-
-export function AvisosOrdenaveis({ avisos, ordemSalva, disponivel, ocupado, aoOrdenar }: {
+export function AvisosOrdenaveis({ avisos, ordemSalva, disponivel, ocupado, selecionado, aoSelecionar, aoOrdenar }: {
   avisos: AvisoExtra[]; ordemSalva?: string[]; disponivel: boolean; ocupado: boolean;
+  selecionado: string | null; aoSelecionar: (id: string) => void;
   aoOrdenar: (ordem: string[], anterior: string[]) => Promise<void>;
 }) {
   const ajuda = useId();
-  const lista = useRef<HTMLDivElement>(null);
-  const botoes = useRef<Record<string, HTMLButtonElement | null>>({});
-  const arrasto = useRef<Arrasto | null>(null);
-  const emGravacao = useRef(false);
-  const [arrastando, setArrastando] = useState<string | null>(null);
-  const [destino, setDestino] = useState<Destino | null>(null);
-  const [erro, setErro] = useState("");
-  const [mensagem, setMensagem] = useState("");
   const existentes = [xaxim, ...avisos.map(aviso => `aviso:${aviso.id}`)];
   const ordem = [...(ordemSalva ?? []).filter(id => existentes.includes(id)), ...existentes.filter(id => !ordemSalva?.includes(id))];
-  const bloqueado = !disponivel || ocupado;
-
-  async function salvar(nova: string[], anterior: string[], focar?: string) {
-    if (emGravacao.current || bloqueado || nova.every((id, indice) => id === anterior[indice])) return;
-    emGravacao.current = true; setErro(""); setMensagem("Salvando ordem dos avisos...");
-    try {
-      await aoOrdenar(nova, anterior);
-      setMensagem("Ordem dos avisos salva.");
-      if (focar) requestAnimationFrame(() => botoes.current[focar]?.focus());
-    } catch (e) {
-      setMensagem(""); setErro(e instanceof Error ? e.message : "Não foi possível salvar a ordem. Tente mover o aviso novamente.");
-    } finally { emGravacao.current = false; }
-  }
-  function alvo(evento: PointerEvent): Destino | null {
-    const card = document.elementFromPoint(evento.clientX, evento.clientY)?.closest<HTMLElement>("[data-aviso-id]");
-    if (!card || !lista.current?.contains(card) || !card.dataset.avisoId) return null;
-    const area = card.getBoundingClientRect();
-    return { id: card.dataset.avisoId, depois: evento.clientY > area.top + area.height / 2 };
-  }
-  function iniciar(evento: PointerEvent<HTMLButtonElement>, id: string) {
-    if (bloqueado || emGravacao.current || !evento.isPrimary || evento.button !== 0) return;
-    evento.preventDefault(); evento.currentTarget.focus(); evento.currentTarget.setPointerCapture(evento.pointerId);
-    arrasto.current = { id, ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY, ativo: false, ordem: [...ordem] };
-  }
-  function arrastar(evento: PointerEvent<HTMLButtonElement>) {
-    const atual = arrasto.current;
-    if (!atual || atual.ponteiro !== evento.pointerId) return;
-    if (!atual.ativo && Math.hypot(evento.clientX - atual.x, evento.clientY - atual.y) < 6) return;
-    atual.ativo = true; setArrastando(atual.id); setDestino(alvo(evento)); evento.preventDefault();
-  }
-  function terminar(evento: PointerEvent<HTMLButtonElement>, cancelar = false) {
-    const atual = arrasto.current;
-    if (!atual || atual.ponteiro !== evento.pointerId) return;
-    const final = cancelar ? null : alvo(evento);
-    arrasto.current = null; setArrastando(null); setDestino(null);
-    if (evento.currentTarget.hasPointerCapture(evento.pointerId)) evento.currentTarget.releasePointerCapture(evento.pointerId);
-    if (atual.ativo && final) void salvar(mover(atual.ordem, atual.id, final), atual.ordem);
-  }
-
-  return (
-    <div className="avisos-ordenaveis" ref={lista} role="group" aria-label="Avisos em ordem personalizada" aria-busy={ocupado}>
-      <p id={ajuda} className="avisos-ajuda">Segure e arraste pelo ícone ⋮⋮. No teclado, use as setas para cima e para baixo.</p>
-      {ordem.map(id => {
-        const aviso = avisos.find(item => `aviso:${item.id}` === id);
-        const titulo = id === xaxim ? "Xaxim Gás" : aviso!.titulo;
-        const marcador = destino?.id === id && arrastando !== id ? destino.depois ? " destino-depois" : " destino-antes" : "";
-        return <section key={id} data-aviso-id={id}
-          className={`excel-side-card aviso-ordenavel ${id === xaxim ? "xaxim-card" : "custom-notice-card"}${arrastando === id ? " arrastando" : ""}${marcador}`}>
-          <button type="button" className="aviso-arrastar" ref={elemento => { botoes.current[id] = elemento; }}
-            disabled={bloqueado} aria-label={`Ordenar aviso ${titulo}`} aria-describedby={ajuda}
-            title="Segure e arraste para ordenar; ou use as setas do teclado"
-            onPointerDown={evento => iniciar(evento, id)} onPointerMove={arrastar} onPointerUp={evento => terminar(evento)}
-            onPointerCancel={evento => terminar(evento, true)} onLostPointerCapture={evento => terminar(evento, true)}
-            onKeyDown={evento => {
-              if (evento.key === "Escape") { arrasto.current = null; setArrastando(null); setDestino(null); return; }
-              if (!["ArrowUp", "ArrowDown"].includes(evento.key)) return;
-              evento.preventDefault();
-              const indice = ordem.indexOf(id) + (evento.key === "ArrowUp" ? -1 : 1);
-              if (ordem[indice]) void salvar(mover(ordem, id, { id: ordem[indice], depois: evento.key === "ArrowDown" }), ordem, id);
-            }}><span aria-hidden="true">⋮⋮</span></button>
-          {id === xaxim ? <>
-            <span className="xaxim-alert">Extremamente importante</span>
-            <h2>Xaxim Gás</h2>
-            <p>Empresa do web. Todo dia 01, enviar os arquivos manualmente para o e-mail abaixo. Este aviso fica sempre visível para não ser esquecido.</p>
-            <strong className="xaxim-email">rubinhogmasters@gmail.com</strong>
-          </> : <><span className="excel-eyebrow">Aviso fixo</span><h2>{aviso!.titulo}</h2><p>{aviso!.texto}</p></>}
-        </section>;
-      })}
-      {mensagem && <p className="avisos-estado" role="status">{mensagem}</p>}
-      {erro && <p className="avisos-erro" role="alert">{erro}</p>}
-    </div>
-  );
+  const arrasto = useArrastoCartoes({ ids: ordem, bloqueado: !disponivel || ocupado, aoSelecionar,
+    aoMover: (origem, destino, depois, anterior) => aoOrdenar(moverNaOrdem(anterior, origem, destino, depois), anterior) });
+  return <div className="avisos-ordenaveis" ref={arrasto.grupo} role="group" aria-label="Avisos em ordem personalizada" aria-busy={ocupado}>
+    <p id={ajuda} className="visualmente-oculto">Clique para selecionar. Segure e arraste o cartão para mover. No teclado, use as setas; no toque, use o puxador.</p>
+    {ordem.map(id => {
+      const aviso = avisos.find(item => `aviso:${item.id}` === id);
+      const titulo = id === xaxim ? "Xaxim Gás" : aviso!.titulo;
+      return <section key={id} data-aviso-id={id} tabIndex={0} {...arrasto.vincular(id)}
+        className={`excel-side-card aviso-ordenavel cartao-arrastavel ${id === xaxim ? "xaxim-card" : "custom-notice-card"}${selecionado === id ? " aviso-selecionado" : ""}`}
+        aria-label={`Aviso ${titulo}`} aria-describedby={ajuda} onClick={() => aoSelecionar(id)}
+        onKeyDown={evento => { if (evento.target === evento.currentTarget) { if (['Enter', ' '].includes(evento.key)) { evento.preventDefault(); aoSelecionar(id); } else arrasto.teclado(evento, id); } }}>
+        <button type="button" className="aviso-arrastar" data-drag-handle disabled={!disponivel || ocupado}
+          aria-label={`Ordenar aviso ${titulo}`} title="Arraste o cartão para mover; ou use as setas do teclado"
+          onKeyDown={evento => arrasto.teclado(evento, id)}><span aria-hidden="true">⋮⋮</span></button>
+        {id === xaxim ? <>
+          <span className="xaxim-alert">Extremamente importante</span><h2>Xaxim Gás</h2>
+          <p>Empresa do web. Todo dia 01, enviar os arquivos manualmente para o e-mail abaixo. Este aviso fica sempre visível para não ser esquecido.</p>
+          <strong className="xaxim-email">rubinhogmasters@gmail.com</strong>
+        </> : <><span className="excel-eyebrow">Aviso fixo</span><h2>{aviso!.titulo}</h2><p>{aviso!.texto}</p></>}
+      </section>;
+    })}
+    {arrasto.mensagem && <p className="avisos-estado" role="status">{arrasto.mensagem}</p>}
+    {arrasto.erro && <p className="avisos-erro" role="alert">{arrasto.erro}</p>}
+  </div>;
 }

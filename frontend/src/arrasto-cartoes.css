@@ -1,0 +1,7 @@
+.cartao-arrastavel { position: relative; cursor: grab; user-select: none; touch-action: pan-y; }
+.cartao-arrastavel [data-drag-handle] { touch-action: none; cursor: grab; }
+.cartao-arrastavel input, .cartao-arrastavel textarea { user-select: text; }
+.cartao-arrastavel[data-em-arrasto] { cursor: grabbing; opacity: .96; box-shadow: 0 18px 50px #17304a55; }
+.cartao-arrastavel[data-destino-arrasto="antes"]::before, .cartao-arrastavel[data-destino-arrasto="depois"]::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: #366cff; pointer-events: none; }
+.cartao-arrastavel[data-destino-arrasto="antes"]::before { top: -6px; }
+.cartao-arrastavel[data-destino-arrasto="depois"]::after { bottom: -6px; }

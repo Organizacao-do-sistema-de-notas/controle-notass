@@ -3,6 +3,8 @@ import { excluirCliente, listarClientes } from "./api";
 import type { Cliente } from "./types";
 import type { RespostaExcel } from "./excel-compartilhado";
 import "./excluir-cliente.css";
+import { ConfirmarExclusao } from "./ConfirmarExclusao";
+import { bloquearRolagem } from "./bloquear-rolagem";
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
@@ -21,6 +23,7 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
   const [tentativa, setTentativa] = useState(0);
   const [pesquisa, setPesquisa] = useState("");
   const [id, setId] = useState("");
+  const [confirmacao, setConfirmacao] = useState<Cliente | null>(null);
   const selecionado = clientes.find(cliente => String(cliente.id) === id);
   const filtrados = useMemo(() => {
     const termos = normalizar(pesquisa).split(/\s+/).filter(Boolean);
@@ -33,11 +36,10 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
   useLayoutEffect(() => {
     const anterior = document.activeElement;
     const elemento = dialog.current;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const liberar = bloquearRolagem();
     elemento?.showModal();
     return () => {
-      elemento?.close(); document.body.style.overflow = overflow;
+      elemento?.close(); liberar();
       if (anterior instanceof HTMLElement && anterior.isConnected) anterior.focus();
     };
   }, []);
@@ -59,19 +61,18 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
 
   function fechar() { if (!emExclusao.current) aoFechar(); }
   async function confirmar() {
-    if (!selecionado || carregando || emExclusao.current) return;
-    if (!window.confirm(`Excluir o cliente #${selecionado.id} — ${selecionado.nome}?\n\nEle será retirado do Excel, do Painel e das fichas. Os registros e históricos permanecerão guardados no banco.`)) return;
+    if (!confirmacao || carregando || emExclusao.current) return;
     emExclusao.current = true; setSalvando(true); setErro("");
     try {
-      const resposta = await excluirCliente(selecionado.id, selecionado.nome);
-      await aoExcluir(resposta, selecionado.id);
+      const resposta = await excluirCliente(confirmacao.id, confirmacao.nome);
+      await aoExcluir(resposta, confirmacao.id);
       aoFechar();
-    } catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível excluir o cliente. Tente novamente."); }
+    } catch (e) { throw e; }
     finally { emExclusao.current = false; setSalvando(false); }
   }
 
   return (
-    <dialog ref={dialog} className="exclusao-cliente-dialog" aria-labelledby="exclusao-cliente-titulo" aria-busy={salvando} tabIndex={-1}
+    <><dialog ref={dialog} className="exclusao-cliente-dialog" aria-labelledby="exclusao-cliente-titulo" aria-busy={salvando} tabIndex={-1}
       onCancel={evento => { evento.preventDefault(); fechar(); }}
       onKeyDown={evento => {
         if (evento.key === "Escape") { evento.preventDefault(); evento.stopPropagation(); fechar(); }
@@ -114,8 +115,11 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
       <footer className="exclusao-cliente-acoes">
         <button type="button" className="button secondary" disabled={carregando || salvando} onClick={() => setTentativa(valor => valor + 1)}>Atualizar lista</button>
         <button type="button" className="button secondary" disabled={salvando} onClick={fechar}>Cancelar</button>
-        <button type="button" className="button exclusao-cliente-confirmar" disabled={!selecionado || carregando || salvando} onClick={() => void confirmar()}>{salvando ? "Excluindo..." : "Excluir cliente"}</button>
+        <button type="button" className="button exclusao-cliente-confirmar" disabled={!selecionado || carregando || salvando} onClick={() => setConfirmacao(selecionado ?? null)}>{salvando ? "Excluindo..." : "Excluir cliente"}</button>
       </footer>
     </dialog>
+    {confirmacao && <ConfirmarExclusao aoCancelar={() => setConfirmacao(null)} aoConfirmar={confirmar}
+      descricao={<><p>Excluir o cliente <strong>#{confirmacao.id} — {confirmacao.nome}</strong>?</p><p>Ele será retirado do Excel, do Painel e das fichas. Os registros e históricos permanecerão guardados no banco.</p></>} />}
+    </>
   );
 }

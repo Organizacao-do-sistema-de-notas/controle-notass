@@ -264,7 +264,9 @@ test('clientes importados com mesmo nome são identificados pelo código e pesqu
   const response = await request.get(`${api}/clientes`);
   expect(response.ok()).toBe(true);
   const clientes = await response.json();
-  const homonimos = clientes.filter((c: {nome: string; confere?: {codigo: string}}) => c.confere && c.nome.startsWith('Codex UI homônimos '));
+  const candidato = clientes.find((c: {nome: string; confere?: {codigo: string}}) => c.confere && c.nome.startsWith('Codex UI homônimos '));
+  expect(candidato).toBeDefined();
+  const homonimos = clientes.filter((c: {nome: string; confere?: {codigo: string}}) => c.confere && c.nome === candidato.nome);
   expect(homonimos).toHaveLength(2);
   expect(homonimos[0].nome).toBe(homonimos[1].nome);
   const escolhido = homonimos[0];

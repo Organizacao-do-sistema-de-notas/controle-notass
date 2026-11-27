@@ -109,9 +109,15 @@ no notebook e no computador principal ainda depende do retorno do usuário.
 14. No Excel e no Painel, conferir as 13 opções da seleção rápida e usar −1/+1
     para voltar/avançar um mês, inclusive na virada do ano. Nos extremos, o botão
     correspondente deve ficar desabilitado. Registros antigos permanecem salvos.
-15. Arrastar avisos pelo puxador ⋮⋮, recarregar e conferir a mesma ordem no outro
+15. Arrastar avisos pelo corpo do cartão com o mouse, recarregar e conferir a mesma ordem no outro
     computador. Testar também as setas do teclado. Xaxim Gás deve continuar
     presente e os três mercados prioritários devem permanecer no controle fixo.
+16. Selecionar um aviso, conferir sua borda azul e abrir **Excluir Aviso**.
+    Cancelar deve mantê-lo. A confirmação central com Excluir em vermelho deve
+    retirá-lo da lista. A exclusão de cliente usa a mesma confirmação.
+17. Reordenar os cards do Painel, trocar o estado no topo e alternar entre meses:
+    a ordem manual deve permanecer. Conferir Histórico à esquerda e mensagem à
+    direita. No controle dos mercados, testar apenas Pendente e Concluído.
 
 Se um navegador ainda tiver registros antigos, seguir a importação explícita em
 [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md), guardando os originais e
@@ -138,3 +144,12 @@ O estilo desses controles é provisório no Excel e no Painel. Também ficou
 anotada uma futura consulta separada para meses fora da seleção rápida,
 preservando todos os registros existentes. Detalhes em
 [MESES_RAPIDOS_E_AVISOS.md](MESES_RAPIDOS_E_AVISOS.md).
+
+## Cartões livres e confirmação de exclusões — próxima entrega
+
+A branch `feature/cartoes-livres-exclusao-status`, ainda sem publicação, prepara
+o arrasto pelo corpo do cartão, seleção azul e exclusão de avisos, confirmação
+central para exclusões, alternância simples dos mercados e estados destacados
+no topo do Painel. A ordem padrão segue o cadastro e a ordem manual vale em todos
+os meses, conforme confirmado pelo usuário. Detalhes em
+[CARTOES_E_EXCLUSOES.md](CARTOES_E_EXCLUSOES.md).

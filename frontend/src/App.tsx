@@ -3,6 +3,8 @@ import type { FormEvent, KeyboardEvent } from "react";
 import { ExcluirCliente } from "./ExcluirCliente";
 import { SeletorMes } from "./SeletorMes";
 import { competenciaRapida, mesesRapidos } from "./meses";
+import { alterarExcel, ErroExcel } from "./excel-compartilhado";
+import { moverNaOrdem, useArrastoCartoes } from "./useArrastoCartoes";
 
 import {
   atualizarStatusPendencia,
@@ -109,6 +111,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const [editor, setEditor] = useState<EditorMensagem | null>(null);
   const [carregandoMensagem, setCarregandoMensagem] = useState(false);
   const [alterandoStatusId, setAlterandoStatusId] = useState<number | null>(null);
+  const [salvandoOrdem, setSalvandoOrdem] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [autor, setAutor] = useState(() => localStorage.getItem("controle-notas-autor") || "");
 
@@ -150,7 +153,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   );
   const mensagemComRascunho = editor !== null && editor.mensagem !== editor.mensagemOriginal;
   const temRascunhos = clienteComRascunho || contabilidadeComRascunho || pendenciaComRascunho || mensagemComRascunho;
-  const gravando = salvandoCliente || salvandoContabilidade || salvandoPendencia || Boolean(editor?.salvando) || alterandoStatusId !== null;
+  const gravando = salvandoCliente || salvandoContabilidade || salvandoPendencia || salvandoOrdem || Boolean(editor?.salvando) || alterandoStatusId !== null;
   const formularioAberto = modalCliente || modalContabilidade || modalPendencia || editor !== null;
   const aberturaBloqueada = gravando || carregandoCadastros || carregandoMensagem || formularioAberto;
 
@@ -283,6 +286,25 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     if (filtroStatus === "TODOS") return painel.pendencias;
     return painel.pendencias.filter((item) => item.status === filtroStatus);
   }, [painel, filtroStatus]);
+
+  function aplicarOrdemPainel(ordem: number[]) {
+    const posicoes = new Map(ordem.map((id, indice) => [id, indice]));
+    setPainel(atual => atual ? { ...atual, ordemClientes: ordem,
+      pendencias: [...atual.pendencias].sort((a, b) => (posicoes.get(a.cliente.id) ?? a.cliente.id) - (posicoes.get(b.cliente.id) ?? b.cliente.id)) } : atual);
+  }
+  const arrastoPainel = useArrastoCartoes({ ids: pendenciasFiltradas.map(item => String(item.cliente.id)), bloqueado: aberturaBloqueada || carregando,
+    aoMover: async (origem, destino, depois) => {
+      const anterior = painel?.ordemClientes ?? painel?.pendencias.map(item => item.cliente.id) ?? [];
+      const ordem = moverNaOrdem(anterior, Number(origem), Number(destino), depois);
+      setSalvandoOrdem(true);
+      try {
+        const resposta = await alterarExcel([{ tipo: 'ordenarPainel', ordem, anterior }]);
+        aplicarOrdemPainel(resposta.estado?.ordemClientesPainel ?? ordem);
+      } catch (e) {
+        if (e instanceof ErroExcel && e.resposta?.estado?.ordemClientesPainel) aplicarOrdemPainel(e.resposta.estado.ordemClientesPainel);
+        throw e;
+      } finally { setSalvandoOrdem(false); }
+    } });
 
   async function abrirEditorMensagem(item: PendenciaPainel) {
     if (aberturaBloqueada) return;
@@ -626,6 +648,8 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
               <p>{pendenciasFiltradas.length} registro(s) exibido(s)</p>
             </div>
           </div>
+          {arrastoPainel.erro && <p role="alert" className="alert error">{arrastoPainel.erro}</p>}
+          {arrastoPainel.mensagem && <p role="status" className="painel-ordem-estado">{arrastoPainel.mensagem}</p>}
 
           {carregando ? (
             <div className="empty-state panel">Carregando informações...</div>
@@ -634,17 +658,24 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
               Nenhuma pendência encontrada para os filtros atuais.
             </div>
           ) : (
-            <div className="pendencias-grid">
+            <div className="pendencias-grid" ref={arrastoPainel.grupo}>
               {pendenciasFiltradas.map((item) => (
-                <article className="pendencia-card" key={item.id}>
+                <article className="pendencia-card cartao-arrastavel" key={item.id} tabIndex={0} data-cliente-id={item.cliente.id} {...arrastoPainel.vincular(String(item.cliente.id))}>
                   <div className="card-heading">
                     <div>
                       <h3>{item.cliente.nome}</h3>
                       <p>{item.contabilidade?.nome ?? "Sem contabilidade vinculada"}</p>
                     </div>
-                    <span className={`status-badge status-${item.status.toLowerCase()}`}>
-                      {rotulosStatus[item.status]}
-                    </span>
+                    <div className="card-status-controle">
+                      <select aria-label={`Status de ${item.cliente.nome}`} value={item.status} disabled={gravando}
+                        className={`card-status-select status-${item.status.toLowerCase()}`}
+                        onChange={event => void alterarStatus(item, event.target.value as StatusPendencia)}>
+                        {statusDisponiveis.map(status => <option key={status} value={status}>{rotulosStatus[status]}</option>)}
+                      </select>
+                      <button type="button" className="painel-arrastar" data-drag-handle disabled={aberturaBloqueada || carregando}
+                        aria-label={`Ordenar cliente ${item.cliente.nome}`} title="Arraste o cartão para mover; ou use as setas do teclado"
+                        onKeyDown={evento => arrastoPainel.teclado(evento, String(item.cliente.id))}>⋮⋮</button>
+                    </div>
                   </div>
 
                   <div className="card-info-grid">
@@ -668,27 +699,8 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
                   </div>
 
                   <div className="card-actions">
-                    <select
-                      aria-label={`Status de ${item.cliente.nome}`}
-                      value={item.status}
-                      disabled={gravando}
-                      onChange={(event) =>
-                        void alterarStatus(item, event.target.value as StatusPendencia)
-                      }
-                    >
-                      {statusDisponiveis.map((status) => (
-                        <option key={status} value={status}>
-                          {rotulosStatus[status]}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      className="button primary"
-                      onClick={() => void abrirEditorMensagem(item)}
-                      disabled={aberturaBloqueada}
-                    >
-                      {item.temMensagemContador ? "Editar mensagem" : "Criar mensagem"}
+                    <button className="button secondary" onClick={() => void abrirHistorico(item)}>
+                      Histórico
                     </button>
 
                     {item.mensagemContador && (
@@ -700,8 +712,8 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
                       </button>
                     )}
 
-                    <button className="button secondary" onClick={() => void abrirHistorico(item)}>
-                      Histórico
+                    <button className="button primary card-criar-mensagem" onClick={() => void abrirEditorMensagem(item)} disabled={aberturaBloqueada}>
+                      {item.temMensagemContador ? "Editar mensagem" : "Criar mensagem"}
                     </button>
                   </div>
                 </article>
