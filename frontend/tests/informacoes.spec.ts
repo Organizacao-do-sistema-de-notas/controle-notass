@@ -16,9 +16,14 @@ async function preparar(page: Page, dados?: { nomes?: Record<string, string>; in
   await importarLocal(page);
 }
 
-async function importarLocal(page: Page) {
+async function importarLocal(page: Page, nomes = [cliente]) {
   await page.getByRole('button', { name: 'Importar dados deste navegador', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Importar dados deste navegador', exact: true })).toHaveCount(0);
+  const estado = (await (await page.request.get('http://127.0.0.1:3010/excel/estado')).json()).estado;
+  for (const chave of nomes) {
+    const id = estado.vinculosClientes[chave];
+    expect((await page.request.patch(`http://127.0.0.1:3010/clientes/${id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } })).ok()).toBe(true);
+  }
 }
 
 function botaoInfo(page: Page, nome = cliente) {
@@ -65,9 +70,16 @@ test('cadastro guarda informações permanentes e mantém observações e status
   const editor = page.locator('.excel-modal-clientes');
   const nome = `${cliente} novo`;
   const texto = 'Orientação fictícia da empresa.\nSegunda particularidade de teste.';
-  await editor.getByRole('textbox', { name: 'Nome principal', exact: true }).fill(nome);
-  await editor.getByRole('textbox', { name: 'Informações adicionais', exact: true }).fill(texto);
+  const criado = await (await request.post('http://127.0.0.1:3010/clientes', { data: { nome } })).json();
+  expect((await request.patch(`http://127.0.0.1:3010/clientes/${criado.id}/ficha`, { data: { informacoesAdicionais: texto } })).ok()).toBe(true);
+  // Refresh the available registry without creating through the Excel dialog.
+  await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect.poll(async () => (await (await request.get('http://127.0.0.1:3010/excel/estado')).json()).estado.clientesExtras).toContain(`cliente:${criado.id}`);
+  await page.getByRole('button', { name: /Incluir\s*Cliente/, exact: true }).click();
+  await editor.getByLabel('Pesquisar cliente cadastrado').fill(nome);
+  await editor.getByRole('button', { name: `Selecionar cliente #${criado.id} — ${nome}`, exact: true }).click();
   await editor.getByRole('button', { name: 'Incluir', exact: true }).click();
+  expect((await request.patch(`http://127.0.0.1:3010/clientes/${criado.id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } })).ok()).toBe(true);
   const filtro = page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...');
   await filtro.fill(nome);
   const row = page.locator('.excel-table-row');
@@ -105,7 +117,7 @@ test('cada cliente conserva suas informações ao renomear, inclusive nomes exib
     localStorage.setItem(chaveInfo, JSON.stringify({ [cliente]: 'Informação exclusiva A', [outro]: 'Informação exclusiva B' }));
   }, { cliente, outro, chaveInfo });
   await page.goto('/');
-  await importarLocal(page);
+  await importarLocal(page, [cliente, outro]);
   await page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...').fill('Mesmo nome de teste');
   const botoes = botaoInfo(page, 'Mesmo nome de teste');
   await expect(botoes).toHaveCount(2);

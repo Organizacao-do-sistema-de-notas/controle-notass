@@ -176,6 +176,7 @@ test('recarregar protege o rascunho da ficha e fica liberado depois de salvar', 
 });
 
 test('Excel preserva aviso, prioridades, pesquisa e cadastro local; Painel continua acessível', async ({ page }) => {
+  expect((await page.request.patch(`${api}/clientes/${outro.id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } })).ok()).toBe(true);
   await page.goto('/');
   await page.getByRole('button', { name: 'Excel', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Xaxim Gás', exact: true })).toBeVisible();
@@ -216,7 +217,7 @@ test('cadastro pelo Painel fica disponível na ficha sem importar a tabela Excel
   await page.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
   await expect(page.locator('.form-modal')).toHaveCount(0);
   await page.getByRole('button', { name: 'Excel', exact: true }).click();
-  await expect(page.locator('.excel-client-name').filter({ hasText: nome })).toHaveCount(1);
+  await expect(page.locator('.excel-client-name').filter({ hasText: nome })).toHaveCount(0);
   await page.getByRole('button', { name: /Fichas dos\s*Clientes/ }).click();
   await page.getByLabel('Buscar no banco').fill(nome);
   await page.getByRole('button', { name: nome, exact: true }).click();

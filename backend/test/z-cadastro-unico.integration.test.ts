@@ -27,6 +27,56 @@ before(async () => {
 beforeEach(async () => { await pool.query('DELETE FROM "ExcelCompartilhado" WHERE id=$1', ['principal']); });
 after(async () => { if (server) await new Promise<void>(r => server.close(() => r())); await prisma.$disconnect(); await pool.end(); });
 
+test('lista mensal: frequência da ficha é compartilhada e incluir um ID não cria outro cadastro nem replica meses', async () => {
+  const a = await cliente('acesso eventual'), mensal = await cliente('acesso mensal'), indefinido = await cliente('frequência não definida');
+  await req(`/clientes/${a.id}/ficha`, 'PATCH', { frequenciaAcesso: 'EVENTUAL', nomesAlternativos: ['Apelido eventual'], informacoesAdicionais: 'Preservar informação' });
+  await req(`/clientes/${mensal.id}/ficha`, 'PATCH', { frequenciaAcesso: 'MENSAL' });
+  const antes = await ler(), k = chave(antes.estado, a.id);
+  assert.equal(antes.estado.frequenciasClientes[k], 'EVENTUAL');
+  assert.equal(antes.estado.frequenciasClientes[chave(antes.estado, mensal.id)], 'MENSAL');
+  assert.equal(antes.estado.frequenciasClientes[chave(antes.estado, indefinido.id)], 'NAO_DEFINIDA');
+  const quantidade = (await req('/clientes')).length;
+  const incluir = { tipo: 'incluirClienteMes', clienteId: a.id, competencia: '2026-11' };
+  await alterar([incluir]);
+  await alterar([definir(['registro', '2026-11', k, 'observacao'], 'Texto de novembro', ''), definir(['registro', '2026-11', k, 'status'], 'OK', 'PENDENTE')]);
+  await alterar([incluir]); // Retry must keep saved work.
+  const depois = (await ler()).estado;
+  assert.equal((await req('/clientes')).length, quantidade);
+  assert.deepEqual(depois.registros['2026-11'][k], { status: 'OK', observacao: 'Texto de novembro' });
+  assert.equal(depois.registros['2026-12']?.[k], undefined);
+  assert.equal(depois.informacoesClientes[k], 'Preservar informação');
+  assert.deepEqual(depois.nomesBusca[k], ['Apelido eventual']);
+  const revisao = (await ler()).revisao;
+  await req(`/clientes/${a.id}/ficha`, 'PATCH', { frequenciaAcesso: 'MENSAL' });
+  const atualizado = await req(`/excel/estado?revisao=${revisao}&instancia=${antes.instancia}`);
+  assert.equal(atualizado.estado.frequenciasClientes[k], 'MENSAL');
+  assert.deepEqual(atualizado.estado.registros, depois.registros);
+});
+
+test('lista mensal: inclusão valida mês e ID, recusa excluídos e preserva o lote em erro', async () => {
+  const a = await cliente('inclusão inválida'), k = chave((await ler()).estado, a.id);
+  for (const op of [
+    { tipo: 'incluirClienteMes', clienteId: a.id, competencia: '2026-13' },
+    { tipo: 'incluirClienteMes', clienteId: '1', competencia: '2026-11' },
+    { tipo: 'incluirClienteMes', clienteId: 2147483647, competencia: '2026-11' },
+    { tipo: 'incluirClienteMes', clienteId: a.id, competencia: '2026-11', nome: 'Não cadastrar' },
+  ]) await alterar([definir(['nome', k], 'Não aplicar parcialmente', a.nome), op], 400);
+  assert.equal((await req(`/clientes/${a.id}`)).nome, a.nome);
+  await req(`/clientes/${a.id}`, 'DELETE', { nomeConfirmado: a.nome });
+  await alterar([{ tipo: 'incluirClienteMes', clienteId: a.id, competencia: '2026-11' }], 400);
+  assert.equal((await ler()).estado.registros['2026-11']?.[k], undefined);
+});
+
+test('lista mensal: pendência já existente inclui o cliente só na sua competência sem alterar seu histórico', async () => {
+  const a = await cliente('pendência existente');
+  const p = await req('/pendencias', 'POST', { clienteId: a.id, competencia: '2027-02', status: 'CONCLUIDO', observacao: 'Preservar observação' }, 201);
+  const historico = await req(`/pendencias/${p.id}/historico`);
+  const estado = (await ler()).estado, k = chave(estado, a.id);
+  assert.ok(estado.clientesPorCompetencia['2027-02'].includes(k));
+  assert.ok(!estado.clientesPorCompetencia['2027-03']?.includes(k));
+  assert.deepEqual(await req(`/pendencias/${p.id}/historico`), historico);
+});
+
 test('cadastro único: clientes do menu e do Excel aparecem nas duas vistas, uma vez por ID e na mesma ordem', async () => {
   const a = await cliente('criado no menu');
   const inicial = (await ler()).estado;

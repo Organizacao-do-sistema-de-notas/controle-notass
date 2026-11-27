@@ -9,12 +9,15 @@ export type EstadoExcel = {
   informacoesClientes: Record<string, string>;
   vinculosClientes: Record<string, number>;
   clientesInativos: string[];
+  frequenciasClientes?: Record<string, "NAO_DEFINIDA" | "MENSAL" | "EVENTUAL">;
+  clientesPorCompetencia?: Record<string, string[]>;
   avisosExtras: AvisoExtra[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
+  | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type DivergenciaExcel = { caminho: string[]; atual: unknown; local: unknown };
 export class DadosExcelInvalidos extends Error {}
@@ -41,7 +44,15 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes", "clientesInativos"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  if (proprio(valor, "frequenciasClientes")) {
+    exigir(objeto(valor.frequenciasClientes));
+    for (const [chave, frequencia] of Object.entries(valor.frequenciasClientes)) exigir(chaveValida(chave) && ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"].includes(frequencia as string));
+  }
+  if (proprio(valor, "clientesPorCompetencia")) {
+    exigir(objeto(valor.clientesPorCompetencia));
+    for (const [mes, clientes] of Object.entries(valor.clientesPorCompetencia)) exigir(mesValido(mes) && Array.isArray(clientes) && clientes.every(chaveValida));
+  }
   const inativos = proprio(valor, "clientesInativos") ? valor.clientesInativos : [];
   exigir(Array.isArray(inativos) && inativos.every(chaveValida));
   const vinculos = proprio(valor, "vinculosClientes") ? valor.vinculosClientes : {};
@@ -73,7 +84,10 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
   for (const op of valor) {
     exigir(objeto(op));
-    if (op.tipo === "incluirCliente") {
+    if (op.tipo === "incluirClienteMes") {
+      campos(op, ["tipo", "clienteId", "competencia"]);
+      exigir(idFichaValido(op.clienteId) && typeof op.competencia === "string" && mesValido(op.competencia));
+    } else if (op.tipo === "incluirCliente") {
       campos(op, ["tipo", "nome", "apelidos", "informacoes", "idCriacao"]);
       exigir(chaveValida(op.nome) && nomes(op.apelidos) && texto(op.informacoes));
       exigir(op.idCriacao === undefined || chaveValida(op.idCriacao));
@@ -144,10 +158,13 @@ export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel
       proximo.clientesExtras.push(op.nome);
       proximo.nomesBusca[op.nome] = op.apelidos;
       proximo.informacoesClientes[op.nome] = op.informacoes;
-    } else {
+    } else if (op.tipo === "incluirAviso") {
       const existente = proximo.avisosExtras.find(item => item.id === op.aviso.id);
       if (existente && !igual(existente, op.aviso)) throw new ConflitoExcel([["aviso", op.aviso.id]]);
       if (!existente) proximo.avisosExtras.push(op.aviso);
+    } else {
+      // Registry operations must resolve an existing ID before reaching this layer.
+      throw new DadosExcelInvalidos("A inclusão no mês exige um cliente cadastrado.");
     }
   }
   return proximo;

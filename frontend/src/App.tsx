@@ -101,6 +101,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const [competencias, setCompetencias] = useState<string[]>([]);
   const [competencia, setCompetencia] = useState("");
   const [painel, setPainel] = useState<PainelMensal | null>(null);
+  const [mostrarIndicadores, setMostrarIndicadores] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
@@ -580,9 +581,22 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
             </select>
           </label>
 
-          <button className="button secondary" onClick={() => void carregarPainel(competencia)}>
-            Atualizar
-          </button>
+          <div className="painel-atualizar-acoes">
+            <button className="button secondary" onClick={() => void carregarPainel(competencia)}>
+              Atualizar
+            </button>
+            <button type="button" className="painel-indicadores-toggle"
+              aria-label={mostrarIndicadores ? "Ocultar indicadores" : "Mostrar indicadores"}
+              title={mostrarIndicadores ? "Ocultar indicadores" : "Mostrar indicadores"}
+              aria-expanded={mostrarIndicadores} aria-controls="resumo-painel"
+              onClick={() => setMostrarIndicadores(valor => !valor)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                {!mostrarIndicadores && <path d="m3 3 18 18" />}
+              </svg>
+            </button>
+          </div>
 
           <div className="toolbar-spacer" />
 
@@ -603,8 +617,8 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
         {erro && <div className="alert error">{erro}</div>}
         {aviso && <div className="toast">{aviso}</div>}
 
-        {painel && (
-          <section className="summary-grid">
+        {painel && mostrarIndicadores && (
+          <section className="summary-grid" id="resumo-painel" aria-label="Resumo do mês">
             <article className="summary-card">
               <span>Total</span>
               <strong>{painel.totais.total}</strong>

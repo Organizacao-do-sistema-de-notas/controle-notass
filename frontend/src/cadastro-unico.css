@@ -3,3 +3,12 @@
 .excel-client-aliases { flex-basis: 100%; }
 .excel-ficha-atalho { display: block; width: fit-content; margin-top: 6px; padding: 4px 8px; background: #f7faff; color: #3a608f; font-size: 11px; --largura-moldura: 5px; }
 .excel-cliente-inativo { display: inline-block; margin-top: 6px; font-size: 11px; color: #788699; }
+.excel-inclusao-tabela { max-height: 260px; overflow-y: auto; border: 1px solid #dbe6f3; border-radius: 7px; }
+.excel-inclusao-tabela table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.excel-inclusao-tabela th { position: sticky; top: 0; z-index: 1; background: #edf4fc; color: #52657e; }
+.excel-inclusao-tabela th, .excel-inclusao-tabela td { padding: 7px 8px; border-bottom: 1px solid #e6edf5; }
+.excel-inclusao-tabela td:first-child, .excel-inclusao-tabela td:last-child { white-space: nowrap; }
+.excel-inclusao-tabela .selecionado { background: #e8f0ff; }
+.excel-inclusao-tabela button { width: 100%; border: 0; padding: 5px; background: transparent; color: inherit; text-align: left; overflow-wrap: anywhere; }
+.excel-inclusao-tabela button:hover:not(:disabled) { color: #2958c8; text-decoration: underline; }
+.excel-inclusao-tabela + p, .excel-form-group > p { font-size: 12px; line-height: 1.6; }

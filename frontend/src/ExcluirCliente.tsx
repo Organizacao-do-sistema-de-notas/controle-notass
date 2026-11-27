@@ -24,7 +24,7 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
   const selecionado = clientes.find(cliente => String(cliente.id) === id);
   const filtrados = useMemo(() => {
     const termos = normalizar(pesquisa).split(/\s+/).filter(Boolean);
-    return clientes.filter(cliente => {
+    return [...clientes].sort((a, b) => a.id - b.id).filter(cliente => {
       const indice = normalizar([String(cliente.id), cliente.nome, ...(cliente.nomesAlternativos ?? []).map(item => item.nome)].join(" "));
       return termos.every(termo => indice.includes(termo));
     });
@@ -96,12 +96,17 @@ export function ExcluirCliente({ aoFechar, aoExcluir }: {
         <label>Pesquisar cliente
           <input autoFocus value={pesquisa} placeholder="Nome, apelido ou número do cadastro..." onChange={evento => { setPesquisa(evento.target.value); setId(""); }} />
         </label>
-        <label>Cliente para excluir
-          <select value={id} onChange={evento => setId(evento.target.value)}>
-            <option value="">Selecione o cliente...</option>
-            {filtrados.map(cliente => <option key={cliente.id} value={cliente.id}>#{cliente.id} — {cliente.nome}{cliente.ativo ? "" : " (inativo)"}</option>)}
-          </select>
-        </label>
+        <div className="exclusao-cliente-tabela">
+          <table aria-label="Clientes disponíveis para exclusão">
+            <thead><tr><th scope="col">Nº</th><th scope="col">Cliente</th><th scope="col">Situação</th></tr></thead>
+            <tbody>{filtrados.map(cliente => <tr key={cliente.id} className={id === String(cliente.id) ? "selecionado" : ""}>
+              <td>#{cliente.id}</td>
+              <td><button type="button" className="cliente-seletor-opcao" aria-label={`Selecionar cliente #${cliente.id} — ${cliente.nome}`}
+                aria-pressed={id === String(cliente.id)} onClick={() => setId(String(cliente.id))}>{cliente.nome}</button></td>
+              <td>{cliente.ativo ? "Ativo" : "Inativo"}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
       </fieldset>
       {carregando ? <p role="status">Carregando clientes...</p> : clientes.length === 0 ? <p>Nenhum cliente disponível para excluir.</p> : filtrados.length === 0 ? <p>Nenhum cliente encontrado para essa pesquisa.</p> : null}
       {selecionado && <p className="exclusao-cliente-selecao">Selecionado: <strong>#{selecionado.id} — {selecionado.nome}</strong></p>}

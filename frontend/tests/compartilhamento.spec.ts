@@ -21,7 +21,10 @@ async function info(page: Page) {
 }
 async function prepararServidor(request: import('@playwright/test').APIRequestContext) {
   const estado = vazio(); estado.clientesExtras = [nome]; estado.informacoesClientes[nome] = 'Texto inicial';
+  estado.registros['2026-11'] = { [nome]: { status: 'PENDENTE', observacao: '' } };
   const r = await request.post(api + '/excel/importar', { data: { estado } }); expect(r.ok()).toBe(true);
+  const id = (await r.json()).estado.vinculosClientes[nome];
+  expect((await request.patch(`${api}/clientes/${id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } })).ok()).toBe(true);
 }
 
 test('janela tem caixa de texto, Alterar, X e Salvar; só grava ao salvar e protege fechamento', async ({ page, request }) => {

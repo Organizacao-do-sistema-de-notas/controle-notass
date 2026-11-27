@@ -5,16 +5,20 @@ const novoNome = () => `Codex único fictício ${Date.now()}`;
 const busca = (page: Page) => page.getByPlaceholder('Nome fantasia, razão social, apelido ou outro nome do cliente...');
 async function excel(page: Page) { await page.goto('/'); await page.getByRole('button', { name: 'Excel', exact: true }).click(); }
 async function incluir(page: Page, nome: string, info = '') {
+  const cliente = await (await page.request.post(api + '/clientes', { data: { nome } })).json();
+  await page.request.patch(`${api}/clientes/${cliente.id}/ficha`, { data: { informacoesAdicionais: info } });
   await page.getByRole('button', { name: /Incluir\s*Cliente/, exact: true }).click();
   const modal = page.locator('.excel-modal-clientes');
-  await modal.getByRole('textbox', { name: 'Nome principal', exact: true }).fill(nome);
-  await modal.getByRole('textbox', { name: 'Informações adicionais', exact: true }).fill(info);
+  await modal.getByLabel('Pesquisar cliente cadastrado').fill(nome);
+  await modal.getByRole('button', { name: `Selecionar cliente #${cliente.id} — ${nome}`, exact: true }).click();
   await modal.getByRole('button', { name: 'Incluir', exact: true }).click();
   await expect(modal).toHaveCount(0);
+  // These registry/identity scenarios use recurring clients across months.
+  await page.request.patch(`${api}/clientes/${cliente.id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } });
 }
 const ficha = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`Abrir ficha de .*\\(#${id}\\)$`) });
 
-test('criar no Excel disponibiliza a mesma ficha e cadastro; editar e renomear preserva o ID', async ({ page, request }) => {
+test('incluir um cadastro existente no Excel disponibiliza a mesma ficha; editar e renomear preserva o ID', async ({ page, request }) => {
   const nome = novoNome(); await excel(page); await incluir(page, nome, 'Informação criada no Excel'); await busca(page).fill(nome);
   const row = page.locator('.excel-table-row'); await expect(row).toHaveCount(1);
   const id = Number(await row.getAttribute('data-cliente-id'));
@@ -44,7 +48,7 @@ test('criar no Excel disponibiliza a mesma ficha e cadastro; editar e renomear p
   await expect(row).toHaveAttribute('data-cliente-id', String(id));
 });
 
-test('criar no menu aparece automaticamente no Excel e na ficha, incluindo situação inativa', async ({ page }) => {
+test('cliente mensal cadastrado no menu aparece no Excel e na ficha, incluindo situação inativa', async ({ page, request }) => {
   const nome = novoNome(); await excel(page);
   await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Clientes', exact: true }).click();
@@ -53,6 +57,8 @@ test('criar no menu aparece automaticamente no Excel e na ficha, incluindo situa
   await cadastro.getByLabel('Nome do cliente', { exact: true }).fill(nome);
   await cadastro.getByRole('button', { name: 'Salvar cliente', exact: true }).click();
   await expect(cadastro.getByRole('status')).toHaveText('Cliente salvo.');
+  const criado = (await (await request.get(api + '/clientes')).json()).find((c: { nome: string }) => c.nome === nome);
+  expect((await request.patch(`${api}/clientes/${criado.id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } })).ok()).toBe(true);
   await cadastro.getByRole('combobox', { name: 'Situação do cliente', exact: true }).selectOption('INATIVO');
   await cadastro.getByRole('button', { name: 'Salvar cliente', exact: true }).click();
   await expect(cadastro.getByRole('status')).toHaveText('Cliente salvo.');
@@ -80,7 +86,13 @@ test('homônimos têm uma linha e ficha por ID, com dados mensais e informaçõe
   await expect(rows.nth(1).getByRole('textbox', { name: `Observação mensal de ${nome}`, exact: true })).toHaveValue('');
   await busca(page).fill('');
   const lista = await (await request.get(api + '/clientes')).json();
-  expect(await page.locator('.excel-table-row').evaluateAll(els => els.map(el => Number(el.getAttribute('data-cliente-id'))))).toEqual(lista.map((c: { id: number }) => c.id));
+  const snapshot = (await (await request.get(api + '/excel/estado')).json()).estado;
+  const mes = await page.getByRole('combobox', { name: 'Selecionar mês da visão Excel' }).inputValue();
+  const idsVisiveis = lista.filter((c: { id: number }) => {
+    const k = Object.keys(snapshot.vinculosClientes).find(k => snapshot.vinculosClientes[k] === c.id)!;
+    return snapshot.frequenciasClientes[k] === 'MENSAL' || Object.hasOwn(snapshot.registros[mes] ?? {}, k) || (snapshot.clientesPorCompetencia[mes] ?? []).includes(k);
+  }).map((c: { id: number }) => c.id);
+  await expect.poll(() => page.locator('.excel-table-row').evaluateAll(els => els.map(el => Number(el.getAttribute('data-cliente-id'))))).toEqual(idsVisiveis);
 });
 
 test('alteração da ficha em outro navegador aparece no Excel e protege edição concorrente', async ({ page, browser }) => {
@@ -105,15 +117,19 @@ test('alteração da ficha em outro navegador aparece no Excel e protege ediçã
   } finally { await ctx.close(); }
 });
 
-test('resposta perdida na criação permite repetir sem cadastrar a empresa duas vezes', async ({ page, request }) => {
-  const nome = novoNome(); await excel(page);
+test('resposta perdida na inclusão permite repetir sem cadastrar outra empresa', async ({ page, request }) => {
+  const nome = novoNome();
+  const cliente = await (await request.post(api + '/clientes', { data: { nome } })).json();
+  await excel(page);
   let perder = true;
   await page.route(api + '/excel/estado', async route => {
     if (route.request().method() === 'PATCH' && perder) { perder = false; await route.fetch(); await route.abort('failed'); }
     else await route.continue();
   });
   await page.getByRole('button', { name: /Incluir\s*Cliente/, exact: true }).click();
-  const modal = page.locator('.excel-modal-clientes'); await modal.getByRole('textbox', { name: 'Nome principal', exact: true }).fill(nome);
+  const modal = page.locator('.excel-modal-clientes');
+  await modal.getByLabel('Pesquisar cliente cadastrado').fill(nome);
+  await modal.getByRole('button', { name: `Selecionar cliente #${cliente.id} — ${nome}`, exact: true }).click();
   await modal.getByRole('button', { name: 'Incluir', exact: true }).click();
   await expect(modal.getByRole('alert')).toBeVisible();
   expect((await (await request.get(api + '/clientes')).json()).filter((c: { nome: string }) => c.nome === nome)).toHaveLength(1);

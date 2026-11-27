@@ -6,10 +6,13 @@ export type EstadoExcel = {
   clientesExtras: string[]; nomesAlterados: Record<string, string>; nomesBusca: Record<string, string[]>;
   informacoesClientes: Record<string, string>; vinculosClientes: Record<string, number>; clientesInativos: string[]; avisosExtras: AvisoExtra[];
   registros: Record<string, Record<string, RegistroMensal>>;
+  frequenciasClientes?: Record<string, "NAO_DEFINIDA" | "MENSAL" | "EVENTUAL">;
+  clientesPorCompetencia?: Record<string, string[]>;
 };
 export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
+  | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null; prioridades?: Record<string, string>; prioridadesExcluidas?: string[] };
 export type ImportacaoExcel = RespostaExcel & { importados: number; totalConflitos: number; conflitos: { caminho: string[]; atual: unknown; local: unknown }[] };

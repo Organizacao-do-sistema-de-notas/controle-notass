@@ -14,4 +14,12 @@
 .exclusao-cliente-acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 .exclusao-cliente-confirmar { background: #b52e35; color: #fff; }
 .exclusao-cliente-confirmar:hover:not(:disabled) { background: #94232a; }
+.exclusao-cliente-tabela { max-height: 240px; overflow-y: auto; border: 1px solid #dbe6f3; border-radius: 7px; }
+.exclusao-cliente-tabela table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.exclusao-cliente-tabela th { position: sticky; top: 0; background: #edf4fc; color: #52657e; z-index: 1; }
+.exclusao-cliente-tabela th, .exclusao-cliente-tabela td { padding: 7px 8px; border-bottom: 1px solid #e6edf5; }
+.exclusao-cliente-tabela td:first-child, .exclusao-cliente-tabela td:last-child { white-space: nowrap; }
+.exclusao-cliente-tabela tr.selecionado { background: #e8f0ff; }
+#root .exclusao-cliente-tabela button { width: 100%; padding: 4px; border: 0; border-image: none; background: transparent; color: inherit; text-align: left; overflow-wrap: anywhere; }
+.exclusao-cliente-tabela button:hover { color: #2958c8; text-decoration: underline; }
 @media (max-width: 480px) { .exclusao-cliente-acoes .button { width: 100%; } }

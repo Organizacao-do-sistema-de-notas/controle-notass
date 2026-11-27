@@ -50,7 +50,6 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [erroGeral, setErroGeral] = useState("");
   const [erroAviso, setErroAviso] = useState("");
   const [baseFormulario, setBaseFormulario] = useState({ nome: "", apelidos: [] as string[], informacoes: "" });
-  const idCriacao = useRef("");
   const [baseAviso, setBaseAviso] = useState<AvisoExtra | null>(null);
   const [informacaoAberta, setInformacaoAberta] = useState<string | null>(null);
   const botaoInformacao = useRef<HTMLButtonElement | null>(null);
@@ -65,10 +64,10 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [modalAviso, setModalAviso] = useState<"incluir" | "alterar" | null>(null);
   const formularioRef = useRef<HTMLElement>(null);
 
-  const [novoCliente, setNovoCliente] = useState("");
-  const [novasInformacoes, setNovasInformacoes] = useState("");
+  const [pesquisaInclusao, setPesquisaInclusao] = useState("");
+  const [clienteParaIncluir, setClienteParaIncluir] = useState("");
+  const [competenciaInclusao, setCompetenciaInclusao] = useState(competencia);
   const [erroCliente, setErroCliente] = useState("");
-  const [novosNomesBusca, setNovosNomesBusca] = useState("");
   const [clienteSelecionado, setClienteSelecionado] = useState("");
   const [clienteAlteradoNome, setClienteAlteradoNome] = useState("");
   const [clienteAlteradoNomesBusca, setClienteAlteradoNomesBusca] = useState("");
@@ -81,7 +80,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const [avisoAlteradoTexto, setAvisoAlteradoTexto] = useState("");
 
   const clienteComRascunho = modalCliente === "incluir"
-    ? Boolean(novoCliente || novosNomesBusca || novasInformacoes)
+    ? Boolean(clienteParaIncluir)
     : modalCliente === "alterar" && (
       clienteAlteradoNome !== baseFormulario.nome
       || clienteAlteradoNomesBusca !== baseFormulario.apelidos.join("\n")
@@ -97,13 +96,24 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   const formularioAberto = modalCliente !== null || modalAviso !== null;
 
   const clientes = clientesExtras;
+  function estaNoMes(cliente: string, mes: string) {
+    return compartilhado.estado.frequenciasClientes?.[cliente] === "MENSAL"
+      || Object.hasOwn(compartilhado.estado.registros[mes] ?? {}, cliente)
+      || (compartilhado.estado.clientesPorCompetencia?.[mes] ?? []).includes(cliente)
+      || Boolean(observacoes.rascunhos[chaveObservacao(mes, cliente)]);
+  }
+  const clientesDoMes = clientes.filter(cliente => estaNoMes(cliente, competencia));
+  const clientesParaIncluir = [...clientes].sort((a, b) => vinculosClientes[a] - vinculosClientes[b]).filter(cliente => {
+    const indice = normalizar([String(vinculosClientes[cliente]), nomeExibido(cliente), ...(nomesBusca[cliente] ?? [])].join(" "));
+    return normalizar(pesquisaInclusao).split(" ").filter(Boolean).every(termo => indice.includes(termo));
+  });
   const rascunhosForaDoCadastro = Object.entries(observacoes.rascunhos).filter(([, item]) => !clientes.includes(item.cliente));
 
   const clientesFiltrados = useMemo(() => {
     const termos = normalizar(pesquisa).split(" ").filter(Boolean);
-    if (termos.length === 0) return clientes;
+    if (termos.length === 0) return clientesDoMes;
 
-    return clientes.filter((cliente) => {
+    return clientesDoMes.filter((cliente) => {
       const indice = normalizar([
         cliente,
         nomesAlterados[cliente] || "",
@@ -111,7 +121,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       ].join(" "));
       return termos.every((termo) => indice.includes(termo));
     });
-  }, [clientes, nomesAlterados, nomesBusca, pesquisa]);
+  }, [clientesDoMes, nomesAlterados, nomesBusca, pesquisa]);
 
   useEffect(() => {
     setStatusAberto(null);
@@ -142,7 +152,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   function fecharFormularioCliente() {
     if (ocupado || (clienteComRascunho && !window.confirm("Descartar as alterações não salvas deste cliente?"))) return;
     setModalCliente(null);
-    setNovoCliente(""); setNovosNomesBusca(""); setNovasInformacoes(""); setErroCliente("");
+    setPesquisaInclusao(""); setClienteParaIncluir(""); setErroCliente("");
   }
 
   function fecharFormularioAviso() {
@@ -201,16 +211,13 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
   }
 
   async function incluirCliente() {
-    const nome = novoCliente.trim();
-    if (!nome) return;
-    const alternativos = parseNomes(novosNomesBusca);
+    const id = vinculosClientes[clienteParaIncluir];
+    if (!id || ocupado || !disponivel) return;
     try {
-      await compartilhado.executar([{ tipo: "incluirCliente", nome, apelidos: alternativos, informacoes: novasInformacoes.trim(), idCriacao: idCriacao.current }]);
-    } catch (erro) { setErroCliente(erro instanceof Error ? erro.message : "Não foi possível salvar o cliente."); return; }
+      await compartilhado.executar([{ tipo: "incluirClienteMes", clienteId: id, competencia: competenciaInclusao }]);
+    } catch (erro) { setErroCliente(erro instanceof Error ? erro.message : "Não foi possível incluir o cliente no mês."); return; }
 
-    setNovoCliente("");
-    setNovosNomesBusca("");
-    setNovasInformacoes(""); setErroCliente("");
+    setPesquisaInclusao(""); setClienteParaIncluir(""); setErroCliente("");
     setModalCliente(null);
   }
 
@@ -337,7 +344,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       <main className="excel-layout">
         <section className="excel-main-column">
           <div className="excel-section-actions">
-            <button className="excel-toolbar-button" disabled={!disponivel || ocupado} onClick={() => { idCriacao.current = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${crypto.getRandomValues(new Uint32Array(4)).join("-")}`; setErroCliente(""); setModalCliente("incluir"); }}>
+            <button className="excel-toolbar-button" disabled={!disponivel || ocupado} onClick={() => { setCompetenciaInclusao(competencia); setPesquisaInclusao(""); setClienteParaIncluir(""); setErroCliente(""); setModalCliente("incluir"); }}>
               <span>Incluir<br />Cliente</span><strong aria-hidden="true">＋</strong>
             </button>
             <button className="excel-toolbar-button" disabled={!disponivel || ocupado || !clientes.length} onClick={abrirAlteracaoCliente}>
@@ -369,7 +376,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             <div className="excel-table-head"><div>Clientes</div><div>Status</div><div>Obs</div></div>
             <div className="excel-table-body">
               {!compartilhado.carregado ? <div className="excel-search-empty">Aguardando os dados compartilhados...</div> : clientesFiltrados.length === 0 ? (
-                <div className="excel-search-empty">Nenhum cliente encontrado com esse nome.</div>
+                <div className="excel-search-empty">{pesquisa ? "Nenhum cliente encontrado com esse nome neste mês." : "Nenhum cliente incluído neste mês. Use Incluir Cliente para selecionar um cadastro existente."}</div>
               ) : clientesFiltrados.map((cliente) => {
                 const registro = obterRegistro(cliente);
                 const chaveRascunho = chaveObservacao(competencia, cliente);
@@ -499,7 +506,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
 
           <section className="excel-side-card info-card">
             <span className="excel-eyebrow">Como funciona</span><h2>Controle por mês</h2>
-            <p>Cada mês mantém seu próprio status e suas próprias observações. Os cadastros, avisos e informações adicionais ficam no banco compartilhado e aparecem nos computadores conectados ao mesmo sistema.</p>
+            <p>Clientes mensais aparecem todo mês. Os demais aparecem apenas nos meses em que forem incluídos. Cada mês mantém seu próprio status e suas observações. Cadastros e informações adicionais são compartilhados entre os computadores.</p>
           </section>
         </aside>
       </main>
@@ -510,25 +517,35 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             aria-labelledby="excel-incluir-cliente" aria-busy={ocupado} tabIndex={-1}
             onKeyDown={(evento) => tecladoFormulario(evento, fecharFormularioCliente)} onMouseDown={(event) => event.stopPropagation()}>
             <div className="excel-modal-heading">
-              <div><span className="excel-eyebrow">Novo cliente</span><h2 id="excel-incluir-cliente">Incluir cliente</h2></div>
+              <div><span className="excel-eyebrow">Lista de {competenciaInclusao.split("-").reverse().join("/")}</span><h2 id="excel-incluir-cliente">Incluir cliente</h2></div>
               <button className="excel-modal-close" aria-label="Fechar formulário de cliente" disabled={ocupado} onClick={fecharFormularioCliente}>×</button>
             </div>
             <fieldset className="excel-form-group" disabled={ocupado || !disponivel}>
-            <label className="excel-form-field"><span>Nome principal</span><input value={novoCliente} onChange={(event) => setNovoCliente(event.target.value)} placeholder="Ex.: Mercado Central" /></label>
-            <label className="excel-form-field">
-              <span>Outros nomes para pesquisa</span>
-              <textarea rows={4} value={novosNomesBusca} onChange={(event) => setNovosNomesBusca(event.target.value)} placeholder={"Um nome por linha. Ex.:\nRazão Social Ltda\nMercado do João\nCentral Alimentos"} />
-              <small>Use para nome fantasia, razão social, abreviações e apelidos. Pode cadastrar quantos forem necessários.</small>
+            <p>Selecione um cliente já cadastrado para incluí-lo somente neste mês. Para cadastrar uma empresa nova, use o menu ⋯ → Clientes.</p>
+            <label className="excel-form-field"><span>Pesquisar cliente cadastrado</span>
+              <input value={pesquisaInclusao} onChange={event => { setPesquisaInclusao(event.target.value); setClienteParaIncluir(""); }} placeholder="Nome, apelido ou número do cadastro..." />
             </label>
-            <label className="excel-form-field"><span>Informações adicionais</span>
-              <textarea aria-label="Informações adicionais" rows={4} maxLength={LIMITE_INFORMACOES_CLIENTE} value={novasInformacoes} onChange={event => setNovasInformacoes(event.target.value)} placeholder="Particularidades e orientações específicas deste cliente..." />
-              <small>Informações permanentes, exibidas no botão ?. Salvas no banco compartilhado e separadas das observações de cada mês.</small>
-            </label>
+            <div className="excel-inclusao-tabela">
+              <table aria-label="Clientes cadastrados para incluir no mês">
+                <thead><tr><th scope="col">Nº</th><th scope="col">Cliente</th><th scope="col">No mês</th></tr></thead>
+                <tbody>{clientesParaIncluir.map(cliente => {
+                  const incluido = estaNoMes(cliente, competenciaInclusao);
+                  return <tr key={cliente} className={clienteParaIncluir === cliente ? "selecionado" : ""}>
+                    <td>#{vinculosClientes[cliente]}</td>
+                    <td><button type="button" className="cliente-seletor-opcao" disabled={incluido}
+                      aria-label={`Selecionar cliente #${vinculosClientes[cliente]} — ${nomeExibido(cliente)}`}
+                      aria-pressed={clienteParaIncluir === cliente} onClick={() => setClienteParaIncluir(cliente)}>{nomeExibido(cliente)}</button></td>
+                    <td>{incluido ? "Já incluído" : "Disponível"}</td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+            {clientesParaIncluir.length === 0 && <p role="status">Nenhum cliente cadastrado encontrado.</p>}
             </fieldset>
             {erroCliente && <p role="alert" className="excel-cliente-erro">{erroCliente}</p>}
             <div className="excel-modal-actions">
               <button className="excel-action-button" disabled={ocupado} onClick={fecharFormularioCliente}>Cancelar</button>
-              <button className="excel-action-button primary" onClick={() => void incluirCliente()} disabled={!novoCliente.trim() || ocupado || !disponivel}>{ocupado ? "Salvando..." : "Incluir"}</button>
+              <button className="excel-action-button primary" onClick={() => void incluirCliente()} disabled={!clienteParaIncluir || ocupado || !disponivel}>{ocupado ? "Incluindo..." : "Incluir"}</button>
             </div>
           </section>
         </div>

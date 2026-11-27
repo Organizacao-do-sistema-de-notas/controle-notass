@@ -8,7 +8,7 @@ async function abrir(page: Page, modo: 'excel' | 'painel', nome: string, id: num
   await page.getByRole('button', { name: /Excluir\s+cliente/i, exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Excluir cliente', exact: true });
   await dialog.getByLabel('Pesquisar cliente', { exact: true }).fill(nome);
-  await dialog.getByRole('combobox', { name: 'Cliente para excluir', exact: true }).selectOption(String(id));
+  await dialog.getByRole('button', { name: `Selecionar cliente #${id} — ${nome}`, exact: true }).click();
   return dialog;
 }
 
@@ -44,7 +44,7 @@ test('Painel exclui cliente sem pendências e preserva seleção após falha par
   page.once('dialog', confirmacao => confirmacao.accept());
   await dialog.getByRole('button', { name: 'Excluir cliente', exact: true }).click();
   await expect(dialog.getByRole('alert')).toHaveText('Falha fictícia de conexão');
-  await expect(dialog.getByRole('combobox', { name: 'Cliente para excluir', exact: true })).toHaveValue(String(c.id));
+  await expect(dialog.getByRole('button', { name: `Selecionar cliente #${c.id} — ${nome}`, exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect((await request.get(`${api}/clientes/${c.id}`)).status()).toBe(200);
   await page.unroute(`**/clientes/${c.id}`);
   page.once('dialog', confirmacao => confirmacao.accept());
@@ -57,6 +57,7 @@ test('Painel exclui cliente sem pendências e preserva seleção após falha par
 test('exclusão em outro computador conserva a observação ainda não salva e permite descartar depois de copiar', async ({ page, request }) => {
   const nome = `Codex exclusão UI rascunho ${Date.now()}`;
   const c = await (await request.post(`${api}/clientes`, { data: { nome } })).json();
+  await request.patch(`${api}/clientes/${c.id}/ficha`, { data: { frequenciaAcesso: 'MENSAL' } });
   await page.addInitScript(() => localStorage.setItem('controle-notas-modo', 'excel'));
   await page.goto('/');
   const linha = page.locator(`.excel-table-row[data-cliente-id="${c.id}"]`);
@@ -89,6 +90,7 @@ test('Painel retira o cartão e recalcula totais mesmo se a atualização da lis
   await dialog.getByRole('button', { name: 'Excluir cliente', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.pendencia-card').filter({ hasText: nome })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mostrar indicadores', exact: true }).click();
   await expect(page.locator('.summary-card').first().locator('strong')).toHaveText('0');
   await expect(page.getByText('Falha fictícia ao atualizar competências', { exact: true })).toBeVisible();
 });

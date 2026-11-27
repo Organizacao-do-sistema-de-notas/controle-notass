@@ -46,15 +46,26 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
     if (!porId.has(id)) porId.set(id, chave);
   }
   const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras };
+  estado.frequenciasClientes = {};
+  estado.clientesPorCompetencia = {};
   for (const cliente of clientes) {
     if (cliente.excluidoEm !== null) continue;
     const chave = porId.get(cliente.id) ?? `cliente:${cliente.id}`;
     estado.clientesExtras.push(chave);
     estado.vinculosClientes[chave] = cliente.id;
+    estado.frequenciasClientes[chave] = cliente.frequenciaAcesso;
     estado.nomesAlterados[chave] = cliente.nome;
     estado.nomesBusca[chave] = cliente.nomesAlternativos.map(item => item.nome);
     estado.informacoesClientes[chave] = cliente.informacoesAdicionais ?? "";
     if (!cliente.ativo) estado.clientesInativos.push(chave);
+  }
+  // Existing monthly work in the Painel also counts as an inclusion in Excel.
+  // Status, observations and history retain their existing storage and behavior.
+  const pendencias = await tx.pendencia.findMany({ where: { cliente: { excluidoEm: null } }, select: { clienteId: true, competencia: true }, orderBy: [{ competencia: "asc" }, { clienteId: "asc" }] });
+  const chavesAtuais = new Map(Object.entries(estado.vinculosClientes).map(([chave, id]) => [id, chave]));
+  for (const pendencia of pendencias) {
+    const chave = chavesAtuais.get(pendencia.clienteId);
+    if (chave) (estado.clientesPorCompetencia[pendencia.competencia] ??= []).push(chave);
   }
   base.estado = estado;
   for (const mercado of mercados) {
@@ -124,7 +135,12 @@ async function chaveDoCliente(tx: Prisma.TransactionClient, base: Base, chave: s
 async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: AlteracaoExcel[]) {
   const ops: AlteracaoExcel[] = [];
   for (const op of alteracoes) {
-    if (op.tipo === "incluirCliente") {
+    if (op.tipo === "incluirClienteMes") {
+      const chave = Object.keys(base.estado.vinculosClientes).find(chave => base.estado.vinculosClientes[chave] === op.clienteId);
+      exigir(chave && await bloquearCliente(tx, op.clienteId), "Cliente não encontrado. Atualize a lista.");
+      base.estado.registros[op.competencia] ??= {};
+      base.estado.registros[op.competencia][chave] ??= { status: "PENDENTE", observacao: "" };
+    } else if (op.tipo === "incluirCliente") {
       validarCadastro(op.nome, op.apelidos, op.informacoes);
       const hash = assinatura({ nome: op.nome, apelidos: op.apelidos, informacoes: op.informacoes });
       const anterior = op.idCriacao ? base.criacoes[op.idCriacao] : undefined;
