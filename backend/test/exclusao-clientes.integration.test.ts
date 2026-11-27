@@ -44,7 +44,7 @@ test('exclusão retira o mesmo ID das listas, do Excel, das fichas e de todos os
   // A synthetic source identifier is also retained; no company database is used.
   await prisma.clienteConfere.create({ data: { codigo: `ficticio-excluir-${c.id}`, clienteId: c.id, dadosOrigem: { ficticio: true }, hashOrigem: 'ficticio' } });
   const inicial = (await req('/excel/estado')).estado, k = chave(inicial, c.id);
-  await alterar([definir(['registro', '2091-01', k, 'observacao'], 'Observação mensal preservada', ''), { tipo: 'incluirAviso', aviso: { id: `${tag}-aviso`, titulo: 'Aviso preservado', texto: 'Não excluir o aviso' } }]);
+  await alterar([definir(['registro', '2091-01', k, 'observacao'], 'Observação mensal preservada', inicial.registros['2091-01'][k].observacao), { tipo: 'incluirAviso', aviso: { id: `${tag}-aviso`, titulo: 'Aviso preservado', texto: 'Não excluir o aviso' } }]);
   const excelAntes = await req('/excel/estado');
   const relacoes = { nomesAlternativos: true, procedimentos: true, historicoContabilidades: true, confere: true, pendencias: { include: { historico: true } } } as const;
   const antes = await prisma.cliente.findUniqueOrThrow({ where: { id: c.id }, include: relacoes });

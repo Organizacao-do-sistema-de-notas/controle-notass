@@ -6,11 +6,13 @@ import { Cadastros, type AbaCadastro } from "./Cadastros";
 import { MenuCadastros } from "./MenuCadastros";
 import { SeletorMes } from "./SeletorMes";
 import { competenciaRapida } from "./meses";
+import { ConsultaMeses } from "./ConsultaMeses";
 
 type ModoTela = "painel" | "excel";
 
 export function RootApp() {
   const [cadastroAberto, setCadastroAberto] = useState<AbaCadastro | null>(null);
+  const [consultaAberta, setConsultaAberta] = useState(false);
   const [revisaoCadastros, setRevisaoCadastros] = useState(0);
   const botaoCadastros = useRef<HTMLButtonElement>(null);
   const [pendenciasExcel, setPendenciasExcel] = useState({ gravando: false, rascunhos: false });
@@ -73,12 +75,16 @@ export function RootApp() {
                 Excel
               </button>
             </div>
-            <MenuCadastros aoAbrir={setCadastroAberto} refBotao={botaoCadastros} />
+            <MenuCadastros aoAbrir={setCadastroAberto} aoConsultarMeses={() => setConsultaAberta(true)} refBotao={botaoCadastros} />
           </div>
         </div>
       </nav>
 
       {modo === "painel" ? <App revisaoCadastros={revisaoCadastros} aoPendenciasAlteradas={setPendenciasPainel} /> : <ExcelViewV2 competencia={competenciaExcel} aoPendenciasAlteradas={setPendenciasExcel} />}
+      {consultaAberta && <ConsultaMeses aoFechar={() => {
+        setConsultaAberta(false);
+        requestAnimationFrame(() => botaoCadastros.current?.focus());
+      }} />}
       {cadastroAberto && <Cadastros abaInicial={cadastroAberto}
         aoFechar={() => {
           setCadastroAberto(null);

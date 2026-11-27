@@ -22,6 +22,7 @@ async function requisicao<T>(caminho: string, opcoes?: RequestInit): Promise<T> 
 
   const resposta = await fetch(`${API_URL}${caminho}`, {
     ...opcoes,
+    cache: "no-store",
     headers,
   });
 

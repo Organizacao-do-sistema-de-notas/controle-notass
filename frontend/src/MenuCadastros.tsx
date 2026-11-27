@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { AbaCadastro } from "./Cadastros";
 
-export function MenuCadastros({ aoAbrir, refBotao }: {
+export function MenuCadastros({ aoAbrir, aoConsultarMeses, refBotao }: {
   aoAbrir: (aba: AbaCadastro) => void;
+  aoConsultarMeses: () => void;
   refBotao: RefObject<HTMLButtonElement | null>;
 }) {
   const [aberto, setAberto] = useState(false);
@@ -55,6 +56,7 @@ export function MenuCadastros({ aoAbrir, refBotao }: {
           {([['clientes', 'Clientes'], ['contabilidades', 'Contabilidades']] as const).map(([aba, nome]) => (
             <button type="button" role="menuitem" key={aba} onClick={() => { fechar(); aoAbrir(aba); }}>{nome}</button>
           ))}
+          <button type="button" role="menuitem" onClick={() => { fechar(); aoConsultarMeses(); }}>Consultar meses antigos</button>
         </div>
       )}
     </div>

@@ -3,6 +3,8 @@ import { isDeepStrictEqual } from "node:util";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { bloquearCliente } from "../services/historico-contabilidade.service.ts";
+import { bloquearPendencia } from "../services/historico-pendencia.service.ts";
+import { estadoDoExcel, estadoDoPainel, gravarEstadoPendencia } from "../services/estado-pendencia.service.ts";
 import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, importarAusentes, mercadosFixos, ordemDosAvisos, validarEstado, type AlteracaoExcel, type EstadoExcel, type MercadoFixo, type RegistroMensal } from "./estado.ts";
 
 const principal = "principal";
@@ -17,6 +19,7 @@ type Base = {
   criacoes: Record<string, { id: number; assinatura: string }>;
   prioridades: Record<string, number>;
   controleMercadosSeparado?: boolean;
+  registrosAntesUnificarEstado?: EstadoExcel['registros'];
 };
 const json = (valor: unknown) => valor as Prisma.InputJsonValue;
 const assinatura = (valor: unknown) => createHash("sha256").update(JSON.stringify(valor)).digest("hex");
@@ -62,7 +65,7 @@ async function garantirPendencia(tx: Prisma.TransactionClient, id: number, compe
   exigir(await bloquearCliente(tx, id), "Cliente não encontrado. Atualize a lista.");
   const existente = await tx.pendencia.findUnique({ where: { clienteId_competencia: { clienteId: id, competencia } } });
   if (existente) return existente;
-  const status = ({ PENDENTE: "PENDENTE", AGUARDANDO: "AGUARDANDO_CLIENTE", EM_ATENDIMENTO: "EM_ATENDIMENTO", OK: "CONCLUIDO" } as const)[registro.status];
+  const status = estadoDoPainel[registro.status];
   return tx.pendencia.create({ data: {
     clienteId: id, competencia, status, observacao: registro.observacao || null,
     concluidoEm: status === "CONCLUIDO" ? new Date() : null,
@@ -70,6 +73,7 @@ async function garantirPendencia(tx: Prisma.TransactionClient, id: number, compe
   } });
 }
 async function projetar(tx: Prisma.TransactionClient, base: Base) {
+  base.registrosAntesUnificarEstado ??= structuredClone(base.estado.registros);
   separarMercados(base);
   const clientes = await listar(tx);
   const porId = new Map<number, string>();
@@ -98,21 +102,26 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
     estado.informacoesClientes[chave] = cliente.informacoesAdicionais ?? "";
     if (!cliente.ativo) estado.clientesInativos.push(chave);
   }
-  const pendencias = await tx.pendencia.findMany({ where: { cliente: { excluidoEm: null }, clienteId: { notIn: exclusivos } }, select: { clienteId: true, competencia: true }, orderBy: [{ competencia: "asc" }, { clienteId: "asc" }] });
+  const pendencias = await tx.pendencia.findMany({ where: { cliente: { excluidoEm: null }, clienteId: { notIn: exclusivos } }, select: { clienteId: true, competencia: true, status: true, observacao: true }, orderBy: [{ competencia: "asc" }, { clienteId: "asc" }] });
   const existentes = new Set(pendencias.map(item => `${item.clienteId}:${item.competencia}`));
   const faltantes = Object.entries(estado.registros).flatMap(([mes, registros]) => Object.entries(registros).flatMap(([chave, registro]) => {
     const id = estado.vinculosClientes[chave];
     return id && !existentes.has(`${id}:${mes}`) ? [{ id, mes, registro }] : [];
   })).sort((a, b) => a.id - b.id || a.mes.localeCompare(b.mes));
   for (const item of faltantes) {
-    await garantirPendencia(tx, item.id, item.mes, item.registro);
-    pendencias.push({ clienteId: item.id, competencia: item.mes });
+    const criada = await garantirPendencia(tx, item.id, item.mes, item.registro);
+    pendencias.push({ clienteId: item.id, competencia: item.mes, status: criada.status, observacao: criada.observacao });
   }
   pendencias.sort((a, b) => a.competencia.localeCompare(b.competencia) || a.clienteId - b.clienteId);
   const chavesAtuais = new Map(Object.entries(estado.vinculosClientes).map(([chave, id]) => [id, chave]));
   for (const pendencia of pendencias) {
     const chave = chavesAtuais.get(pendencia.clienteId);
-    if (chave) (estado.clientesPorCompetencia[pendencia.competencia] ??= []).push(chave);
+    if (chave) {
+      (estado.clientesPorCompetencia[pendencia.competencia] ??= []).push(chave);
+      estado.registros[pendencia.competencia] ??= {};
+      estado.registros[pendencia.competencia][chave] ??= { status: estadoDoExcel[pendencia.status], observacao: pendencia.observacao ?? '' };
+      estado.registros[pendencia.competencia][chave].status = estadoDoExcel[pendencia.status];
+    }
   }
   base.estado = estado;
   for (const mercado of mercadosFixos) {
@@ -190,7 +199,7 @@ async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: Alte
       const atual = base.estado.registros[op.competencia]?.[chave] ?? { status: "PENDENTE" as const, observacao: "" };
       const pendencia = await garantirPendencia(tx, op.clienteId, op.competencia, atual);
       base.estado.registros[op.competencia] ??= {};
-      const status = ({ PENDENTE: "PENDENTE", AGUARDANDO_CLIENTE: "AGUARDANDO", EM_ATENDIMENTO: "EM_ATENDIMENTO", CONCLUIDO: "OK" } as const)[pendencia.status];
+      const status = estadoDoExcel[pendencia.status];
       base.estado.registros[op.competencia][chave] ??= { status, observacao: pendencia.observacao ?? "" };
     } else if (op.tipo === "incluirCliente") {
       validarCadastro(op.nome, op.apelidos, op.informacoes);
@@ -225,10 +234,24 @@ async function editar(tx: Prisma.TransactionClient, base: Base, alteracoes: Alte
     } else ops.push(op);
   }
   const ids = [...new Set(ops.flatMap(op => op.tipo === "definir" && ["nome", "apelidos", "informacoes"].includes(op.caminho[0]) ? [base.estado.vinculosClientes[op.caminho[1]]] : []))].sort((a, b) => a - b);
-  for (const id of ids) exigir(await bloquearCliente(tx, id), "Cliente não encontrado. Atualize a lista.");
+  const estados = ops.filter((op): op is Extract<AlteracaoExcel, { tipo: 'definir' }> => op.tipo === 'definir' && op.caminho[0] === 'registro' && op.caminho[3] === 'status');
+  const bloqueios = [...new Set([...ids, ...estados.map(op => base.estado.vinculosClientes[op.caminho[2]])])].sort((a, b) => a - b);
+  for (const id of bloqueios) exigir(await bloquearCliente(tx, id), "Cliente não encontrado. Atualize a lista.");
   await projetar(tx, base);
   const antes = base.estado;
   const depois = aplicarAlteracoes(antes, ops);
+  const gravados = new Set<string>();
+  for (const op of estados) {
+    const [, mes, chave] = op.caminho, par = JSON.stringify([mes, chave]);
+    if (gravados.has(par)) continue;
+    gravados.add(par);
+    const registro = depois.registros[mes]?.[chave];
+    if (!registro) continue;
+    const pendencia = await garantirPendencia(tx, depois.vinculosClientes[chave], mes, antes.registros[mes]?.[chave] ?? { status: 'PENDENTE', observacao: '' });
+    const atual = await bloquearPendencia(tx, pendencia.id);
+    exigir(atual, 'Pendência não encontrada. Atualize a tela.');
+    await gravarEstadoPendencia(tx, atual, estadoDoPainel[registro.status]);
+  }
   for (const id of ids) {
     const chave = Object.keys(depois.vinculosClientes).find(item => depois.vinculosClientes[item] === id)!;
     const nome = depois.nomesAlterados[chave], apelidos = depois.nomesBusca[chave], info = depois.informacoesClientes[chave];

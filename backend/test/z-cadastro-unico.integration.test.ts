@@ -164,7 +164,7 @@ test('cadastro único: transição preserva vínculo já salvo, histórico, mese
   await pool.query('INSERT INTO "ExcelCompartilhado" (id, instancia, dados, revisao) VALUES ($1,$2,$3::jsonb,0)', ['principal', `${tag}-legado`, JSON.stringify(legado)]);
   const estado = (await ler()).estado;
   assert.equal(estado.vinculosClientes[origem], a.id); assert.equal(Object.values(estado.vinculosClientes).filter(id => id === a.id).length, 1);
-  assert.deepEqual(estado.registros, legado.registros);
+  for (const [mes, registros] of Object.entries(legado.registros)) for (const [chave, registro] of Object.entries(registros)) assert.deepEqual(estado.registros[mes][chave], registro);
   let salvo = (await pool.query('SELECT dados FROM "ExcelCompartilhado" WHERE id=$1', ['principal'])).rows[0].dados;
   assert.equal(salvo.versao, 2); assert.deepEqual(salvo.legado, legado);
   const ficha = await req(`/clientes/${a.id}/ficha`);

@@ -216,7 +216,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     }
   }
 
-  async function carregarPainel(competenciaSelecionada: string) {
+  async function carregarPainel(competenciaSelecionada: string, silencioso = false, aindaAtivo = () => true) {
     const geracao = ++geracaoPainel.current;
     if (!competenciaSelecionada) {
       setPainel(null);
@@ -224,14 +224,13 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     }
 
     try {
-      setCarregando(true);
-      setErro(null);
+      if (!silencioso) { setCarregando(true); setErro(null); }
       const dados = await obterPainel(competenciaSelecionada);
-      if (geracao === geracaoPainel.current) setPainel(dados);
+      if (geracao === geracaoPainel.current && aindaAtivo()) setPainel(dados);
     } catch (error) {
-      if (geracao === geracaoPainel.current) setErro(error instanceof Error ? error.message : "Erro ao carregar painel.");
+      if (geracao === geracaoPainel.current && !silencioso) setErro(error instanceof Error ? error.message : "Erro ao carregar painel.");
     } finally {
-      if (geracao === geracaoPainel.current) setCarregando(false);
+      if (geracao === geracaoPainel.current && !silencioso) setCarregando(false);
     }
   }
 
@@ -305,6 +304,27 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
         throw e;
       } finally { setSalvandoOrdem(false); }
     } });
+
+  useEffect(() => {
+    if (!competencia || carregando || aberturaBloqueada || historicoModal || arrastoPainel.arrastando) return;
+    let ativo = true, lendo = false;
+    const atualizar = async () => {
+      if (!ativo || lendo || document.hidden) return;
+      lendo = true;
+      await carregarPainel(competencia, true, () => ativo);
+      lendo = false;
+    };
+    const timer = window.setInterval(() => { void atualizar(); }, 2000);
+    const aoVoltar = () => { void atualizar(); };
+    window.addEventListener('focus', aoVoltar);
+    document.addEventListener('visibilitychange', aoVoltar);
+    return () => {
+      ativo = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', aoVoltar);
+      document.removeEventListener('visibilitychange', aoVoltar);
+    };
+  }, [competencia, carregando, aberturaBloqueada, historicoModal, arrastoPainel.arrastando]);
 
   async function abrirEditorMensagem(item: PendenciaPainel) {
     if (aberturaBloqueada) return;

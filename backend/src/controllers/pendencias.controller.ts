@@ -8,6 +8,7 @@ import { prisma } from "../lib/prisma.ts";
 import { corpoValido, idValido, obterId } from "../utils/validacao-cliente.ts";
 import { bloquearPendencia, relacoesPendencia } from "../services/historico-pendencia.service.ts";
 import { bloquearCliente } from "../services/historico-contabilidade.service.ts";
+import { gravarEstadoPendencia } from "../services/estado-pendencia.service.ts";
 
 function competenciaValida(valor: unknown): valor is string {
   return typeof valor === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
@@ -330,24 +331,20 @@ export async function atualizarPendencia(req: Request, res: Response): Promise<v
       const observacaoNova = observacao !== undefined ? textoOpcional(observacao) : existente.observacao;
       const autorHistorico = textoOpcional(autor);
       const eventosHistorico: EventoHistorico[] = [];
-      if (status !== undefined && status !== existente.status) {
-        eventosHistorico.push({ tipo: TipoHistoricoPendencia.STATUS, valorAnterior: existente.status, valorNovo: status, autor: autorHistorico });
-      }
       if (responsavel !== undefined && responsavelNovo !== existente.responsavel) {
         eventosHistorico.push({ tipo: TipoHistoricoPendencia.RESPONSAVEL, valorAnterior: existente.responsavel, valorNovo: responsavelNovo, autor: autorHistorico });
       }
       if (observacao !== undefined && observacaoNova !== existente.observacao) {
         eventosHistorico.push({ tipo: TipoHistoricoPendencia.OBSERVACAO, valorAnterior: existente.observacao, valorNovo: observacaoNova, autor: autorHistorico });
       }
+      const instante = new Date(); // After the row lock, not transaction start.
+      if (status !== undefined) await gravarEstadoPendencia(tx, existente, status, autorHistorico, instante);
       if (eventosHistorico.length > 0) {
-        const instante = new Date(); // After the row lock, not transaction start.
         await tx.pendencia.update({
           where: { id },
           data: {
-            status,
             responsavel: responsavel !== undefined ? responsavelNovo : undefined,
             observacao: observacao !== undefined ? observacaoNova : undefined,
-            concluidoEm: status === undefined ? undefined : status === StatusPendencia.CONCLUIDO ? existente.concluidoEm ?? instante : null,
           },
         });
         for (const evento of eventosHistorico) {

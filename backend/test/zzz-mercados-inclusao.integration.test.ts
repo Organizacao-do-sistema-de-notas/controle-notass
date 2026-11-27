@@ -66,7 +66,7 @@ test('estado legado sem cadastros de mercados migra diretamente para o controle 
   await gravarBase(local);
   const convertido = await ler();
   assert.equal(convertido.estado.controleMercados['2026-09']['Bom dia filial'], 'CONCLUIDO');
-  assert.deepEqual(convertido.estado.registros, local.registros);
+  assert.deepEqual(convertido.estado.registros['2026-09']['Bom dia filial'], local.registros['2026-09']['Bom dia filial']);
   assert.deepEqual((await baseSalva()).legado, local);
   assert.equal((await pool.query('SELECT count(*) AS n FROM "Cliente"')).rows[0].n, quantidade);
 });
@@ -123,7 +123,7 @@ test('inclusões antigas incompletas são reparadas ao abrir o Painel, respeitan
   for (const sufixo of ['pendente', 'aguardando', 'atendimento', 'ok']) clientes.push(await cliente(`${tag} reparação ${sufixo}`));
   await ler(); const dados = await baseSalva();
   const estados = ['PENDENTE', 'AGUARDANDO', 'EM_ATENDIMENTO', 'OK'];
-  dados.estado.registros['2026-10'] = Object.fromEntries(clientes.map((c, i) => [`cliente:${c.id}`, { status: estados[i], observacao: `Nota original ${i}` }]));
+  Object.assign(dados.estado.registros['2026-10'] ??= {}, Object.fromEntries(clientes.map((c, i) => [`cliente:${c.id}`, { status: estados[i], observacao: `Nota original ${i}` }])));
   await gravarBase(dados);
   const itens = (await painel('2026-10')).pendencias;
   const esperados = ['PENDENTE', 'AGUARDANDO_CLIENTE', 'EM_ATENDIMENTO', 'CONCLUIDO'];

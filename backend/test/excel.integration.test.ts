@@ -35,7 +35,8 @@ test('Excel: estado compartilhado e revisão são lidos por sessões independent
   const inicial = await ler();
   const clientes = await requisitar('/clientes');
   assert.deepEqual(Object.values(inicial.estado.vinculosClientes).sort(), clientes.map((c: { id: number }) => c.id).sort());
-  assert.deepEqual(inicial.estado.registros, {});
+  const legado = cadastrosOriginais.find(c => c.nome === 'Codex legado fictício'); assert.ok(legado);
+  assert.equal(inicial.estado.registros['2026-11'][`cliente:${legado.id}`].status, 'PENDENTE');
   await Promise.all([
     alterar([definir(['informacoes', tag], 'Texto compartilhado', '')]),
     alterar([definir(['informacoes', `${tag} criação simultânea`], 'Segundo texto', '')]),

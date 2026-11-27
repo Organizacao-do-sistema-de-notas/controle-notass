@@ -168,3 +168,17 @@ preservando seus cadastros e registros antigos. A inclusão mensal passa a
 contemplar o Painel na mesma transação, com reparação das inclusões antigas
 incompletas e sem sobrescrever pendências existentes. Detalhes em
 [CORRECAO_MERCADOS_E_INCLUSAO.md](CORRECAO_MERCADOS_E_INCLUSAO.md).
+
+## Estado único e consulta histórica — implementação em revisão
+
+O usuário identificou que os estados ainda divergiam entre Excel e Painel e
+pediu a correção seguida das próximas etapas e configurações. A implementação
+na branch `fix/estado-unico-consulta-mensal` usa a pendência mensal como referência
+única, protege o histórico e adiciona atualização automática do Painel.
+Também foi preparada a consulta separada **⋯ → Consultar meses antigos**, sem
+ampliar a seleção rápida. A referência final dos botões −1/+1 continua pendente.
+Detalhes e validação em
+[ESTADO_UNICO_E_CONSULTA_MENSAL.md](ESTADO_UNICO_E_CONSULTA_MENSAL.md).
+As próximas entregas da base de conhecimento e IA estão organizadas em
+[BASE_CONHECIMENTO_PLANO.md](BASE_CONHECIMENTO_PLANO.md), ainda sem funcionalidades
+de IA ativas. Novas alterações permanecem sem publicação automática.
