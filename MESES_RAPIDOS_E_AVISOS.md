@@ -1,8 +1,9 @@
 # Meses rápidos e ordem dos avisos
 
 Branch: `feature/meses-rapidos-ordem-avisos`. Base: `e3be32b`.
-O usuário confirmou o funcionamento da versão anterior. Esta etapa permanece
-sem publicação e sem alterações nos computadores do usuário.
+O usuário confirmou o funcionamento da versão anterior e autorizou a publicação
+desta etapa na branch `teste/controle-basico-linux`, usada pelos atualizadores.
+A execução nos computadores do usuário ainda depende da atualização local.
 
 ## Alterações
 
@@ -31,7 +32,7 @@ sem publicação e sem alterações nos computadores do usuário.
    atual é provisório, tanto no Excel quanto no Painel.
 2. Preparar, em uma etapa futura, um local separado para pesquisar competências
    fora da seleção rápida. Os registros antigos continuam no banco e nas APIs.
-3. Validar esta etapa no Windows e no Xubuntu depois da autorização de publicação.
+3. Validar esta etapa no Windows e no Xubuntu depois de executar o atualizador.
 
 ## Implementação
 

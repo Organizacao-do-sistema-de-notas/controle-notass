@@ -124,12 +124,14 @@ dos fluxos acima, incluindo o cadastro único, nos dois
 computadores. Até esse retorno, a validação em uso permanece pendente.
 Autenticação e publicação na Internet não fazem parte desta versão local.
 
-## Meses rápidos e avisos — próxima entrega
+## Meses rápidos e avisos — entrega autorizada
 
-O usuário confirmou a atualização da etapa `e3be32b`. A branch
-`feature/meses-rapidos-ordem-avisos`, ainda sem publicação, prepara seletores
-compactos com seis meses anteriores e seis posteriores, botões −1/+1 nas duas
-visualizações e ordenação compartilhada dos avisos por arrasto.
+O usuário confirmou a atualização da etapa `e3be32b`. A implementação preparada
+na branch `feature/meses-rapidos-ordem-avisos` tem publicação autorizada na branch
+`teste/controle-basico-linux`: seletores compactos com seis meses anteriores e
+seis posteriores, botões −1/+1 nas duas visualizações e ordenação compartilhada
+dos avisos por arrasto. A validação nos computadores permanece pendente até a
+execução dos atualizadores existentes.
 
 **Pendência do usuário: enviar o layout definitivo dos botões −1 e +1.**
 O estilo desses controles é provisório no Excel e no Painel. Também ficou
