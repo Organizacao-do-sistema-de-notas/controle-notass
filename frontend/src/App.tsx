@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { ExcluirCliente } from "./ExcluirCliente";
+import { SeletorMes } from "./SeletorMes";
+import { competenciaRapida, mesesRapidos } from "./meses";
 
 import {
   atualizarStatusPendencia,
@@ -98,8 +100,7 @@ function formatarValorHistorico(valor: string | null): string {
 export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   revisaoCadastros?: number; aoPendenciasAlteradas?: (estado: PendenciasEdicao) => void;
 }) {
-  const [competencias, setCompetencias] = useState<string[]>([]);
-  const [competencia, setCompetencia] = useState("");
+  const [competencia, setCompetencia] = useState(() => competenciaRapida(localStorage.getItem("controle-notas-painel-mes")));
   const [painel, setPainel] = useState<PainelMensal | null>(null);
   const [mostrarIndicadores, setMostrarIndicadores] = useState(false);
   const [carregando, setCarregando] = useState(true);
@@ -204,15 +205,6 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
       setErro(null);
       const lista = await listarCompetencias();
       if (geracao !== geracaoCompetencias.current) return;
-      setCompetencias(lista);
-
-      if (lista.length > 0) {
-        setCompetencia((atual) => (atual && lista.includes(atual) ? atual : lista[0]));
-      } else {
-        geracaoPainel.current++;
-        setCompetencia("");
-        setPainel(null);
-      }
       return lista;
     } catch (error) {
       if (geracao === geracaoCompetencias.current) setErro(error instanceof Error ? error.message : "Erro ao carregar competências.");
@@ -270,6 +262,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   }, [revisaoCadastros]);
 
   useEffect(() => {
+    localStorage.setItem("controle-notas-painel-mes", competencia);
     if (competencia) {
       void carregarPainel(competencia);
     }
@@ -489,13 +482,13 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
       setModalPendencia(false);
       setAviso("Pendência criada.");
 
-      const lista = await listarCompetencias();
-      setCompetencias(lista);
-
+      await listarCompetencias();
       if (pendenciaCompetencia === competencia) {
         await carregarPainel(pendenciaCompetencia);
-      } else {
+      } else if (mesesRapidos().includes(pendenciaCompetencia)) {
         setCompetencia(pendenciaCompetencia);
+      } else {
+        setAviso(`Pendência criada em ${formatarCompetencia(pendenciaCompetencia)}. Esse mês está fora da seleção rápida.`);
       }
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao criar pendência.");
@@ -547,24 +540,8 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
 
       <main>
         <section className="toolbar panel">
-          <label>
-            <span>Competência</span>
-            <select
-              value={competencia}
-              onChange={(event) => setCompetencia(event.target.value)}
-              disabled={competencias.length === 0}
-            >
-              {competencias.length === 0 ? (
-                <option value="">Nenhuma competência</option>
-              ) : (
-                competencias.map((item) => (
-                  <option key={item} value={item}>
-                    {formatarCompetencia(item)}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
+          <SeletorMes valor={competencia} aoAlterar={setCompetencia} rotulo="Competência"
+            contexto="Painel" nomeAcessivel="Competência" />
 
           <label>
             <span>Status</span>

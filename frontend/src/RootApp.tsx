@@ -1,39 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { App } from "./App";
 import { ExcelViewV2 } from "./ExcelViewV2";
 import { Cadastros, type AbaCadastro } from "./Cadastros";
 import { MenuCadastros } from "./MenuCadastros";
+import { SeletorMes } from "./SeletorMes";
+import { competenciaRapida } from "./meses";
 
 type ModoTela = "painel" | "excel";
-
-function mesAtual(): string {
-  const agora = new Date();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  return `${agora.getFullYear()}-${mes}`;
-}
-
-function formatarMes(competencia: string): string {
-  const [ano, mes] = competencia.split("-");
-  const data = new Date(Number(ano), Number(mes) - 1, 1);
-  const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(data);
-  const nomeCapitalizado = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-  return `${nomeCapitalizado}/${ano.slice(-2)}`;
-}
-
-function gerarMeses(competenciaAtual: string): string[] {
-  const [anoTexto] = competenciaAtual.split("-");
-  const anoCentral = Number(anoTexto) || new Date().getFullYear();
-  const meses: string[] = [];
-
-  for (let ano = anoCentral - 2; ano <= anoCentral + 2; ano += 1) {
-    for (let mes = 1; mes <= 12; mes += 1) {
-      meses.push(`${ano}-${String(mes).padStart(2, "0")}`);
-    }
-  }
-
-  return meses;
-}
 
 export function RootApp() {
   const [cadastroAberto, setCadastroAberto] = useState<AbaCadastro | null>(null);
@@ -45,10 +19,8 @@ export function RootApp() {
     return localStorage.getItem("controle-notas-modo") === "excel" ? "excel" : "painel";
   });
   const [competenciaExcel, setCompetenciaExcel] = useState(() => {
-    return localStorage.getItem("controle-notas-excel-mes") || mesAtual();
+    return competenciaRapida(localStorage.getItem("controle-notas-excel-mes"));
   });
-
-  const mesesDisponiveis = useMemo(() => gerarMeses(competenciaExcel), [competenciaExcel]);
 
   function trocarModo(novoModo: ModoTela) {
     if (novoModo !== modo) {
@@ -77,23 +49,8 @@ export function RootApp() {
             </div>
 
             {modo === "excel" && (
-              <label className="month-picker">
-                <span>Mês</span>
-                <div className="month-picker-control">
-                  <select
-                    value={competenciaExcel}
-                    onChange={(event) => trocarCompetencia(event.target.value)}
-                    aria-label="Selecionar mês da visão Excel"
-                  >
-                    {mesesDisponiveis.map((mes) => (
-                      <option key={mes} value={mes}>
-                        {formatarMes(mes)}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="month-calendar-icon" aria-hidden="true" />
-                </div>
-              </label>
+              <SeletorMes valor={competenciaExcel} aoAlterar={trocarCompetencia} rotulo="Mês"
+                contexto="Excel" nomeAcessivel="Selecionar mês da visão Excel" />
             )}
           </div>
 

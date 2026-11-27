@@ -12,12 +12,14 @@ export type EstadoExcel = {
   frequenciasClientes?: Record<string, "NAO_DEFINIDA" | "MENSAL" | "EVENTUAL">;
   clientesPorCompetencia?: Record<string, string[]>;
   avisosExtras: AvisoExtra[];
+  ordemAvisos?: string[];
   registros: Record<string, Record<string, RegistroMensal>>;
 };
 export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
+  | { tipo: "ordenarAvisos"; ordem: string[]; anterior: string[] }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type DivergenciaExcel = { caminho: string[]; atual: unknown; local: unknown };
 export class DadosExcelInvalidos extends Error {}
@@ -37,6 +39,13 @@ function nomes(valor: unknown): valor is string[] { return Array.isArray(valor) 
 const mesValido = (mes: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(mes);
 const statusValido = (valor: unknown): valor is StatusExcel => ["PENDENTE", "AGUARDANDO", "EM_ATENDIMENTO", "OK"].includes(valor as string);
 const idFichaValido = (valor: unknown): valor is number => typeof valor === "number" && Number.isInteger(valor) && valor > 0 && valor <= 2147483647;
+const listaDeChaves = (valor: unknown): valor is string[] => Array.isArray(valor) && valor.every(chaveValida) && new Set(valor).size === valor.length;
+export const avisoXaxim = "fixo:xaxim-gas";
+export function ordemDosAvisos(estado: Pick<EstadoExcel, "avisosExtras" | "ordemAvisos">): string[] {
+  const existentes = [avisoXaxim, ...estado.avisosExtras.map(aviso => `aviso:${aviso.id}`)];
+  const salvos = estado.ordemAvisos ?? [];
+  return [...salvos.filter(id => existentes.includes(id)), ...existentes.filter(id => !salvos.includes(id))];
+}
 function validarAviso(valor: unknown): asserts valor is AvisoExtra {
   exigir(objeto(valor)); campos(valor, ["id", "titulo", "texto"]);
   exigir(chaveValida(valor.id) && texto(valor.titulo, 1000) && !!valor.titulo.trim() && texto(valor.texto) && !!valor.texto.trim());
@@ -44,7 +53,8 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  if (proprio(valor, "ordemAvisos")) exigir(listaDeChaves(valor.ordemAvisos));
   if (proprio(valor, "frequenciasClientes")) {
     exigir(objeto(valor.frequenciasClientes));
     for (const [chave, frequencia] of Object.entries(valor.frequenciasClientes)) exigir(chaveValida(chave) && ["NAO_DEFINIDA", "MENSAL", "EVENTUAL"].includes(frequencia as string));
@@ -84,7 +94,10 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
   exigir(Array.isArray(valor) && valor.length > 0 && valor.length <= 100);
   for (const op of valor) {
     exigir(objeto(op));
-    if (op.tipo === "incluirClienteMes") {
+    if (op.tipo === "ordenarAvisos") {
+      campos(op, ["tipo", "ordem", "anterior"]);
+      exigir(listaDeChaves(op.ordem) && listaDeChaves(op.anterior));
+    } else if (op.tipo === "incluirClienteMes") {
       campos(op, ["tipo", "clienteId", "competencia"]);
       exigir(idFichaValido(op.clienteId) && typeof op.competencia === "string" && mesValido(op.competencia));
     } else if (op.tipo === "incluirCliente") {
@@ -145,7 +158,13 @@ const igual = isDeepStrictEqual;
 export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel[]): EstadoExcel {
   const proximo = structuredClone(atual);
   for (const op of alteracoes) {
-    if (op.tipo === "definir") {
+    if (op.tipo === "ordenarAvisos") {
+      const ordemAtual = ordemDosAvisos(proximo);
+      if (igual(ordemAtual, op.ordem)) continue;
+      if (!igual(ordemAtual, op.anterior)) throw new ConflitoExcel([["ordemAvisos"]]);
+      exigir(op.ordem.length === ordemAtual.length && op.ordem.every(id => ordemAtual.includes(id)), "A ordem deve incluir todos os avisos, inclusive Xaxim Gás, sem repetições.");
+      proximo.ordemAvisos = [...op.ordem];
+    } else if (op.tipo === "definir") {
       const valorAtual = lerCampo(proximo, op.caminho);
       if (igual(valorAtual, op.valor)) continue; // Safe retry after a lost response.
       if (!igual(valorAtual, op.anterior)) throw new ConflitoExcel([op.caminho]);

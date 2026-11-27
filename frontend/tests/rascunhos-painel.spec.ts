@@ -12,6 +12,7 @@ const pendencia = { id: 911, competencia: '2026-11', status: 'PENDENTE', respons
 const responder = (rota: Route, status: number, corpo: unknown) => rota.fulfill({ status, contentType: 'application/json', body: JSON.stringify(corpo) });
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-15T12:00:00Z'));
   await page.addInitScript(() => {
     localStorage.setItem('controle-notas-modo', 'painel');
     localStorage.setItem('controle-notas-autor', 'Operador fictício');

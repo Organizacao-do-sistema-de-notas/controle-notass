@@ -3,7 +3,13 @@ import { createRequire } from 'node:module';
 
 // Only this disposable database may be cleaned by browser fixtures. There is
 // no production reset endpoint or test bypass in the application.
-export const test = base.extend<{ excelIsolado: void }>({
+export const test = base.extend<{ excelIsolado: void; relogioTeste: void }>({
+  relogioTeste: [async ({ page }, use) => {
+    // The quick month window has a fixed reference in every browser scenario.
+    // setFixedTime keeps real timers running for polling and debounce checks.
+    await page.clock.setFixedTime(new Date('2026-11-15T12:00:00Z'));
+    await use();
+  }, { auto: true }],
   excelIsolado: [async ({}, use) => {
     const url = new URL(process.env.DATABASE_URL ?? 'about:blank');
     if (url.protocol !== 'postgresql:' || url.hostname !== '127.0.0.1' || url.port !== '5433' || !/^\/controle_notas_pr1_test_[a-z0-9_]+$/.test(url.pathname) || url.search) throw Error('Fixture exige banco local descartável de testes.');

@@ -8,11 +8,13 @@ export type EstadoExcel = {
   registros: Record<string, Record<string, RegistroMensal>>;
   frequenciasClientes?: Record<string, "NAO_DEFINIDA" | "MENSAL" | "EVENTUAL">;
   clientesPorCompetencia?: Record<string, string[]>;
+  ordemAvisos?: string[];
 };
 export type AlteracaoExcel =
   | { tipo: "definir"; caminho: string[]; valor: unknown; anterior: unknown }
   | { tipo: "incluirCliente"; nome: string; apelidos: string[]; informacoes: string; idCriacao?: string }
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
+  | { tipo: "ordenarAvisos"; ordem: string[]; anterior: string[] }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null; prioridades?: Record<string, string>; prioridadesExcluidas?: string[] };
 export type ImportacaoExcel = RespostaExcel & { importados: number; totalConflitos: number; conflitos: { caminho: string[]; atual: unknown; local: unknown }[] };

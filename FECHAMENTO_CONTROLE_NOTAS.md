@@ -75,8 +75,8 @@ no notebook e no computador principal ainda depende do retorno do usuário.
    campos e vínculos devem permanecer. Testar os filtros de situação e contabilidade.
 3. Em **Excel → Fichas dos Clientes**, buscar o cliente e cadastrar um apelido,
    uma anotação e um procedimento. Salvar, fechar e reabrir para conferir.
-4. Criar um cliente fictício no Excel e conferir sua presença no menu Clientes
-   e na ficha, com o mesmo ID. Alterar nome e apelidos em **Alterar Cliente** e
+4. Criar um cliente fictício em **⋯ → Clientes**, incluí-lo no mês do Excel e
+   conferir sua presença na ficha, com o mesmo ID. Alterar nome e apelidos em **Alterar Cliente** e
    informações adicionais na ficha; conferir as alterações na outra tela.
    Renomear deve manter os registros mensais e a ficha do mesmo cliente.
 5. Digitar uma alteração sem salvar na ficha. Ao trocar de cliente, fechar ou usar Escape,
@@ -106,6 +106,12 @@ no notebook e no computador principal ainda depende do retorno do usuário.
     e mensagem. Recusar o descarte pelo X, Escape ou recarga deve preservar o
     texto. Durante gravação, conferir bloqueio de fechamento e de troca para o
     Excel. Falha deve mostrar o erro na janela e permitir uma nova tentativa.
+14. No Excel e no Painel, conferir as 13 opções da seleção rápida e usar −1/+1
+    para voltar/avançar um mês, inclusive na virada do ano. Nos extremos, o botão
+    correspondente deve ficar desabilitado. Registros antigos permanecem salvos.
+15. Arrastar avisos pelo puxador ⋮⋮, recarregar e conferir a mesma ordem no outro
+    computador. Testar também as setas do teclado. Xaxim Gás deve continuar
+    presente e os três mercados prioritários devem permanecer no controle fixo.
 
 Se um navegador ainda tiver registros antigos, seguir a importação explícita em
 [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md), guardando os originais e
@@ -117,3 +123,16 @@ Concluir a revisão automatizada, corrigir falhas encontradas e obter a validaç
 dos fluxos acima, incluindo o cadastro único, nos dois
 computadores. Até esse retorno, a validação em uso permanece pendente.
 Autenticação e publicação na Internet não fazem parte desta versão local.
+
+## Meses rápidos e avisos — próxima entrega
+
+O usuário confirmou a atualização da etapa `e3be32b`. A branch
+`feature/meses-rapidos-ordem-avisos`, ainda sem publicação, prepara seletores
+compactos com seis meses anteriores e seis posteriores, botões −1/+1 nas duas
+visualizações e ordenação compartilhada dos avisos por arrasto.
+
+**Pendência do usuário: enviar o layout definitivo dos botões −1 e +1.**
+O estilo desses controles é provisório no Excel e no Painel. Também ficou
+anotada uma futura consulta separada para meses fora da seleção rápida,
+preservando todos os registros existentes. Detalhes em
+[MESES_RAPIDOS_E_AVISOS.md](MESES_RAPIDOS_E_AVISOS.md).

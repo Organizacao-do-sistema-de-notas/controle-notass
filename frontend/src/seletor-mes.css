@@ -1,0 +1,6 @@
+.seletor-mes { display: grid; gap: 4px; width: max-content; max-width: 100%; }
+.seletor-mes > label, .toolbar .seletor-mes > label { min-width: 0; color: #475467; font-size: 11px; font-weight: 750; }
+.seletor-mes-controles { display: flex; align-items: center; gap: 4px; }
+.seletor-mes select { width: 116px; min-width: 0; min-height: 32px; height: 32px; padding: 0 4px; border-radius: 6px; background: #fff; color: #23324a; font-size: 12px; font-weight: 650; }
+#root button.seletor-mes-passo { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 1px solid #cad8e8; border-radius: 5px; background: #f7faff; color: #425b7e; font-size: 11px; font-weight: 700; }
+.seletor-mes-passo:hover:not(:disabled) { background: #e8f0ff; }

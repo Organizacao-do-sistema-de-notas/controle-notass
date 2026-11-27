@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { bloquearCliente } from "../services/historico-contabilidade.service.ts";
-import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, importarAusentes, validarEstado, type AlteracaoExcel, type EstadoExcel } from "./estado.ts";
+import { aplicarAlteracoes, ConflitoExcel, DadosExcelInvalidos, estadoVazio, importarAusentes, ordemDosAvisos, validarEstado, type AlteracaoExcel, type EstadoExcel } from "./estado.ts";
 
 const principal = "principal";
 const mercados = ["Bom dia filial", "Bom dia Matriz", "Compre bem"];
@@ -45,7 +45,7 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
     base.origens[chave] ??= id;
     if (!porId.has(id)) porId.set(id, chave);
   }
-  const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras };
+  const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras, ordemAvisos: ordemDosAvisos(base.estado) };
   estado.frequenciasClientes = {};
   estado.clientesPorCompetencia = {};
   for (const cliente of clientes) {

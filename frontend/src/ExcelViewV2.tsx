@@ -3,6 +3,7 @@ import "./excel-search.css";
 import { FichasClientes } from "./FichasClientes";
 import { InformacoesCliente } from "./InformacoesCliente";
 import { ExcluirCliente } from "./ExcluirCliente";
+import { AvisosOrdenaveis } from "./AvisosOrdenaveis";
 import {
   LIMITE_INFORMACOES_CLIENTE,
 } from "./informacoes-cliente-storage";
@@ -491,18 +492,9 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
             </button>
           </div>
 
-          <section className="excel-side-card xaxim-card">
-            <span className="xaxim-alert">Extremamente importante</span>
-            <h2>Xaxim Gás</h2>
-            <p>Empresa do web. Todo dia 01, enviar os arquivos manualmente para o e-mail abaixo. Este aviso fica sempre visível para não ser esquecido.</p>
-            <strong className="xaxim-email">rubinhogmasters@gmail.com</strong>
-          </section>
-
-          {avisosExtras.map((aviso) => (
-            <section className="excel-side-card custom-notice-card" key={aviso.id}>
-              <span className="excel-eyebrow">Aviso fixo</span><h2>{aviso.titulo}</h2><p>{aviso.texto}</p>
-            </section>
-          ))}
+          <AvisosOrdenaveis avisos={avisosExtras} ordemSalva={compartilhado.estado.ordemAvisos}
+            disponivel={disponivel} ocupado={ocupado}
+            aoOrdenar={(ordem, anterior) => compartilhado.executar([{ tipo: "ordenarAvisos", ordem, anterior }])} />
 
           <section className="excel-side-card info-card">
             <span className="excel-eyebrow">Como funciona</span><h2>Controle por mês</h2>

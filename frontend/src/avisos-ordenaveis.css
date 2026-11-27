@@ -1,0 +1,12 @@
+.avisos-ordenaveis { display: grid; gap: 10px; }
+.avisos-ajuda, .avisos-estado { margin: 0; font-size: 11px; line-height: 1.5; color: #6c7f98; }
+.aviso-ordenavel { position: relative; }
+.aviso-ordenavel h2 { padding-right: 24px; }
+#root button.aviso-arrastar { position: absolute; right: 8px; top: 8px; width: 24px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #73859b; font-size: 18px; letter-spacing: -4px; cursor: grab; touch-action: none; user-select: none; }
+.aviso-arrastar:hover:not(:disabled) { background: #dae6f566; }
+.arrastando .aviso-arrastar { cursor: grabbing; }
+.aviso-ordenavel.arrastando { opacity: .65; }
+.aviso-ordenavel.destino-antes::before, .aviso-ordenavel.destino-depois::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: #366cff; pointer-events: none; }
+.aviso-ordenavel.destino-antes::before { top: -6px; }
+.aviso-ordenavel.destino-depois::after { bottom: -6px; }
+.avisos-erro { margin: 0; padding: 9px; border-radius: 6px; background: #fff0f0; color: #a63838; font-size: 12px; line-height: 1.5; }

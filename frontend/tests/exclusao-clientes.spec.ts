@@ -83,7 +83,9 @@ test('exclusão em outro computador conserva a observação ainda não salva e p
 test('Painel retira o cartão e recalcula totais mesmo se a atualização da lista falhar após a exclusão', async ({ page, request }) => {
   const nome = `Codex exclusão UI cartão ${Date.now()}`;
   const c = await (await request.post(`${api}/clientes`, { data: { nome } })).json();
-  await request.post(`${api}/pendencias`, { data: { clienteId: c.id, competencia: '2094-01' } });
+  await request.post(`${api}/pendencias`, { data: { clienteId: c.id, competencia: '2027-05' } });
+  const totalAntes = (await (await request.get(`${api}/painel?competencia=2027-05`)).json()).totais.total;
+  await page.addInitScript(() => localStorage.setItem('controle-notas-painel-mes', '2027-05'));
   const dialog = await abrir(page, 'painel', nome, c.id);
   await page.route('**/painel/competencias', rota => rota.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ erro: 'Falha fictícia ao atualizar competências' }) }));
   page.once('dialog', confirmacao => confirmacao.accept());
@@ -91,6 +93,6 @@ test('Painel retira o cartão e recalcula totais mesmo se a atualização da lis
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.pendencia-card').filter({ hasText: nome })).toHaveCount(0);
   await page.getByRole('button', { name: 'Mostrar indicadores', exact: true }).click();
-  await expect(page.locator('.summary-card').first().locator('strong')).toHaveText('0');
+  await expect(page.locator('.summary-card').first().locator('strong')).toHaveText(String(totalAntes - 1));
   await expect(page.getByText('Falha fictícia ao atualizar competências', { exact: true })).toBeVisible();
 });

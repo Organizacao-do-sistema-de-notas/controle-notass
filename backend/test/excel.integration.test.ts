@@ -93,3 +93,40 @@ test('Excel: os cadastros anteriores e as pendências legadas permanecem intacto
   const legado = await pool.query('SELECT observacao FROM "Pendencia" WHERE observacao=$1', ['Preservar pendência fictícia anterior à migration']);
   assert.equal(legado.rows.length, 1);
 });
+
+test('avisos: ordenar persiste entre leituras, preserva conteúdos e meses e permite repetir sem nova revisão', async () => {
+  const ids = [`${tag}-ordem-a`, `${tag}-ordem-b`];
+  for (const id of ids) await alterar([{ tipo: 'incluirAviso', aviso: { id, titulo: 'Aviso fictício para ordenar', texto: `Conteúdo ${id}` } }]);
+  const antes = await ler(), anterior = antes.estado.ordemAvisos;
+  const ordem = [...anterior].reverse();
+  const op = { tipo: 'ordenarAvisos', ordem, anterior };
+  const salvo = await alterar([op]);
+  assert.deepEqual((await ler()).estado.ordemAvisos, ordem);
+  assert.deepEqual(salvo.estado.avisosExtras, antes.estado.avisosExtras);
+  assert.deepEqual(salvo.estado.registros, antes.estado.registros);
+  assert.ok(ordem.includes('fixo:xaxim-gas'));
+  assert.equal((await alterar([op])).revisao, salvo.revisao);
+  await alterar([{ tipo: 'incluirAviso', aviso: { id: `${tag}-ordem-novo`, titulo: 'Novo aviso', texto: 'Acrescentar sem perder a ordem' } }]);
+  assert.deepEqual((await ler()).estado.ordemAvisos, [...ordem, `aviso:${tag}-ordem-novo`]);
+});
+
+test('avisos: ordem concorrente ou aviso novo causa conflito sem aplicar parcialmente outros campos', async () => {
+  const antes = await ler(), anterior = antes.estado.ordemAvisos;
+  const ordem = [...anterior.slice(1), anterior[0]];
+  await alterar([{ tipo: 'ordenarAvisos', ordem, anterior }]);
+  const atualizado = await ler();
+  await alterar([definir(['informacoes', tag], 'Não aplicar este texto', atualizado.estado.informacoesClientes[tag]), { tipo: 'ordenarAvisos', ordem: [...anterior].reverse(), anterior }], 409);
+  assert.deepEqual(await ler(), atualizado);
+  await alterar([{ tipo: 'incluirAviso', aviso: { id: `${tag}-concorrente`, titulo: 'Aviso de outro computador', texto: 'Preservar novo aviso' } }]);
+  const comNovo = await ler();
+  await alterar([{ tipo: 'ordenarAvisos', ordem: [...ordem].reverse(), anterior: ordem }], 409);
+  assert.deepEqual(await ler(), comNovo);
+});
+
+test('avisos: não permite omitir Xaxim Gás, duplicar IDs ou incluir cartões inexistentes', async () => {
+  const antes = await ler(), anterior = antes.estado.ordemAvisos;
+  for (const ordem of [anterior.filter((id: string) => id !== 'fixo:xaxim-gas'), [...anterior, anterior[0]], anterior.map((id: string) => id === 'fixo:xaxim-gas' ? 'aviso:inexistente' : id), 'ordem inválida']) {
+    await alterar([{ tipo: 'ordenarAvisos', ordem, anterior }], 400);
+  }
+  assert.deepEqual(await ler(), antes);
+});
