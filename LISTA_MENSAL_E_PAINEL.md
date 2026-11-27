@@ -2,7 +2,8 @@
 
 Data: 26/11/2026. Branch de trabalho: `feature/lista-mensal-ajustes-painel`.
 Base publicada: `c89798e`, confirmada pelo usuário com PostgreSQL, API e frontend
-saudáveis no Windows. Esta etapa permanece sem publicação.
+saudáveis no Windows. O usuário autorizou a publicação desta etapa na branch
+`teste/controle-basico-linux`, usada pelos atualizadores existentes.
 
 ## Regra confirmada pelo usuário
 
@@ -87,8 +88,9 @@ os cards de pendência mediram 239 px de altura com todas as ações presentes.
 Capturas fictícias estão em `/workspace/entregas/lista-mensal-e-painel/`.
 
 Não foram executadas atualizações no Windows ou no Xubuntu do usuário nesta
-etapa. O próximo passo é publicar mediante autorização e validar a versão nos
-computadores de teste, usando o atualizador com backup já existente.
+etapa. A publicação foi autorizada; a versão deve ser validada nesses
+computadores usando o atualizador com backup já existente. Os comandos estão
+em `ATUALIZACAO_WINDOWS.md` e `ATUALIZACAO_LINUX.md`.
 
 ## Arquivos alterados
 

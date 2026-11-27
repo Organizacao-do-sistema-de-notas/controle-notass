@@ -30,8 +30,10 @@ O usuário confirmou a atualização Windows em `c89798e`, com schema atualizado
 e os três serviços saudáveis. Nos testes seguintes, definiu que apenas clientes
 mensais devem aparecer automaticamente todo mês; os demais exigem inclusão por
 competência de um cadastro existente. Essa correção e os ajustes de indicadores,
-cards e tabela de exclusão estão na branch `feature/lista-mensal-ajustes-painel`,
-ainda sem publicação. Detalhes em [LISTA_MENSAL_E_PAINEL.md](LISTA_MENSAL_E_PAINEL.md).
+cards e tabela de exclusão foram preparados na branch
+`feature/lista-mensal-ajustes-painel`. O usuário autorizou a distribuição deste
+lote na branch `teste/controle-basico-linux`, mantendo a main separada. Detalhes
+em [LISTA_MENSAL_E_PAINEL.md](LISTA_MENSAL_E_PAINEL.md).
 
 Relatórios de implementação: [cadastro único](VALIDACAO_CADASTRO_UNICO.md),
 [formulários do Excel](REVISAO_FORMULARIOS_BASICOS.md),
