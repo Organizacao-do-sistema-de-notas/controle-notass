@@ -1,7 +1,8 @@
 # Cartões livres, exclusão de avisos e estados do Painel
 
 Branch de trabalho: `feature/cartoes-livres-exclusao-status`. Base: `68b3309`.
-Esta etapa está preparada para revisão, sem publicação automática.
+O usuário autorizou a publicação desta etapa na branch
+`teste/controle-basico-linux`, usada pelos atualizadores existentes.
 
 ## Comportamento solicitado
 
@@ -49,7 +50,7 @@ após fechar a exclusão de cliente.
 Os testes usam exclusivamente um PostgreSQL recém-criado em `127.0.0.1:5433`,
 banco `controle_notas_pr1_test_cartoes_*`, com dados fictícios. O banco de uso do
 usuário, da empresa e do Confere não é acessado. A instalação física permanece
-na versão anterior até uma publicação e atualização autorizadas.
+na versão anterior até a execução do atualizador no computador correspondente.
 
 ## Pendências mantidas
 

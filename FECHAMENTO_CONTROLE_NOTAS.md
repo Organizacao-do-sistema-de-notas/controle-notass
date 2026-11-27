@@ -145,11 +145,13 @@ anotada uma futura consulta separada para meses fora da seleção rápida,
 preservando todos os registros existentes. Detalhes em
 [MESES_RAPIDOS_E_AVISOS.md](MESES_RAPIDOS_E_AVISOS.md).
 
-## Cartões livres e confirmação de exclusões — próxima entrega
+## Cartões livres e confirmação de exclusões — entrega autorizada
 
-A branch `feature/cartoes-livres-exclusao-status`, ainda sem publicação, prepara
-o arrasto pelo corpo do cartão, seleção azul e exclusão de avisos, confirmação
-central para exclusões, alternância simples dos mercados e estados destacados
-no topo do Painel. A ordem padrão segue o cadastro e a ordem manual vale em todos
-os meses, conforme confirmado pelo usuário. Detalhes em
+A implementação da branch `feature/cartoes-livres-exclusao-status` tem publicação
+autorizada na branch `teste/controle-basico-linux`: arrasto pelo corpo do cartão,
+seleção azul e exclusão de avisos, confirmação central para exclusões, alternância
+simples dos mercados e estados destacados no topo do Painel. A ordem padrão segue
+o cadastro e a ordem manual vale em todos os meses, conforme confirmado pelo
+usuário. A atualização e validação nos computadores ainda dependem da execução
+dos atualizadores com backup. Detalhes em
 [CARTOES_E_EXCLUSOES.md](CARTOES_E_EXCLUSOES.md).
