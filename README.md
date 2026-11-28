@@ -1,4 +1,97 @@
-# Controle de Notas — desenvolvimento com Docker
+# Controle de Notas
+
+**Versão atual: 0.0.1 · Em desenvolvimento · Versão preliminar/beta.**
+
+Sistema para acompanhar pendências mensais de clientes e contabilidades nas
+visualizações Excel e Painel, com cadastro único, fichas, avisos e históricos.
+O produto ainda não entrou em uma fase formal de testes de uso/homologação.
+Os testes automatizados existentes fazem parte do desenvolvimento.
+
+## Versões e publicação
+
+A versão inicial definida pelo usuário é **0.0.1**, registrada em
+[VERSION](VERSION), nos manifests de frontend/backend e nos respectivos lockfiles.
+
+| Entrega | Exemplo | Regra combinada |
+| --- | --- | --- |
+| Patch: correção ou ajuste de usabilidade sem funcionalidade nova | 0.0.1 → 0.0.2 | Implementar, validar e publicar sem perguntar novamente; fornecer os comandos de atualização |
+| Minor: funcionalidade nova | 0.0.1 → 0.1.0 | Preparar e validar a entrega; perguntar antes de publicar |
+
+Lotes mistos são separados. A segurança das atualizações será revista quando o
+projeto avançar; as proteções existentes de dados e backup continuam em uso.
+Regras completas em [VERSIONAMENTO.md](VERSIONAMENTO.md) e entregas em
+[CHANGELOG.md](CHANGELOG.md).
+
+O código é distribuído pela branch `teste/controle-basico-linux`, nome histórico
+usado pelos atualizadores. A fase do produto continua sendo desenvolvimento.
+O assistente publica no GitHub; a instalação é atualizada quando o usuário
+executa o comando em seu computador.
+
+## Funcionalidades atuais
+
+- **Cadastro único:** Excel, Painel, fichas e menu Clientes usam o mesmo ID.
+  Nome, apelidos e informações adicionais são compartilhados.
+- **Lista mensal do Excel:** clientes mensais aparecem todos os meses. Os demais
+  aparecem nos meses em que forem incluídos. Incluir Cliente escolhe um cadastro
+  existente; novos cadastros são feitos no menu Clientes.
+- **Estado mensal único:** alterar no Excel ou no Painel atualiza o mesmo cliente
+  e competência. OK corresponde a Concluído e Aguardando a Aguardando cliente.
+- **Fichas:** frequência, contabilidade, apelidos, anotações, informações adicionais,
+  modelo manual de mensagem, procedimentos e histórico. Salvar ficha e o resultado
+  da gravação ficam sempre visíveis no canto inferior direito do rodapé.
+- **Painel:** estados, mensagens e históricos, indicadores ocultáveis pelo olho
+  ao lado de Atualizar e cartões arrastáveis com ordem salva para todos os meses.
+- **Avisos:** clique no cartão para selecionar pela borda azul, depois altere ou
+  exclua o aviso selecionado. Arrastar muda a ordem. Xaxim Gás é permanente.
+- **Mercados:** Bom dia filial, Bom dia Matriz e Compre bem têm controle fixo
+  mensal de Pendente/Concluído, separado da lista comum de clientes.
+- **Meses:** seleção rápida com o mês atual, seis anteriores e seis posteriores,
+  e botões −1/+1. **⋯ → Consultar meses antigos** permite consultar outros períodos.
+- **Exclusões:** confirmação central com Excluir em vermelho e Cancelar ao lado;
+  dados históricos de clientes são preservados.
+- **Compartilhamento:** os computadores conectados à mesma API recebem atualizações,
+  com proteção contra edição concorrente e preservação de rascunhos.
+
+**Minor em preparação:** arrastar as linhas de clientes no Excel, com ordem
+própria para todos os meses e computadores. A implementação está em branch
+separada e aguarda autorização para publicar na **0.1.0**.
+
+Base de conhecimento, assistente de IA e automação de instalações são etapas
+futuras. O plano está em [BASE_CONHECIMENTO_PLANO.md](BASE_CONHECIMENTO_PLANO.md).
+
+## Atualizar uma instalação existente
+
+Salve os formulários abertos e use a pasta já instalada. Os scripts fazem backup
+e atualizam backend e frontend juntos, preservando `.env.docker`, portas, projeto
+e volume. Arquivos locais modificados ou uma branch divergente interrompem a
+operação para evitar descarte.
+
+### Windows — PowerShell
+
+Com Docker Desktop iniciado em Linux containers:
+
+```powershell
+Set-Location "D:\Projetos\controle-notass"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\ATUALIZAR-WINDOWS.ps1
+```
+
+### Linux — terminal Bash
+
+```bash
+cd "/home/guigostoso/controle-notas-xubuntu" &&
+bash ./ATUALIZAR-LINUX.sh
+```
+
+Ao final, confira o backup concluído, o schema atualizado, os serviços saudáveis
+e o commit informado pelo script. Recarregue a página com **Ctrl+F5** e continue
+usando o endereço habitual da instalação. A versão do checkout pode ser lida
+com `Get-Content .\VERSION` no PowerShell ou `cat VERSION` no Bash.
+
+Se o atualizador ainda não existir em um checkout antigo, siga
+[ATUALIZACAO_WINDOWS.md](ATUALIZACAO_WINDOWS.md) ou
+[ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md).
+
+## Ambiente e primeira instalação
 
 O ambiente padrão de desenvolvimento usa **Node 24**, **React/Vite**, **Express/Prisma**
 e **PostgreSQL 17**, todos em containers. As fichas individuais de clientes já estão
@@ -15,9 +108,7 @@ A etapa com publicação autorizada unifica o estado mensal de Excel e Painel e 
 Comportamento e validação em
 [ESTADO_UNICO_E_CONSULTA_MENSAL.md](ESTADO_UNICO_E_CONSULTA_MENSAL.md).
 
-O lote da branch `teste/controle-basico-linux` reúne cadastro único, **Excluir
-cliente** nas duas visualizações e proteção de formulários. Para atualizar uma
-instalação Linux existente com backup, seguir
+Para atualizar uma instalação Linux existente com backup, seguir
 [ATUALIZACAO_LINUX.md](ATUALIZACAO_LINUX.md). A validação do lote está em
 [VALIDACAO_ATUALIZACAO_LINUX.md](VALIDACAO_ATUALIZACAO_LINUX.md).
 Para atualizar a instalação existente em `D:\Projetos\controle-notass`, usar
@@ -44,7 +135,11 @@ O `.env.docker.example` contém apenas valores fictícios. `.env.docker` não va
 o Git nem para as imagens. Use letras, números, `_` e `-` na senha local, pois ela
 é interpolada em uma URL. Não use credenciais da empresa ou de produção.
 
-## Iniciar ou atualizar o projeto
+## Iniciar um checkout novo para desenvolvimento
+
+Para atualizar uma instalação com dados existentes, use os atualizadores com
+backup apresentados acima. O comando abaixo serve à inicialização do ambiente
+de desenvolvimento já configurado.
 
 ```powershell
 docker compose --env-file .env.docker up --build -d --wait
@@ -132,9 +227,10 @@ permanece separado. Para remover os containers de teste após a execução:
 docker compose --env-file .env.docker -p controle-notas-tests --profile test down
 ```
 
-Os testes incluem fichas, apelidos, procedimentos, histórico de contabilidade,
-concorrência, entradas inválidas, erros de rede, navegação, cadastro pelo Painel,
-visualização Excel, Xaxim Gás e os três mercados prioritários. Veja também
+Os testes incluem fichas, apelidos, procedimentos, históricos, sincronização de
+estados entre Excel e Painel, concorrência, rascunhos, erros de rede, navegação,
+avisos, exclusões, meses antigos e mercados fixos. Eles usam dados fictícios em
+banco descartável; não devem apontar para um banco em uso. Veja também
 [VALIDACAO_PR1.md](VALIDACAO_PR1.md) e [VALIDACAO_DOCKER.md](VALIDACAO_DOCKER.md).
 
 As gravações de status, responsável, observação e mensagem no Painel registram o
@@ -199,9 +295,10 @@ O navegador também é avisado de alterações pendentes ao tentar recarregar a 
 ## Informações adicionais e controle compartilhado
 
 O botão **?**, à direita da observação mensal, abre a caixa com as particularidades
-do cliente. Use **Alterar** para editar e o botão verde **Salvar** para confirmar.
-O **X vermelho** fecha a janela e pede confirmação se houver texto não salvo.
-As informações também continuam disponíveis nos formulários Incluir/Alterar Cliente.
+do cliente. Use **Alterar** para editar e **Salvar** para confirmar. Fechar pede
+confirmação quando houver texto não salvo. As mesmas informações ficam na ficha
+e no formulário Alterar Cliente. As observações são mensais; as informações
+adicionais da ficha são permanentes.
 
 Os dados da visão Excel agora ficam no PostgreSQL: clientes incluídos, nomes,
 apelidos, informações adicionais, avisos, status e observações de todos os meses.
@@ -216,13 +313,14 @@ Faça isso nos navegadores que tenham registros próprios, revisando as divergê
 O botão **Baixar cópia dos dados locais** exporta os originais para um JSON privado.
 
 Preferências de visualização/mês e a identificação da importação permanecem locais.
-Cada cliente cadastrado tem automaticamente uma linha no Excel e uma ficha,
-identificadas pelo mesmo ID. A ordem da lista e o nome não definem a identidade
-de uma empresa. Xaxim Gás e os três mercados
-prioritários mantêm o comportamento anterior.
+Cada cliente tem uma ficha identificada pelo mesmo ID usado no Excel e no Painel.
+A presença na lista mensal segue a frequência ou a inclusão explícita naquele
+mês. A ordem da lista e o nome não definem a identidade da empresa. Xaxim Gás
+permanece disponível; os três mercados usam o controle fixo separado.
 
-A nova migração apenas cria `ExcelCompartilhado`; não modifica linhas das tabelas
-existentes. O backup PostgreSQL passa a incluir também o controle Excel compartilhado.
+O backup PostgreSQL inclui também o controle Excel compartilhado, os avisos e
+os históricos. As migrações existentes são mantidas e novas mudanças de schema
+devem ser aditivas e verificadas em banco isolado.
 Veja [COMPARTILHAMENTO_EXCEL.md](COMPARTILHAMENTO_EXCEL.md) para instalação,
 importação e acesso entre o notebook e o computador principal.
 
@@ -255,4 +353,6 @@ Compose para reutilizar seu volume. Persistência em volume não substitui backu
 
 Esta configuração é para desenvolvimento local; autenticação e implantação em
 produção continuam fora desta etapa. Não aponta para Confere Cópias ou bancos
-externos e não publica código ou imagens em registros remotos.
+externos. O código para atualização é publicado no GitHub, na branch combinada.
+A publicação de imagens em registros e a implantação em produção ficam para
+etapas futuras.

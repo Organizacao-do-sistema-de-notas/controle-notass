@@ -343,10 +343,6 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
           </aside>
 
           <div className="ficha-detalhes">
-            {erro && <p role="alert" className="ficha-mensagem erro">{erro}</p>}
-            {erro.startsWith("Outro computador alterou") && <button type="button" className="ficha-botao" disabled={salvando} onClick={() => { if (podeSair()) setTentativaLeitura(atual => atual + 1); }}>Recarregar ficha após revisar</button>}
-            {aviso && <p role="status" className="ficha-mensagem sucesso">{aviso}</p>}
-
             {carregandoFicha && <p>Carregando ficha do cliente...</p>}
             {!ficha && !carregandoFicha && (
               <div className="ficha-vazio">Selecione um cliente à esquerda para consultar ou editar sua ficha.</div>
@@ -397,12 +393,6 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
                   Responsável pela alteração de contabilidade (opcional)
                   <input maxLength={150} value={autor} onChange={(evento) => setAutor(evento.target.value)} placeholder="Seu nome" />
                 </label>
-                <div className="ficha-acoes">
-                  <button type="button" className="ficha-botao primario" disabled={salvando} onClick={salvarFicha}>
-                    {salvando ? "Salvando..." : "Salvar ficha"}
-                  </button>
-                </div>
-
                 <div className="ficha-separador" />
                 <h4>Procedimentos de suporte</h4>
                 <p className="ficha-descricao">Instruções específicas deste cliente, válidas para atendimentos futuros.</p>
@@ -461,7 +451,15 @@ export function FichasClientes({ aoFechar, clienteInicialId = null }: Props) {
         </div>
 
         <footer className="ficha-footer">
-          Não registre senhas nesta ficha. A autenticação e o controle de acesso ainda serão implementados.
+          <div className="ficha-footer-mensagens">
+            <span>Não registre senhas nesta ficha. A autenticação e o controle de acesso ainda serão implementados.</span>
+            {erro && <p role="alert" className="ficha-mensagem erro">{erro}</p>}
+            {erro.startsWith("Outro computador alterou") && <button type="button" className="ficha-botao" disabled={salvando} onClick={() => { if (podeSair()) setTentativaLeitura(atual => atual + 1); }}>Recarregar ficha após revisar</button>}
+            {aviso && <p role="status" className="ficha-mensagem sucesso">{aviso}</p>}
+          </div>
+          <button type="button" className="ficha-botao primario ficha-salvar-fixo" disabled={!ficha || salvando || carregandoFicha} onClick={salvarFicha}>
+            {salvando ? "Salvando..." : "Salvar ficha"}
+          </button>
         </footer>
       </section>
     </div>

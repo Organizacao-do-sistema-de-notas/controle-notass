@@ -1,5 +1,11 @@
 # Fechamento da versão básica do controle-notass
 
+**Versão atual: 0.0.1, em desenvolvimento.** A regra atual do usuário autoriza
+publicar patches após validação, sem nova pergunta, fornecendo os comandos de
+atualização. Minors acrescentam funcionalidades e exigem autorização antes de
+publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
+anotações históricas abaixo que pediam aprovação para qualquer publicação.
+
 A prioridade atual é concluir e validar o controle de notas. Base de conhecimento,
 integrações de IA e automação de instalações ficam para uma etapa futura.
 
@@ -202,3 +208,26 @@ Validação: TypeScript/Vite aprovados e 14 cenários de navegador conferidos
 de edição do aviso selecionado). Os dois cenários novos foram reexecutados
 depois do ajuste do nome do diálogo usado pelo teste. Todos os dados são fictícios,
 em PostgreSQL descartável criado em `127.0.0.1:5433`; nenhum banco de uso foi acessado.
+
+## Versão inicial 0.0.1 e separação do lote
+
+O usuário definiu a versão atual como 0.0.1, ainda em desenvolvimento, e pediu
+a revisão do README e a política de patches/minors. A branch `patch/versao-0-0-1`
+registra essa base e inclui somente a correção de Salvar ficha fixo no rodapé,
+com sucesso/erro visíveis, extraída do lote validado `33a019f`. A publicação
+desse patch está autorizada pela nova regra. Os manifests e metadados de raiz
+dos lockfiles passam a refletir a mesma versão, sem trocar dependências.
+
+A funcionalidade de arrastar clientes no Excel continua preparada na branch
+`minor/0-1-0-ordem-excel` e aguarda autorização como minor 0.1.0.
+A base de conhecimento e IA continuam futuras. A fase do produto segue sendo
+desenvolvimento, mesmo com verificações automatizadas e a branch de distribuição
+com nome histórico `teste/controle-basico-linux`.
+
+Validação da 0.0.1: 73 testes de backend aprovados, 18 cenários de fichas e
+cadastro único verificados no Chromium, TypeScript/Vite aprovados, versões dos
+manifests e lockfiles consistentes e dependências preservadas. O cenário de
+homônimos foi reexecutado após a suíte de backend preparar os dados fictícios
+de importação necessários. O botão fixo foi conferido em 1440 px e 390 px, com
+erro e nova tentativa. A preparação usa somente PostgreSQL descartável em
+`127.0.0.1:5433`, sem acessar bancos do usuário ou da empresa.

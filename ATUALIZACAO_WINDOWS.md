@@ -3,10 +3,11 @@
 Usar a pasta existente `D:\Projetos\controle-notass`, com Docker Desktop iniciado
 e Linux containers. Salvar os formulários abertos antes de atualizar.
 
-O lote fica na branch `teste/controle-basico-linux`, compartilhada com os testes
-do Linux. Além do ajuste das bordas, ela inclui o cadastro único, exclusão e
-proteção dos formulários. O Windows pode estar numa versão anterior; por isso
-backend e frontend são reconstruídos juntos.
+A distribuição de desenvolvimento usa a branch `teste/controle-basico-linux`,
+compartilhada com o Linux. A versão inicial é 0.0.1. Patches têm publicação
+autorizada após validação; minors exigem autorização antes de publicar, conforme
+[VERSIONAMENTO.md](VERSIONAMENTO.md). O Windows pode estar numa versão anterior;
+por isso backend e frontend são reconstruídos juntos.
 
 ## Comando no PowerShell
 

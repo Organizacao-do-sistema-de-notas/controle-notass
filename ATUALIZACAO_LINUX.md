@@ -1,9 +1,9 @@
 # Atualizar o servidor Linux existente
 
-Lote de testes de 25/11/2026, na branch `teste/controle-basico-linux`.
-O pedido de retomar os testes no servidor Linux autoriza disponibilizar este
-lote. A main permanece separada. Alterações futuras continuam dependendo de
-nova autorização para publicação.
+Distribuição de desenvolvimento na branch `teste/controle-basico-linux`, nome
+histórico mantido pelos atualizadores. A versão inicial é 0.0.1. Patches têm
+publicação autorizada após validação; minors exigem autorização antes de
+publicar, conforme [VERSIONAMENTO.md](VERSIONAMENTO.md). A main permanece separada.
 
 Esta branch reúne o cadastro único, a exclusão de clientes nas duas telas e a
 proteção dos formulários do Excel/Painel, incluindo o commit de aplicação
@@ -63,7 +63,8 @@ correspondente; trocar somente para código antigo não é um rollback completo.
 1. Conferir os cadastros e os dados anteriores, incluindo Xaxim Gás e mercados.
 2. Criar um cliente fictício e conferir o mesmo ID no Excel e na ficha.
 3. Alterar nome, apelidos, contabilidade e informações adicionais; conferir nas
-   outras telas. Status e observação de cada mês devem continuar separados.
+   outras telas. O estado deve coincidir no Excel e no Painel da mesma competência;
+   os registros de meses diferentes devem continuar separados.
 4. No Painel, criar uma pendência e uma mensagem; testar salvamento e histórico.
 5. Digitar sem salvar e recusar o descarte ao fechar. Testar também Escape,
    recarga e fechamento durante salvamento, nas duas visualizações.
