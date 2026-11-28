@@ -47,7 +47,7 @@ export function useArrastoCartoes({ ids, bloqueado, aoMover, aoSelecionar }: {
       await mover(origem, destino.id, destino.depois, anterior); setMensagem("Ordem salva.");
       if (focar) requestAnimationFrame(() => {
         const card = Array.from(grupo.current?.querySelectorAll<HTMLElement>('[data-arrastavel-id]') ?? []).find(item => item.dataset.arrastavelId === origem);
-        (card?.querySelector<HTMLElement>('[data-drag-handle]') ?? card)?.focus();
+        card?.focus();
       });
     } catch (e) { setMensagem(""); setErro(e instanceof Error ? e.message : "Não foi possível salvar a ordem. Tente novamente."); }
     finally { emGravacao.current = false; }

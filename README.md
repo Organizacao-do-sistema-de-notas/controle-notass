@@ -1,8 +1,9 @@
 # Controle de Notas
 
-**Versão atual: 0.1.0 · Em desenvolvimento · Versão preliminar/beta.**
+**Versão atual: 0.1.1 · Em desenvolvimento · Versão preliminar/beta.**
 
-A minor **0.1.0** acrescenta a ordenação dos clientes no Excel. A numeração
+O patch **0.1.1** simplifica os controles do Painel e reforça as cores dos estados.
+A minor **0.1.0** acrescentou a ordenação dos clientes no Excel; a numeração
 inicial do projeto foi estabelecida na **0.0.1**.
 
 Sistema para acompanhar pendências mensais de clientes e contabilidades nas
@@ -14,7 +15,7 @@ Os testes automatizados existentes fazem parte do desenvolvimento.
 
 A versão inicial definida pelo usuário é **0.0.1**. [VERSION](VERSION), os manifests
 de frontend/backend e os respectivos lockfiles indicam a versão deste checkout,
-atualmente **0.1.0**.
+atualmente **0.1.1**.
 
 | Entrega | Exemplo | Regra combinada |
 | --- | --- | --- |
@@ -45,8 +46,14 @@ executa o comando em seu computador.
   da gravação ficam sempre visíveis no canto inferior direito do rodapé.
 - **Painel:** estados, mensagens e históricos, indicadores ocultáveis pelo olho
   ao lado de Atualizar e cartões arrastáveis com ordem salva para todos os meses.
+  Incluir cliente + seleciona um cadastro existente; novos clientes e contabilidades
+  são cadastrados pelo menu superior ⋯. Estados e filtro têm cores destacadas;
+  cartões concluídos recebem contorno verde.
 - **Avisos:** clique no cartão para selecionar pela borda azul, depois altere ou
   exclua o aviso selecionado. Arrastar muda a ordem. Xaxim Gás é permanente.
+- **Arrasto sem ícones:** clientes do Excel, cartões do Painel e avisos se movem
+  pelo próprio quadro com o mouse. No toque, arraste pelo nome ou título; no
+  teclado, foque a linha/cartão e use as setas para cima ou para baixo.
 - **Mercados:** Bom dia filial, Bom dia Matriz e Compre bem têm controle fixo
   mensal de Pendente/Concluído, separado da lista comum de clientes.
 - **Meses:** seleção rápida com o mês atual, seis anteriores e seis posteriores,

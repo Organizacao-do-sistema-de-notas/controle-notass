@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.1.1 — patch em desenvolvimento
+
+- Remove os indicadores laterais de arrasto no Excel, no Painel e nos avisos,
+  preservando o movimento pelo quadro, por toque no nome/título e pelo teclado.
+- Renomeia Nova pendência para Incluir cliente +, com seleção de cliente existente.
+  Novos clientes e contabilidades ficam no menu superior ⋯, sem atalhos duplicados.
+- Reforça as cores de Aguardando cliente, Em atendimento e Concluído; o filtro
+  Status acompanha a cor escolhida e o cartão concluído recebe contorno verde.
+- Atualiza o README e os metadados de versão, sem alteração de schema ou dependências.
+
 ## 0.1.0 — minor em desenvolvimento
 
 - Arrastar as linhas de clientes do Excel, com ordem própria salva para todos

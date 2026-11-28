@@ -208,14 +208,18 @@ test('layout móvel e foco permanecem dentro da ficha', async ({ page }) => {
 });
 
 
-test('cadastro pelo Painel fica disponível na ficha sem importar a tabela Excel', async ({ page, request }) => {
+test('cadastro pelo menu superior fica disponível na ficha sem importar a tabela Excel', async ({ page, request }) => {
   const nome = `Codex cadastro fictício ${Date.now()}`;
   await page.goto('/');
-  await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
-  await page.getByLabel('Nome do cliente', { exact: true }).fill(nome);
-  await page.locator('.form-modal').getByLabel('Contabilidade').selectOption(String(contabilidade.id));
-  await page.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
-  await expect(page.locator('.form-modal')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Clientes', exact: true }).click();
+  const cadastro = page.getByRole('dialog', { name: 'Cadastros', exact: true });
+  await cadastro.getByRole('button', { name: 'Novo cliente', exact: true }).click();
+  await cadastro.getByLabel('Nome do cliente', { exact: true }).fill(nome);
+  await cadastro.getByLabel('Contabilidade do cliente').selectOption(String(contabilidade.id));
+  await cadastro.getByRole('button', { name: 'Salvar cliente', exact: true }).click();
+  await expect(cadastro.getByRole('status')).toHaveText('Cliente salvo.');
+  await cadastro.getByRole('button', { name: 'Fechar cadastros', exact: true }).click();
   await page.getByRole('button', { name: 'Excel', exact: true }).click();
   await expect(page.locator('.excel-client-name').filter({ hasText: nome })).toHaveCount(0);
   await page.getByRole('button', { name: /Fichas dos\s*Clientes/ }).click();

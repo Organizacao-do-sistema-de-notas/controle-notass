@@ -8,12 +8,9 @@ import { moverNaOrdem, useArrastoCartoes } from "./useArrastoCartoes";
 
 import {
   atualizarStatusPendencia,
-  criarCliente,
-  criarContabilidade,
   criarPendencia,
   listarClientes,
   listarCompetencias,
-  listarContabilidades,
   listarHistoricoPendencia,
   obterMensagemContador,
   obterPainel,
@@ -21,7 +18,6 @@ import {
 } from "./api";
 import type {
   Cliente,
-  Contabilidade,
   HistoricoPendencia,
   MensagemContadorResponse,
   PainelMensal,
@@ -116,18 +112,9 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const [autor, setAutor] = useState(() => localStorage.getItem("controle-notas-autor") || "");
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [contabilidades, setContabilidades] = useState<Contabilidade[]>([]);
   const [carregandoCadastros, setCarregandoCadastros] = useState(false);
 
-  const [modalCliente, setModalCliente] = useState(false);
   const [exclusaoAberta, setExclusaoAberta] = useState(false);
-  const [clienteNome, setClienteNome] = useState("");
-  const [clienteContabilidadeId, setClienteContabilidadeId] = useState("");
-  const [salvandoCliente, setSalvandoCliente] = useState(false);
-
-  const [modalContabilidade, setModalContabilidade] = useState(false);
-  const [contabilidadeNome, setContabilidadeNome] = useState("");
-  const [salvandoContabilidade, setSalvandoContabilidade] = useState(false);
 
   const [modalPendencia, setModalPendencia] = useState(false);
   const [pendenciaClienteId, setPendenciaClienteId] = useState("");
@@ -144,17 +131,15 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const formulario = useRef<HTMLElement>(null);
   const botaoFormulario = useRef<HTMLElement | null>(null);
   const gravacaoEmAndamento = useRef(false);
-  const clienteComRascunho = modalCliente && Boolean(clienteNome || clienteContabilidadeId);
-  const contabilidadeComRascunho = modalContabilidade && Boolean(contabilidadeNome);
   const pendenciaComRascunho = modalPendencia && basePendencia !== null && (
     pendenciaClienteId !== basePendencia.clienteId || pendenciaCompetencia !== basePendencia.competencia
     || pendenciaStatus !== basePendencia.status || pendenciaResponsavel !== basePendencia.responsavel
     || pendenciaObservacao !== basePendencia.observacao
   );
   const mensagemComRascunho = editor !== null && editor.mensagem !== editor.mensagemOriginal;
-  const temRascunhos = clienteComRascunho || contabilidadeComRascunho || pendenciaComRascunho || mensagemComRascunho;
-  const gravando = salvandoCliente || salvandoContabilidade || salvandoPendencia || salvandoOrdem || Boolean(editor?.salvando) || alterandoStatusId !== null;
-  const formularioAberto = modalCliente || modalContabilidade || modalPendencia || editor !== null;
+  const temRascunhos = pendenciaComRascunho || mensagemComRascunho;
+  const gravando = salvandoPendencia || salvandoOrdem || Boolean(editor?.salvando) || alterandoStatusId !== null;
+  const formularioAberto = modalPendencia || editor !== null;
   const aberturaBloqueada = gravando || carregandoCadastros || carregandoMensagem || formularioAberto;
 
   useEffect(() => { aoPendenciasAlteradas?.({ gravando, rascunhos: temRascunhos }); }, [gravando, temRascunhos, aoPendenciasAlteradas]);
@@ -185,9 +170,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   function guardarBotaoFormulario() {
     botaoFormulario.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
-  function fecharCliente() { if (podeDescartar(clienteComRascunho, "deste cliente")) { setModalCliente(false); setErro(null); } }
-  function fecharContabilidade() { if (podeDescartar(contabilidadeComRascunho, "desta contabilidade")) { setModalContabilidade(false); setErro(null); } }
-  function fecharPendencia() { if (podeDescartar(pendenciaComRascunho, "desta pendência")) { setModalPendencia(false); setErro(null); } }
+  function fecharPendencia() { if (podeDescartar(pendenciaComRascunho, "desta inclusão")) { setModalPendencia(false); setErro(null); } }
   function fecharMensagem() { if (podeDescartar(mensagemComRascunho, "desta mensagem")) { setEditor(null); setErro(null); } }
   function tecladoFormulario(evento: KeyboardEvent<HTMLElement>, fechar: () => void) {
     if (evento.key === "Escape") { evento.preventDefault(); evento.stopPropagation(); fechar(); }
@@ -238,13 +221,9 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     try {
       setCarregandoCadastros(true);
       setErro(null);
-      const [listaClientes, listaContabilidades] = await Promise.all([
-        listarClientes(),
-        listarContabilidades(),
-      ]);
+      const listaClientes = await listarClientes();
       setClientes(listaClientes);
-      setContabilidades(listaContabilidades);
-      return { listaClientes, listaContabilidades };
+      return { listaClientes };
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Erro ao carregar cadastros.");
       return null;
@@ -410,15 +389,6 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     window.open(dados.linkWhatsApp, "_blank", "noopener,noreferrer");
   }
 
-  async function abrirNovoCliente() {
-    if (aberturaBloqueada) return;
-    guardarBotaoFormulario();
-    setClienteNome("");
-    setClienteContabilidadeId("");
-    await carregarCadastros();
-    setModalCliente(true);
-  }
-
   async function aposExcluirCliente(_resposta: unknown, id: number) {
     geracaoPainel.current++;
     setClientes(atuais => atuais.filter(cliente => cliente.id !== id));
@@ -436,57 +406,6 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
     const lista = await carregarCompetencias();
     if (lista?.includes(competencia)) await carregarPainel(competencia);
     setAviso("Cliente excluído das visualizações. Histórico preservado.");
-  }
-
-  async function salvarNovoCliente(event: FormEvent) {
-    event.preventDefault();
-    if (!clienteNome.trim() || gravacaoEmAndamento.current || gravando) return;
-    gravacaoEmAndamento.current = true;
-
-    try {
-      setSalvandoCliente(true);
-      setErro(null);
-      await criarCliente(
-        clienteNome.trim(),
-        clienteContabilidadeId ? Number(clienteContabilidadeId) : null,
-      );
-      await carregarCadastros();
-      setModalCliente(false);
-      setAviso("Cliente cadastrado.");
-    } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao cadastrar cliente.");
-    } finally {
-      gravacaoEmAndamento.current = false;
-      setSalvandoCliente(false);
-    }
-  }
-
-  function abrirNovaContabilidade() {
-    if (aberturaBloqueada) return;
-    guardarBotaoFormulario();
-    setErro(null);
-    setContabilidadeNome("");
-    setModalContabilidade(true);
-  }
-
-  async function salvarNovaContabilidade(event: FormEvent) {
-    event.preventDefault();
-    if (!contabilidadeNome.trim() || gravacaoEmAndamento.current || gravando) return;
-    gravacaoEmAndamento.current = true;
-
-    try {
-      setSalvandoContabilidade(true);
-      setErro(null);
-      await criarContabilidade(contabilidadeNome.trim());
-      await carregarCadastros();
-      setModalContabilidade(false);
-      setAviso("Contabilidade cadastrada.");
-    } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao cadastrar contabilidade.");
-    } finally {
-      gravacaoEmAndamento.current = false;
-      setSalvandoContabilidade(false);
-    }
   }
 
   async function abrirNovaPendencia() {
@@ -522,7 +441,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
       });
 
       setModalPendencia(false);
-      setAviso("Pendência criada.");
+      setAviso("Cliente incluído no mês.");
 
       await listarCompetencias();
       if (pendenciaCompetencia === competencia) {
@@ -530,10 +449,10 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
       } else if (mesesRapidos().includes(pendenciaCompetencia)) {
         setCompetencia(pendenciaCompetencia);
       } else {
-        setAviso(`Pendência criada em ${formatarCompetencia(pendenciaCompetencia)}. Esse mês está fora da seleção rápida.`);
+        setAviso(`Cliente incluído em ${formatarCompetencia(pendenciaCompetencia)}. Esse mês está fora da seleção rápida.`);
       }
     } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao criar pendência.");
+      setErro(error instanceof Error ? error.message : "Erro ao incluir cliente no mês.");
     } finally {
       gravacaoEmAndamento.current = false;
       setSalvandoPendencia(false);
@@ -588,6 +507,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
           <label>
             <span>Status</span>
             <select
+              className={`painel-status-filtro${filtroStatus === "TODOS" ? "" : ` status-${filtroStatus.toLowerCase()}`}`}
               value={filtroStatus}
               onChange={(event) => setFiltroStatus(event.target.value as FiltroStatus)}
             >
@@ -619,17 +539,11 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
 
           <div className="toolbar-spacer" />
 
-          <button className="button secondary" disabled={aberturaBloqueada} onClick={abrirNovaContabilidade}>
-            Nova contabilidade
-          </button>
-          <button className="button secondary" disabled={aberturaBloqueada} onClick={() => void abrirNovoCliente()}>
-            Novo cliente
-          </button>
           <button className="button secondary" disabled={aberturaBloqueada} onClick={() => setExclusaoAberta(true)}>
             Excluir cliente
           </button>
           <button className="button primary" disabled={aberturaBloqueada} onClick={() => void abrirNovaPendencia()}>
-            Nova pendência
+            Incluir cliente +
           </button>
         </section>
 
@@ -680,10 +594,12 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
           ) : (
             <div className="pendencias-grid" ref={arrastoPainel.grupo}>
               {pendenciasFiltradas.map((item) => (
-                <article className="pendencia-card cartao-arrastavel" key={item.id} tabIndex={0} data-cliente-id={item.cliente.id} {...arrastoPainel.vincular(String(item.cliente.id))}>
+                <article className={`pendencia-card cartao-arrastavel${item.status === "CONCLUIDO" ? " pendencia-concluida" : ""}`} key={item.id} tabIndex={0}
+                  data-cliente-id={item.cliente.id} {...arrastoPainel.vincular(String(item.cliente.id))}
+                  onKeyDown={evento => { if (evento.target === evento.currentTarget) arrastoPainel.teclado(evento, String(item.cliente.id)); }}>
                   <div className="card-heading">
                     <div>
-                      <h3>{item.cliente.nome}</h3>
+                      <h3 data-drag-handle>{item.cliente.nome}</h3>
                       <p>{item.contabilidade?.nome ?? "Sem contabilidade vinculada"}</p>
                     </div>
                     <div className="card-status-controle">
@@ -692,9 +608,6 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
                         onChange={event => void alterarStatus(item, event.target.value as StatusPendencia)}>
                         {statusDisponiveis.map(status => <option key={status} value={status}>{rotulosStatus[status]}</option>)}
                       </select>
-                      <button type="button" className="painel-arrastar" data-drag-handle disabled={aberturaBloqueada || carregando}
-                        aria-label={`Ordenar cliente ${item.cliente.nome}`} title="Arraste o cartão para mover; ou use as setas do teclado"
-                        onKeyDown={evento => arrastoPainel.teclado(evento, String(item.cliente.id))}>⋮⋮</button>
                     </div>
                   </div>
 
@@ -810,126 +723,6 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
         </div>
       )}
 
-      {modalCliente && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={fecharCliente}>
-          <form
-            ref={elemento => { formulario.current = elemento; }}
-            className="message-modal form-modal"
-            role="dialog" aria-modal="true" aria-labelledby="painel-novo-cliente" aria-busy={gravando} tabIndex={-1}
-            onKeyDown={evento => tecladoFormulario(evento, fecharCliente)}
-            onSubmit={(event) => void salvarNovoCliente(event)}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <div>
-                <span className="eyebrow">Cadastro</span>
-                <h2 id="painel-novo-cliente">Novo cliente</h2>
-              </div>
-              <button type="button" className="close-button" aria-label="Fechar novo cliente" disabled={gravando} onClick={fecharCliente}>
-                ×
-              </button>
-            </div>
-
-            <div className="form-grid">
-              <label className="form-field full-width">
-                <span>Nome do cliente</span>
-                <input
-                  value={clienteNome}
-                  disabled={gravando}
-                  onChange={(event) => setClienteNome(event.target.value)}
-                  placeholder="Ex.: Mercado Rondinense"
-                  required
-                />
-              </label>
-
-              <label className="form-field full-width">
-                <span>Contabilidade</span>
-                <select
-                  value={clienteContabilidadeId}
-                  onChange={(event) => setClienteContabilidadeId(event.target.value)}
-                  disabled={carregandoCadastros || gravando}
-                >
-                  <option value="">Sem contabilidade vinculada</option>
-                  {contabilidades.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {erro && <p className="alert error" role="alert">{erro}</p>}
-            <div className="modal-actions">
-              <button type="button" className="button secondary" disabled={gravando} onClick={fecharCliente}>
-                Cancelar
-              </button>
-              <button className="button primary" disabled={gravando || !clienteNome.trim()}>
-                {salvandoCliente ? "Salvando..." : "Cadastrar cliente"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {modalContabilidade && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={fecharContabilidade}
-        >
-          <form
-            ref={elemento => { formulario.current = elemento; }}
-            className="message-modal form-modal compact-modal"
-            role="dialog" aria-modal="true" aria-labelledby="painel-nova-contabilidade" aria-busy={gravando} tabIndex={-1}
-            onKeyDown={evento => tecladoFormulario(evento, fecharContabilidade)}
-            onSubmit={(event) => void salvarNovaContabilidade(event)}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <div>
-                <span className="eyebrow">Cadastro</span>
-                <h2 id="painel-nova-contabilidade">Nova contabilidade</h2>
-              </div>
-              <button
-                type="button"
-                className="close-button"
-                aria-label="Fechar nova contabilidade" disabled={gravando}
-                onClick={fecharContabilidade}
-              >
-                ×
-              </button>
-            </div>
-
-            <label className="form-field">
-              <span>Nome da contabilidade</span>
-              <input
-                value={contabilidadeNome}
-                disabled={gravando}
-                onChange={(event) => setContabilidadeNome(event.target.value)}
-                placeholder="Ex.: Contabilidade Silva"
-                required
-              />
-            </label>
-
-            {erro && <p className="alert error" role="alert">{erro}</p>}
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="button secondary"
-                disabled={gravando}
-                onClick={fecharContabilidade}
-              >
-                Cancelar
-              </button>
-              <button className="button primary" disabled={gravando || !contabilidadeNome.trim()}>
-                {salvandoContabilidade ? "Salvando..." : "Cadastrar"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
       {modalPendencia && (
         <div className="modal-backdrop" role="presentation" onMouseDown={fecharPendencia}>
           <form
@@ -943,15 +736,15 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
             <div className="modal-heading">
               <div>
                 <span className="eyebrow">Acompanhamento mensal</span>
-                <h2 id="painel-nova-pendencia">Nova pendência</h2>
+                <h2 id="painel-nova-pendencia">Incluir cliente</h2>
               </div>
-              <button type="button" className="close-button" aria-label="Fechar nova pendência" disabled={gravando} onClick={fecharPendencia}>
+              <button type="button" className="close-button" aria-label="Fechar inclusão de cliente" disabled={gravando} onClick={fecharPendencia}>
                 ×
               </button>
             </div>
 
             <p className="modal-help">
-              Cadastre somente clientes que tiveram alguma nota ou conferência pendente nesta competência.
+              Selecione um cliente já cadastrado para acompanhar nesta competência. Ele aparecerá no Painel e no Excel.
             </p>
 
             <div className="form-grid">
@@ -1025,7 +818,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
 
             {clientes.filter((cliente) => cliente.ativo).length === 0 && (
               <div className="inline-warning">
-                Nenhum cliente ativo cadastrado. Cadastre um cliente antes de criar a pendência.
+                Nenhum cliente ativo cadastrado. Use Clientes no menu superior para cadastrar.
               </div>
             )}
 
@@ -1038,7 +831,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
                 className="button primary"
                 disabled={gravando || !pendenciaClienteId || !pendenciaCompetencia}
               >
-                {salvandoPendencia ? "Criando..." : "Criar pendência"}
+                {salvandoPendencia ? "Incluindo..." : "Incluir cliente"}
               </button>
             </div>
           </form>

@@ -70,11 +70,11 @@ test('ordenar com filtro preserva clientes ocultos e rascunhos; falha de rede ma
   await linha(page, a.id).getByRole('textbox').fill('Observação não deve mudar de cliente');
   await expect(linha(page, a.id).getByRole('alert')).toHaveText('Rascunho fictício preservado');
   await buscar(page).fill(`${tag} visível`); await expect(linha(page, b.id)).toHaveCount(0);
-  const puxador = linha(page, c.id).getByRole('button', { name: `Ordenar cliente ${c.nome} no Excel`, exact: true });
-  await puxador.focus(); await page.keyboard.press('ArrowUp');
+  const cartao = linha(page, c.id);
+  await cartao.focus(); await page.keyboard.press('ArrowUp');
   await expect(page.locator('.excel-ordem-erro')).toHaveText('Falha fictícia ao mover linha');
   expect((await ler(request)).ordemClientesExcel).toEqual(antes.ordemClientesExcel);
-  falharOrdem = false; await puxador.focus(); await page.keyboard.press('ArrowUp');
+  falharOrdem = false; await cartao.focus(); await page.keyboard.press('ArrowUp');
   await expect.poll(() => ordemVisivel(page, ids)).toEqual([c.id, a.id]);
   await expect(linha(page, a.id).getByRole('textbox')).toHaveValue('Observação não deve mudar de cliente');
   await buscar(page).fill(tag); await expect.poll(() => ordemVisivel(page, ids)).toEqual(esperada.filter((id: number) => ids.includes(id)));

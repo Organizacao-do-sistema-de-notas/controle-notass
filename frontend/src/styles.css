@@ -285,6 +285,11 @@ textarea:focus {
   padding: 14px;
 }
 
+.pendencia-card.pendencia-concluida {
+  border-color: #279b45;
+  box-shadow: inset 0 0 0 1px #279b45;
+}
+
 .card-heading {
   display: flex;
   align-items: flex-start;
@@ -317,18 +322,18 @@ textarea:focus {
 }
 
 .status-aguardando_cliente {
-  background: #fff0e6;
-  color: #a44a13;
+  background: #ffbf00;
+  color: #332300;
 }
 
 .status-em_atendimento {
-  background: #eaf0ff;
-  color: #2958c8;
+  background: #2e59d9;
+  color: #fff;
 }
 
 .status-concluido {
-  background: #e8f7ee;
-  color: #147a45;
+  background: #2fa84f;
+  color: #082b11;
 }
 
 .card-info-grid {
@@ -407,8 +412,8 @@ textarea:focus {
 .card-heading > div:first-child { min-width: 0; overflow-wrap: anywhere; }
 .card-status-controle { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; max-width: 55%; }
 .card-status-select { min-height: 38px; width: 240px; min-width: 0; max-width: 100%; flex: 1 1 auto; padding: 6px 10px; font-size: 13px; font-weight: 800; border: 1px solid #b9ccdf; }
-.card-status-select option { background: #fff; color: #172033; }
-#root button.painel-arrastar { flex: 0 0 18px; width: 18px; padding: 3px 0; border: 0; background: transparent; color: #78899d; touch-action: none; letter-spacing: -4px; }
+.painel-status-filtro { font-weight: 800; }
+.card-status-select option, .painel-status-filtro option { background: #fff; color: #172033; }
 .painel-ordem-estado { font-size: 11px; color: #6b7d95; }
 @media (max-width: 520px) {
   .card-heading { flex-wrap: wrap; }

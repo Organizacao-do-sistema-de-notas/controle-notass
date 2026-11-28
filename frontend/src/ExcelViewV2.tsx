@@ -412,10 +412,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                     {...arrastoClientes.vincular(String(vinculosClientes[cliente]))}
                     onKeyDown={evento => { if (evento.target === evento.currentTarget) arrastoClientes.teclado(evento, String(vinculosClientes[cliente])); }}>
                     <div className="excel-client-name">
-                      <button type="button" className="excel-cliente-arrastar" data-drag-handle disabled={!disponivel || ocupado}
-                        aria-label={`Ordenar cliente ${nomeExibido(cliente)} no Excel`} title="Arraste a linha para mover; ou use as setas do teclado"
-                        onKeyDown={evento => arrastoClientes.teclado(evento, String(vinculosClientes[cliente]))}>⋮⋮</button>
-                      <span className="excel-client-label">{nomeExibido(cliente)}</span>
+                      <span className="excel-client-label" data-drag-handle>{nomeExibido(cliente)}</span>
                       {vinculosClientes[cliente] && <button type="button" className="excel-ficha-atalho"
                         aria-label={`Abrir ficha de ${nomeExibido(cliente)} (#${vinculosClientes[cliente]})`}
                         onClick={() => { setFichaInicialId(vinculosClientes[cliente]); setFichasAbertas(true); }}>Abrir ficha #{vinculosClientes[cliente]}</button>}

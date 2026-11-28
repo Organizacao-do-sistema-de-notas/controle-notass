@@ -1,10 +1,23 @@
 # Fechamento da versão básica do controle-notass
 
-**Versão atual: 0.1.0, em desenvolvimento.** A regra atual do usuário autoriza
+**Versão atual: 0.1.1, em desenvolvimento.** A regra atual do usuário autoriza
 publicar patches após validação, sem nova pergunta, fornecendo os comandos de
 atualização. Minors acrescentam funcionalidades e exigem autorização antes de
 publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
 anotações históricas abaixo que pediam aprovação para qualquer publicação.
+
+O patch **0.1.1** retira os indicadores de arrasto de clientes e avisos,
+concentra novos cadastros no menu superior e renomeia Nova pendência para
+Incluir cliente +. Reforça as cores dos estados e do filtro Status e contorna
+de verde os cartões concluídos. A ordenação continua disponível por mouse,
+toque no nome/título e teclado, com ordem persistente. Não altera o banco,
+as dependências nem a configuração de instalação.
+
+Validação do patch: build TypeScript/Vite aprovado, 76 testes do backend e
+71 cenários do navegador aprovados, em banco fictício novo e isolado. Conferência
+visual em 1440 px e 390 px sem erros JavaScript nem rolagem horizontal; filtro
+com a mesma cor do estado selecionado. A bateria foi ajustada para o cadastro
+centralizado no menu e para ordenar pelo próprio cartão/linha, sem puxador.
 
 A prioridade atual é concluir e validar o controle de notas. Base de conhecimento,
 integrações de IA e automação de instalações ficam para uma etapa futura.

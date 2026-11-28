@@ -23,8 +23,9 @@ Os procedimentos mantêm seu próprio botão Salvar procedimento.
 ## Clientes do Excel
 
 Com o mouse, segurar e arrastar pelo nome ou espaço livre move a linha inteira,
-como nos avisos. Um puxador pequeno também permite mover pelo toque e pelas
-setas do teclado. Escape cancela o arrasto. Status, observação, Abrir ficha e
+como nos avisos. Desde o patch **0.1.1**, os indicadores de arrasto foram
+removidos. No toque, arraste pelo nome; pelo teclado, foque a própria linha
+e use as setas para cima/baixo. Escape cancela o arrasto. Status, observação, Abrir ficha e
 informações adicionais mantêm sua função sem iniciar arrasto.
 
 A ordem do Excel é própria, global para todos os meses e compartilhada entre

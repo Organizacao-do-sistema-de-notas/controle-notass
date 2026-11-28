@@ -32,13 +32,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const caso of [
-  { titulo: 'Novo cliente', campo: 'Nome do cliente', fechar: 'Fechar novo cliente' },
-  { titulo: 'Nova contabilidade', campo: 'Nome da contabilidade', fechar: 'Fechar nova contabilidade' },
-  { titulo: 'Nova pendência', campo: 'Observação interna', fechar: 'Fechar nova pendência' },
+  { titulo: 'Incluir cliente', campo: 'Observação interna', fechar: 'Fechar inclusão de cliente' },
 ]) {
   test(`${caso.titulo}: não alerta sem edição; protege X, Escape e fundo; restaura foco ao descartar`, async ({ page }) => {
     await page.goto('/');
-    const abrir = page.getByRole('button', { name: caso.titulo, exact: true });
+    const abrir = page.getByRole('button', { name: caso.titulo + ' +', exact: true });
     await abrir.click();
     const dialog = page.getByRole('dialog', { name: caso.titulo, exact: true });
     // Unchanged prefilled fields are not unsaved edits.
@@ -106,19 +104,19 @@ test('gravação lenta bloqueia campos, fechamento e troca de tela e impede envi
   let envios = 0;
   let liberar!: () => void;
   const portao = new Promise<void>(resolver => { liberar = resolver; });
-  await page.route(`${api}/clientes`, async rota => {
+  await page.route(`${api}/pendencias`, async rota => {
     if (rota.request().method() !== 'POST') return rota.fallback();
     envios++; await portao;
-    return responder(rota, 201, { ...cliente, id: 812, nome: 'Cliente fictício novo' });
+    return responder(rota, 201, { id: 912 });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
-  const campo = dialog.getByRole('textbox', { name: 'Nome do cliente', exact: true });
-  await campo.fill('Cliente fictício novo');
+  await page.getByRole('button', { name: 'Incluir cliente +', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Incluir cliente', exact: true });
+  const campo = dialog.getByRole('textbox', { name: 'Observação interna', exact: true });
+  await campo.fill('Cliente fictício incluído no mês');
   try {
-    await dialog.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
-    await expect(dialog.getByRole('button', { name: 'Fechar novo cliente' })).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Incluir cliente', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: 'Fechar inclusão de cliente' })).toBeDisabled();
     await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toBeDisabled();
     await expect(campo).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Excel', exact: true })).toBeDisabled();
@@ -140,11 +138,11 @@ test('criação confirmada de pendência fecha o formulário mesmo se a leitura 
     return responder(rota, 201, { id: 912 });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Nova pendência', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Nova pendência', exact: true });
+  await page.getByRole('button', { name: 'Incluir cliente +', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Incluir cliente', exact: true });
   await dialog.getByLabel('Competência', { exact: true }).fill('2026-12');
   await dialog.getByRole('textbox', { name: 'Observação interna', exact: true }).fill('Observação fictícia');
-  await dialog.getByRole('button', { name: 'Criar pendência', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Incluir cliente', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.alert.error')).toHaveText('Falha fictícia ao atualizar competências');
   expect(envios).toBe(1);

@@ -209,4 +209,8 @@ test('Painel mantém cadastro e ordem manual global ao mudar status; seletor fic
   await expect.poll(ordemVisivel).toEqual([ids[1], ids[0]]);
   await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('TODOS');
   await expect.poll(ordemVisivel).toEqual([ids[2], ids[1], ids[0]]);
+  await painelCard(page, ids[1]).focus();
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(ordemVisivel).toEqual([ids[1], ids[2], ids[0]]);
+  await expect(painelCard(page, ids[1])).toBeFocused();
 });

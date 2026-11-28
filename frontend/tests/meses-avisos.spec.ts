@@ -21,7 +21,7 @@ async function ordem(request: APIRequestContext): Promise<string[]> {
 }
 const card = (page: Page, id: string) => page.locator(`[data-aviso-id="${id}"]`);
 async function arrastar(page: Page, titulo: string, destino: string, depois = true) {
-  const origem = await page.getByRole('button', { name: `Ordenar aviso ${titulo}`, exact: true }).boundingBox();
+  const origem = await page.getByRole('heading', { name: titulo, exact: true }).boundingBox();
   const alvo = await card(page, destino).boundingBox();
   expect(origem).not.toBeNull(); expect(alvo).not.toBeNull();
   await page.mouse.move(origem!.x + origem!.width / 2, origem!.y + origem!.height / 2);
@@ -101,16 +101,16 @@ test('arrastar avisos persiste a ordem, permite mover Xaxim Gás e compartilha a
 test('teclado ordena avisos, mantém foco e uma falha de rede não substitui a ordem salva', async ({ page, request }) => {
   const { a, b } = await criarAvisos(request);
   await abrirExcel(page);
-  const puxador = page.getByRole('button', { name: 'Ordenar aviso Xaxim Gás', exact: true });
+  const cartao = card(page, 'fixo:xaxim-gas');
   await page.route(api + '/excel/estado', route => route.request().method() === 'PATCH'
     ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ erro: 'Falha fictícia ao ordenar' }) }) : route.continue());
-  await puxador.focus(); await page.keyboard.press('ArrowDown');
+  await cartao.focus(); await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('alert')).toHaveText('Falha fictícia ao ordenar');
   expect(await ordem(request)).toEqual(['fixo:xaxim-gas', `aviso:${a.id}`, `aviso:${b.id}`]);
   await page.unroute(api + '/excel/estado');
-  await puxador.focus(); await page.keyboard.press('ArrowDown');
+  await cartao.focus(); await page.keyboard.press('ArrowDown');
   await expect.poll(() => ordem(request)).toEqual([`aviso:${a.id}`, 'fixo:xaxim-gas', `aviso:${b.id}`]);
-  await expect(puxador).toBeFocused();
+  await expect(cartao).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => ordem(request)).toEqual(['fixo:xaxim-gas', `aviso:${a.id}`, `aviso:${b.id}`]);
 });
@@ -121,7 +121,7 @@ test('arrasto por toque funciona em tela pequena sem rolagem horizontal', async 
   try {
     const page = await contexto.newPage(); await abrirExcel(page);
     await page.getByRole('group', { name: 'Avisos em ordem personalizada' }).scrollIntoViewIfNeeded();
-    const origem = await page.getByRole('button', { name: `Ordenar aviso ${a.titulo}`, exact: true }).boundingBox();
+    const origem = await page.getByRole('heading', { name: a.titulo, exact: true }).boundingBox();
     const alvo = await card(page, `aviso:${b.id}`).boundingBox();
     const cdp = await contexto.newCDPSession(page);
     const x = origem!.x + origem!.width / 2, y = origem!.y + origem!.height / 2;

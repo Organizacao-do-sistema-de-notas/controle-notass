@@ -3,7 +3,6 @@
 .excel-client-aliases { flex-basis: 100%; }
 .excel-ficha-atalho { display: inline-block; width: fit-content; margin: 0; padding: 2px 0; border: 0; background: transparent; color: #3a608f; font-size: 10px; line-height: 1.3; }
 .excel-ficha-atalho:hover { text-decoration: underline; }
-#root button.excel-cliente-arrastar { flex: 0 0 18px; width: 18px; height: 26px; padding: 0; border: 0; background: transparent; color: #788ba3; font-size: 16px; letter-spacing: -4px; cursor: grab; touch-action: none; }
 .excel-ordem-estado { margin: 8px 0 0; font-size: 11px; color: #6c7f98; }
 .excel-ordem-erro { margin: 8px 0 0; padding: 9px; border-radius: 6px; background: #fff0f0; color: #a63838; font-size: 12px; }
 .excel-table-row:focus-visible { outline: 2px solid #366cff; outline-offset: -2px; }

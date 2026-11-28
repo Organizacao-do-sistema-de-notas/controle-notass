@@ -15,7 +15,7 @@ export function AvisosOrdenaveis({ avisos, ordemSalva, disponivel, ocupado, sele
   const arrasto = useArrastoCartoes({ ids: ordem, bloqueado: !disponivel || ocupado, aoSelecionar,
     aoMover: (origem, destino, depois, anterior) => aoOrdenar(moverNaOrdem(anterior, origem, destino, depois), anterior) });
   return <div className="avisos-ordenaveis" ref={arrasto.grupo} role="group" aria-label="Avisos em ordem personalizada" aria-busy={ocupado}>
-    <p id={ajuda} className="visualmente-oculto">Clique para selecionar. Segure e arraste o cartão para mover. No teclado, use as setas; no toque, use o puxador.</p>
+    <p id={ajuda} className="visualmente-oculto">Clique para selecionar. Segure e arraste o cartão para mover. No teclado, use as setas; no toque, arraste pelo título.</p>
     {ordem.map(id => {
       const aviso = avisos.find(item => `aviso:${item.id}` === id);
       const titulo = id === xaxim ? "Xaxim Gás" : aviso!.titulo;
@@ -23,14 +23,11 @@ export function AvisosOrdenaveis({ avisos, ordemSalva, disponivel, ocupado, sele
         className={`excel-side-card aviso-ordenavel cartao-arrastavel ${id === xaxim ? "xaxim-card" : "custom-notice-card"}${selecionado === id ? " aviso-selecionado" : ""}`}
         aria-label={`Aviso ${titulo}`} aria-describedby={ajuda} onClick={() => aoSelecionar(id)}
         onKeyDown={evento => { if (evento.target === evento.currentTarget) { if (['Enter', ' '].includes(evento.key)) { evento.preventDefault(); aoSelecionar(id); } else arrasto.teclado(evento, id); } }}>
-        <button type="button" className="aviso-arrastar" data-drag-handle disabled={!disponivel || ocupado}
-          aria-label={`Ordenar aviso ${titulo}`} title="Arraste o cartão para mover; ou use as setas do teclado"
-          onKeyDown={evento => arrasto.teclado(evento, id)}><span aria-hidden="true">⋮⋮</span></button>
         {id === xaxim ? <>
-          <span className="xaxim-alert">Extremamente importante</span><h2>Xaxim Gás</h2>
+          <span className="xaxim-alert">Extremamente importante</span><h2 data-drag-handle>Xaxim Gás</h2>
           <p>Empresa do web. Todo dia 01, enviar os arquivos manualmente para o e-mail abaixo. Este aviso fica sempre visível para não ser esquecido.</p>
           <strong className="xaxim-email">rubinhogmasters@gmail.com</strong>
-        </> : <><span className="excel-eyebrow">Aviso fixo</span><h2>{aviso!.titulo}</h2><p>{aviso!.texto}</p></>}
+        </> : <><span className="excel-eyebrow">Aviso fixo</span><h2 data-drag-handle>{aviso!.titulo}</h2><p>{aviso!.texto}</p></>}
       </section>;
     })}
     {arrasto.mensagem && <p className="avisos-estado" role="status">{arrasto.mensagem}</p>}
