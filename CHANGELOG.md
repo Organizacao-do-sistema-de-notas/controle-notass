@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.1.2 — patch em desenvolvimento
+
+- Corrige a piscada e o salto de rolagem ao alterar estados no Painel: os cartões
+  permanecem montados durante a atualização do mês aberto, inclusive em Atualizar.
+- Ao mudar de competência, oculta cartões e totais do mês anterior, inclusive se
+  a consulta falhar, preservando os avisos de erro e a possibilidade de repetir.
+- Acrescenta regressões de rolagem, ordem, atualização lenta, falhas e troca de mês
+  em dados fictícios, com validação em computador e celular.
+
 ## 0.1.1 — patch em desenvolvimento
 
 - Remove os indicadores laterais de arrasto no Excel, no Painel e nos avisos,

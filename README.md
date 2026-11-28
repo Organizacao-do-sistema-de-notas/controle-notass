@@ -1,8 +1,8 @@
 # Controle de Notas
 
-**Versão atual: 0.1.1 · Em desenvolvimento · Versão preliminar/beta.**
+**Versão atual: 0.1.2 · Em desenvolvimento · Versão preliminar/beta.**
 
-O patch **0.1.1** simplifica os controles do Painel e reforça as cores dos estados.
+O patch **0.1.2** corrige a piscada e o salto de rolagem ao alterar estados no Painel.
 A minor **0.1.0** acrescentou a ordenação dos clientes no Excel; a numeração
 inicial do projeto foi estabelecida na **0.0.1**.
 
@@ -15,7 +15,7 @@ Os testes automatizados existentes fazem parte do desenvolvimento.
 
 A versão inicial definida pelo usuário é **0.0.1**. [VERSION](VERSION), os manifests
 de frontend/backend e os respectivos lockfiles indicam a versão deste checkout,
-atualmente **0.1.1**.
+atualmente **0.1.2**.
 
 | Entrega | Exemplo | Regra combinada |
 | --- | --- | --- |
@@ -48,7 +48,8 @@ executa o comando em seu computador.
   ao lado de Atualizar e cartões arrastáveis com ordem salva para todos os meses.
   Incluir cliente + seleciona um cadastro existente; novos clientes e contabilidades
   são cadastrados pelo menu superior ⋯. Estados e filtro têm cores destacadas;
-  cartões concluídos recebem contorno verde.
+  cartões concluídos recebem contorno verde. Ao alterar o estado ou atualizar o
+  mesmo mês, os cartões permanecem visíveis durante a consulta dos dados.
 - **Avisos:** clique no cartão para selecionar pela borda azul, depois altere ou
   exclua o aviso selecionado. Arrastar muda a ordem. Xaxim Gás é permanente.
 - **Arrasto sem ícones:** clientes do Excel, cartões do Painel e avisos se movem

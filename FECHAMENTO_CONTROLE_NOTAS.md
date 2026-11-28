@@ -1,10 +1,21 @@
 # Fechamento da versão básica do controle-notass
 
-**Versão atual: 0.1.1, em desenvolvimento.** A regra atual do usuário autoriza
+**Versão atual: 0.1.2, em desenvolvimento.** A regra atual do usuário autoriza
 publicar patches após validação, sem nova pergunta, fornecendo os comandos de
 atualização. Minors acrescentam funcionalidades e exigem autorização antes de
 publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
 anotações históricas abaixo que pediam aprovação para qualquer publicação.
+
+O patch **0.1.2** corrige a piscada e o salto de rolagem do Painel ao alterar
+estados ou atualizar o mês aberto. A lista permanece montada enquanto busca os
+dados; na troca de mês, os cartões e totais anteriores ficam ocultos.
+
+Validação da 0.1.2: regressão reproduzida antes da correção; depois, build
+TypeScript/Vite e sete cenários do navegador aprovados. Os casos verificam
+cartões preservados no DOM, ordem e rolagem em 1440 px e 390 px, falhas de rede,
+troca de mês, inclusão, mensagens e proteção de rascunhos/gravações. Todos usam
+respostas fictícias interceptadas no navegador, sem acesso ao banco. Não há
+mudança de schema, dependência ou configuração de instalação.
 
 O patch **0.1.1** retira os indicadores de arrasto de clientes e avisos,
 concentra novos cadastros no menu superior e renomeia Nova pendência para
@@ -13,7 +24,7 @@ de verde os cartões concluídos. A ordenação continua disponível por mouse,
 toque no nome/título e teclado, com ordem persistente. Não altera o banco,
 as dependências nem a configuração de instalação.
 
-Validação do patch: build TypeScript/Vite aprovado, 76 testes do backend e
+Validação da 0.1.1: build TypeScript/Vite aprovado, 76 testes do backend e
 71 cenários do navegador aprovados, em banco fictício novo e isolado. Conferência
 visual em 1440 px e 390 px sem erros JavaScript nem rolagem horizontal; filtro
 com a mesma cor do estado selecionado. A bateria foi ajustada para o cadastro

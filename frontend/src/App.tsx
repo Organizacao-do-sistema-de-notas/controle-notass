@@ -260,10 +260,10 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   }, [aviso]);
 
   const pendenciasFiltradas = useMemo(() => {
-    if (!painel) return [];
+    if (!painel || painel.competencia !== competencia) return [];
     if (filtroStatus === "TODOS") return painel.pendencias;
     return painel.pendencias.filter((item) => item.status === filtroStatus);
-  }, [painel, filtroStatus]);
+  }, [painel, competencia, filtroStatus]);
 
   function aplicarOrdemPainel(ordem: number[]) {
     const posicoes = new Map(ordem.map((id, indice) => [id, indice]));
@@ -550,7 +550,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
         {erro && <div className="alert error">{erro}</div>}
         {aviso && <div className="toast">{aviso}</div>}
 
-        {painel && mostrarIndicadores && (
+        {painel && painel.competencia === competencia && mostrarIndicadores && (
           <section className="summary-grid" id="resumo-painel" aria-label="Resumo do mês">
             <article className="summary-card">
               <span>Total</span>
@@ -585,7 +585,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
           {arrastoPainel.erro && <p role="alert" className="alert error">{arrastoPainel.erro}</p>}
           {arrastoPainel.mensagem && <p role="status" className="painel-ordem-estado">{arrastoPainel.mensagem}</p>}
 
-          {carregando ? (
+          {carregando && painel?.competencia !== competencia ? (
             <div className="empty-state panel">Carregando informações...</div>
           ) : pendenciasFiltradas.length === 0 ? (
             <div className="empty-state panel">
