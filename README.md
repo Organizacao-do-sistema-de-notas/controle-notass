@@ -1,9 +1,9 @@
 # Controle de Notas
 
-**Versão preparada: 0.1.0 · Em desenvolvimento · Aguardando autorização para publicar.**
+**Versão atual: 0.1.0 · Em desenvolvimento · Versão preliminar/beta.**
 
-A versão publicada é **0.0.1**, em fase preliminar/beta. Esta branch prepara
-a minor de ordenação dos clientes no Excel.
+A minor **0.1.0** acrescenta a ordenação dos clientes no Excel. A numeração
+inicial do projeto foi estabelecida na **0.0.1**.
 
 Sistema para acompanhar pendências mensais de clientes e contabilidades nas
 visualizações Excel e Painel, com cadastro único, fichas, avisos e históricos.
@@ -14,12 +14,12 @@ Os testes automatizados existentes fazem parte do desenvolvimento.
 
 A versão inicial definida pelo usuário é **0.0.1**. [VERSION](VERSION), os manifests
 de frontend/backend e os respectivos lockfiles indicam a versão deste checkout,
-que prepara a minor **0.1.0**.
+atualmente **0.1.0**.
 
 | Entrega | Exemplo | Regra combinada |
 | --- | --- | --- |
-| Patch: correção ou ajuste de usabilidade sem funcionalidade nova | 0.0.1 → 0.0.2 | Implementar, validar e publicar sem perguntar novamente; fornecer os comandos de atualização |
-| Minor: funcionalidade nova | 0.0.1 → 0.1.0 | Preparar e validar a entrega; perguntar antes de publicar |
+| Patch: correção ou ajuste de usabilidade sem funcionalidade nova | 0.1.0 → 0.1.1 | Implementar, validar e publicar sem perguntar novamente; fornecer os comandos de atualização |
+| Minor: funcionalidade nova | 0.1.0 → 0.2.0 | Preparar e validar a entrega; perguntar antes de publicar |
 
 Lotes mistos são separados. A segurança das atualizações será revista quando o
 projeto avançar; as proteções existentes de dados e backup continuam em uso.
@@ -56,10 +56,10 @@ executa o comando em seu computador.
 - **Compartilhamento:** os computadores conectados à mesma API recebem atualizações,
   com proteção contra edição concorrente e preservação de rascunhos.
 
-**Preparado nesta minor:** arrastar as linhas de clientes no Excel, com ordem
+**Incluído na 0.1.0:** arrastar as linhas de clientes no Excel, com ordem
 própria para todos os meses e computadores, preservando filtros e rascunhos.
-Essa funcionalidade aguarda autorização para publicar na **0.1.0**. Detalhes e
-validação em [SALVAR_FIXO_E_ORDEM_EXCEL.md](SALVAR_FIXO_E_ORDEM_EXCEL.md).
+Essa minor teve a publicação autorizada pelo usuário. Detalhes e validação em
+[SALVAR_FIXO_E_ORDEM_EXCEL.md](SALVAR_FIXO_E_ORDEM_EXCEL.md).
 
 Base de conhecimento, assistente de IA e automação de instalações são etapas
 futuras. O plano está em [BASE_CONHECIMENTO_PLANO.md](BASE_CONHECIMENTO_PLANO.md).

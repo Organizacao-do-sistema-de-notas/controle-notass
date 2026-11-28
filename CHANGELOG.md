@@ -1,11 +1,11 @@
 # Histórico de versões
 
-## Em preparação — 0.1.0 (minor)
+## 0.1.0 — minor em desenvolvimento
 
 - Arrastar as linhas de clientes do Excel, com ordem própria salva para todos
   os meses e computadores, incluindo filtros, teclado e proteção de rascunhos.
-- A funcionalidade está implementada em branch separada e aguarda autorização
-  do usuário para publicação.
+- Publicação autorizada pelo usuário na branch de distribuição
+  `teste/controle-basico-linux`.
 
 ## 0.0.1 — versão inicial em desenvolvimento
 

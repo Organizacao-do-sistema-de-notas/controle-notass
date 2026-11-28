@@ -11,8 +11,8 @@ As versões das dependências são independentes.
 
 | Tipo | Critério | Exemplo | Publicação |
 | --- | --- | --- | --- |
-| Patch | Corrigir comportamento existente ou ajustar sua usabilidade, sem acrescentar funcionalidade | 0.0.1 → 0.0.2 | Autorizada pelo usuário sem nova pergunta, após validação adequada |
-| Minor | Acrescentar funcionalidade ao sistema | 0.0.1 → 0.1.0 | Preparar e validar; pedir autorização antes de publicar |
+| Patch | Corrigir comportamento existente ou ajustar sua usabilidade, sem acrescentar funcionalidade | 0.1.0 → 0.1.1 | Autorizada pelo usuário sem nova pergunta, após validação adequada |
+| Minor | Acrescentar funcionalidade ao sistema | 0.1.0 → 0.2.0 | Preparar e validar; pedir autorização antes de publicar |
 
 Uma minor inicia seu contador de patch em zero. Mudanças incompatíveis ou a
 passagem para uma versão estável serão combinadas quando forem necessárias.
@@ -44,7 +44,7 @@ ficha sempre visível no rodapé. Ela está publicada e identificada pela tag
 `v0.0.1`. A documentação descreve a situação de cada branch.
 
 O arrasto dos clientes no Excel é uma funcionalidade nova, classificada como
-minor. A implementação está preparada na branch
-`minor/0-1-0-ordem-excel` e depende de autorização para publicação
-como **0.1.0**. Nesta branch, VERSION e manifests já indicam a versão preparada.
+minor. A implementação da branch `minor/0-1-0-ordem-excel` teve a publicação
+autorizada pelo usuário como **0.1.0**, na branch `teste/controle-basico-linux`.
+VERSION e manifests indicam a versão 0.1.0.
 O patch do botão não depende dessa funcionalidade e já foi distribuído na 0.0.1.

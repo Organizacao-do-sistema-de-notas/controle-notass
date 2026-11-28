@@ -3,8 +3,9 @@
 Implementação original: `33a019f`, na branch `feature/salvar-ficha-fixo-ordem-excel`.
 Depois da política de versões definida pelo usuário, o lote foi separado:
 Salvar ficha fixo foi publicado como patch na versão inicial **0.0.1**; arrastar
-clientes no Excel está preparado como minor **0.1.0**, na branch
-`minor/0-1-0-ordem-excel`, e aguarda autorização para publicar.
+clientes no Excel foi preparado como minor **0.1.0**, na branch
+`minor/0-1-0-ordem-excel`. O usuário autorizou sua publicação na branch
+`teste/controle-basico-linux`.
 
 ## Fichas
 
@@ -78,5 +79,5 @@ Após a separação em versões, o código de aplicação desta minor foi confer
 como idêntico ao lote original validado `33a019f`. A versão 0.1.0 está consistente
 em VERSION, manifests e metadados dos lockfiles, sem mudança de dependências.
 Os dois testes de Salvar ficha e os dois de arrasto foram reexecutados nos
-arquivos separados e passaram, assim como o build. A minor continua aguardando
-autorização para publicação; o patch do rodapé está na 0.0.1 publicada.
+arquivos separados e passaram, assim como o build. A publicação da minor foi
+autorizada pelo usuário; o patch do rodapé permanece incluído desde a 0.0.1.

@@ -1,6 +1,6 @@
 # Fechamento da versão básica do controle-notass
 
-**Publicada: 0.0.1; preparada: 0.1.0, em desenvolvimento.** A regra atual do usuário autoriza
+**Versão atual: 0.1.0, em desenvolvimento.** A regra atual do usuário autoriza
 publicar patches após validação, sem nova pergunta, fornecendo os comandos de
 atualização. Minors acrescentam funcionalidades e exigem autorização antes de
 publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
@@ -219,7 +219,7 @@ desse patch está autorizada pela nova regra. Os manifests e metadados de raiz
 dos lockfiles passam a refletir a mesma versão, sem trocar dependências.
 
 A funcionalidade de arrastar clientes no Excel continua preparada na branch
-`minor/0-1-0-ordem-excel` e aguarda autorização como minor 0.1.0.
+`minor/0-1-0-ordem-excel`, com publicação autorizada pelo usuário como minor 0.1.0.
 A base de conhecimento e IA continuam futuras. A fase do produto segue sendo
 desenvolvimento, mesmo com verificações automatizadas e a branch de distribuição
 com nome histórico `teste/controle-basico-linux`.
@@ -232,16 +232,17 @@ de importação necessários. O botão fixo foi conferido em 1440 px e 390 px, c
 erro e nova tentativa. A preparação usa somente PostgreSQL descartável em
 `127.0.0.1:5433`, sem acessar bancos do usuário ou da empresa.
 
-## Minor 0.1.0 — preparada, aguardando autorização
+## Minor 0.1.0 — publicação autorizada
 
 Após separar e publicar o patch 0.0.1 (`9db1493`, tag `v0.0.1`), o arrasto das
 linhas do Excel foi isolado na branch `minor/0-1-0-ordem-excel`. A implementação
 de aplicação é idêntica à validada em `33a019f`; os testes do rodapé e da ordem
 foram separados em arquivos próprios. VERSION, manifests e metadados de raiz
 dos lockfiles indicam 0.1.0 somente nessa branch preparada. Não houve alteração
-das dependências. A publicação dessa minor ainda depende da autorização do usuário.
+das dependências. O usuário autorizou a publicação dessa minor na branch
+`teste/controle-basico-linux`.
 
 Verificações após separar: código de aplicação igual ao lote original validado,
 consistência da versão 0.1.0, dependências preservadas, quatro cenários de rodapé
-e arrasto aprovados e TypeScript/Vite aprovados. A branch da minor não foi enviada
-à distribuição nem ao GitHub.
+e arrasto aprovados e TypeScript/Vite aprovados. A entrega usa a mesma branch
+de distribuição e os atualizadores existentes com backup.
