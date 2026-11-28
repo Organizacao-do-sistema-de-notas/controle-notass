@@ -95,6 +95,10 @@ function formatarValorHistorico(valor: string | null): string {
   return valor;
 }
 
+function normalizarPesquisa(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+
 export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   revisaoCadastros?: number; aoPendenciasAlteradas?: (estado: PendenciasEdicao) => void;
 }) {
@@ -117,6 +121,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const [exclusaoAberta, setExclusaoAberta] = useState(false);
 
   const [modalPendencia, setModalPendencia] = useState(false);
+  const [pesquisaCliente, setPesquisaCliente] = useState("");
   const [pendenciaClienteId, setPendenciaClienteId] = useState("");
   const [pendenciaCompetencia, setPendenciaCompetencia] = useState(competenciaAtual());
   const [pendenciaStatus, setPendenciaStatus] = useState<StatusPendencia>("PENDENTE");
@@ -141,6 +146,14 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   const gravando = salvandoPendencia || salvandoOrdem || Boolean(editor?.salvando) || alterandoStatusId !== null;
   const formularioAberto = modalPendencia || editor !== null;
   const aberturaBloqueada = gravando || carregandoCadastros || carregandoMensagem || formularioAberto;
+  const clientesParaIncluir = useMemo(() => {
+    const termos = normalizarPesquisa(pesquisaCliente).split(/\s+/).filter(Boolean);
+    return clientes.filter(cliente => {
+      const indice = normalizarPesquisa([`#${cliente.id}`, cliente.nome, cliente.contabilidade?.nome ?? "",
+        ...(cliente.nomesAlternativos ?? []).map(item => item.nome)].join(" "));
+      return cliente.ativo && termos.every(termo => indice.includes(termo));
+    }).sort((a, b) => a.id - b.id);
+  }, [clientes, pesquisaCliente]);
 
   useEffect(() => { aoPendenciasAlteradas?.({ gravando, rascunhos: temRascunhos }); }, [gravando, temRascunhos, aoPendenciasAlteradas]);
   useEffect(() => () => { aoPendenciasAlteradas?.({ gravando: false, rascunhos: false }); }, [aoPendenciasAlteradas]);
@@ -411,15 +424,15 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
   async function abrirNovaPendencia() {
     if (aberturaBloqueada) return;
     guardarBotaoFormulario();
-    const dados = await carregarCadastros();
-    const ativos = (dados?.listaClientes ?? clientes).filter((cliente) => cliente.ativo);
+    await carregarCadastros();
 
-    setPendenciaClienteId(ativos[0] ? String(ativos[0].id) : "");
+    setPesquisaCliente("");
+    setPendenciaClienteId("");
     setPendenciaCompetencia(competencia || competenciaAtual());
     setPendenciaStatus("PENDENTE");
     setPendenciaResponsavel(autor.trim());
     setPendenciaObservacao("");
-    setBasePendencia({ clienteId: ativos[0] ? String(ativos[0].id) : "", competencia: competencia || competenciaAtual(), status: "PENDENTE", responsavel: autor.trim(), observacao: "" });
+    setBasePendencia({ clienteId: "", competencia: competencia || competenciaAtual(), status: "PENDENTE", responsavel: autor.trim(), observacao: "" });
     setModalPendencia(true);
   }
 
@@ -749,24 +762,36 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
 
             <div className="form-grid">
               <label className="form-field full-width">
-                <span>Cliente</span>
-                <select
-                  value={pendenciaClienteId}
-                  onChange={(event) => setPendenciaClienteId(event.target.value)}
+                <span>Pesquisar cliente</span>
+                <input
+                  value={pesquisaCliente}
+                  onChange={event => { setPesquisaCliente(event.target.value); setPendenciaClienteId(""); }}
                   disabled={carregandoCadastros || gravando}
-                  required
-                >
-                  <option value="">Selecione um cliente</option>
-                  {clientes
-                    .filter((cliente) => cliente.ativo)
-                    .map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.nome}
-                        {cliente.contabilidade ? ` — ${cliente.contabilidade.nome}` : ""}
-                      </option>
-                    ))}
-                </select>
+                  placeholder="Nome, apelido ou número do cadastro..."
+                  aria-controls="painel-inclusao-clientes"
+                />
               </label>
+
+              <div className="form-field full-width">
+                <div className="painel-inclusao-clientes" id="painel-inclusao-clientes">
+                  <table aria-label="Clientes cadastrados para incluir no mês">
+                    <thead><tr><th scope="col">Nº</th><th scope="col">Cliente</th><th scope="col">Contabilidade</th></tr></thead>
+                    <tbody>{clientesParaIncluir.map(cliente => (
+                      <tr key={cliente.id} className={pendenciaClienteId === String(cliente.id) ? "selecionado" : ""}>
+                        <td>#{cliente.id}</td>
+                        <td><button type="button" className="cliente-seletor-opcao" disabled={carregandoCadastros || gravando}
+                          aria-label={`Selecionar cliente #${cliente.id} — ${cliente.nome}`}
+                          aria-pressed={pendenciaClienteId === String(cliente.id)}
+                          onClick={() => setPendenciaClienteId(String(cliente.id))}>{cliente.nome}</button></td>
+                        <td>{cliente.contabilidade?.nome ?? "Sem contabilidade vinculada"}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                <span className="painel-inclusao-resultado" role="status">
+                  {clientesParaIncluir.length ? `${clientesParaIncluir.length} cliente(s) encontrado(s). Selecione quem deseja incluir.` : "Nenhum cliente encontrado para essa pesquisa."}
+                </span>
+              </div>
 
               <label className="form-field">
                 <span>Competência</span>
@@ -811,7 +836,7 @@ export function App({ revisaoCadastros = 0, aoPendenciasAlteradas }: {
                   disabled={gravando}
                   value={pendenciaObservacao}
                   onChange={(event) => setPendenciaObservacao(event.target.value)}
-                  placeholder="Ex.: Aguardando cliente liberar acesso ao computador."
+                  placeholder="EX: esse cliente precisa se fazer tal coisa especifica"
                 />
               </label>
             </div>

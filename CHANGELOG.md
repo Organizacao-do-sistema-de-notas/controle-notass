@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.1.3 — patch em desenvolvimento
+
+- Melhora a seleção de clientes na inclusão mensal do Painel com barra de pesquisa
+  e resultados filtrados durante a digitação por nome, apelido e número do cadastro,
+  ignorando acentos e maiúsculas. Exibe número, cliente e contabilidade na tabela.
+- Exige escolher explicitamente o cadastro; mudar a pesquisa limpa a seleção
+  anterior sem apagar competência, status, responsável ou observação.
+- Altera o exemplo de Observação interna para
+  “EX: esse cliente precisa se fazer tal coisa especifica”.
+
 ## 0.1.2 — patch em desenvolvimento
 
 - Corrige a piscada e o salto de rolagem ao alterar estados no Painel: os cartões

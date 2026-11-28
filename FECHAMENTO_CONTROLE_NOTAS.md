@@ -1,10 +1,24 @@
 # Fechamento da versão básica do controle-notass
 
-**Versão atual: 0.1.2, em desenvolvimento.** A regra atual do usuário autoriza
+**Versão atual: 0.1.3, em desenvolvimento.** A regra atual do usuário autoriza
 publicar patches após validação, sem nova pergunta, fornecendo os comandos de
 atualização. Minors acrescentam funcionalidades e exigem autorização antes de
 publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
 anotações históricas abaixo que pediam aprovação para qualquer publicação.
+
+O patch **0.1.3** melhora a usabilidade da inclusão mensal do Painel: pesquisa
+por nome, apelido e número do cadastro com resultados atualizados ao digitar,
+sem diferenciar acentos/maiúsculas. A tabela mostra ID, cliente e contabilidade;
+a seleção é explícita e limpa ao pesquisar novamente. Os outros campos do
+formulário são preservados. O exemplo da observação interna usa o texto pedido
+pelo usuário: “EX: esse cliente precisa se fazer tal coisa especifica”.
+
+Validação da 0.1.3: build TypeScript/Vite e nove cenários do navegador aprovados,
+com respostas fictícias interceptadas e sem acesso ao banco. Os casos cobrem
+pesquisa progressiva, apelidos, acentos, múltiplos termos, IDs e homônimos, ausência
+de resultados, seleção pelo teclado, inclusão do ID correto, rascunhos e bloqueio
+durante gravação. Conferência visual em 1440 px e 390 px, sem rolagem horizontal.
+Não há mudança de schema, dependências ou configuração de instalação.
 
 O patch **0.1.2** corrige a piscada e o salto de rolagem do Painel ao alterar
 estados ou atualizar o mês aberto. A lista permanece montada enquanto busca os

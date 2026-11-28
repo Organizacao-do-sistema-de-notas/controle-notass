@@ -1,8 +1,9 @@
 # Controle de Notas
 
-**Versão atual: 0.1.2 · Em desenvolvimento · Versão preliminar/beta.**
+**Versão atual: 0.1.3 · Em desenvolvimento · Versão preliminar/beta.**
 
-O patch **0.1.2** corrige a piscada e o salto de rolagem ao alterar estados no Painel.
+O patch **0.1.3** melhora a seleção de clientes na inclusão mensal do Painel,
+com resultados filtrados durante a digitação.
 A minor **0.1.0** acrescentou a ordenação dos clientes no Excel; a numeração
 inicial do projeto foi estabelecida na **0.0.1**.
 
@@ -15,7 +16,7 @@ Os testes automatizados existentes fazem parte do desenvolvimento.
 
 A versão inicial definida pelo usuário é **0.0.1**. [VERSION](VERSION), os manifests
 de frontend/backend e os respectivos lockfiles indicam a versão deste checkout,
-atualmente **0.1.2**.
+atualmente **0.1.3**.
 
 | Entrega | Exemplo | Regra combinada |
 | --- | --- | --- |
@@ -46,7 +47,10 @@ executa o comando em seu computador.
   da gravação ficam sempre visíveis no canto inferior direito do rodapé.
 - **Painel:** estados, mensagens e históricos, indicadores ocultáveis pelo olho
   ao lado de Atualizar e cartões arrastáveis com ordem salva para todos os meses.
-  Incluir cliente + seleciona um cadastro existente; novos clientes e contabilidades
+  Incluir cliente + filtra cadastros existentes enquanto digita por nome, apelido
+  ou número, sem diferenciar acentos ou maiúsculas. Escolha o cliente na tabela
+  antes de incluir; uma nova pesquisa limpa a seleção anterior e mantém os outros
+  campos preenchidos. Novos clientes e contabilidades
   são cadastrados pelo menu superior ⋯. Estados e filtro têm cores destacadas;
   cartões concluídos recebem contorno verde. Ao alterar o estado ou atualizar o
   mesmo mês, os cartões permanecem visíveis durante a consulta dos dados.
