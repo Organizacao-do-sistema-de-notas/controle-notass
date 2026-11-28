@@ -84,9 +84,12 @@ async function projetar(tx: Prisma.TransactionClient, base: Base) {
   const exclusivos = base.estado.clientesSomenteMercados ?? [];
   const idsAtuais = clientes.filter(cliente => cliente.excluidoEm === null && !exclusivos.includes(cliente.id)).map(cliente => cliente.id).sort((a, b) => a - b);
   const ordemAnterior = base.estado.ordemClientesPainel ?? [];
+  const idsExcel = clientes.filter(cliente => cliente.excluidoEm === null && !exclusivos.includes(cliente.id)).map(cliente => cliente.id);
+  const ordemExcel = base.estado.ordemClientesExcel ?? idsExcel;
   const estado = { ...estadoVazio(), registros: base.estado.registros, avisosExtras: base.estado.avisosExtras,
     avisosExcluidos: base.estado.avisosExcluidos ?? [], ordemAvisos: ordemDosAvisos(base.estado),
     controleMercados: base.estado.controleMercados ?? {}, clientesSomenteMercados: exclusivos,
+    ordemClientesExcel: [...ordemExcel.filter(id => idsExcel.includes(id)), ...idsExcel.filter(id => !ordemExcel.includes(id))],
     ordemClientesPainel: [...ordemAnterior.filter(id => idsAtuais.includes(id)), ...idsAtuais.filter(id => !ordemAnterior.includes(id))] };
   estado.frequenciasClientes = {};
   estado.clientesPorCompetencia = {};

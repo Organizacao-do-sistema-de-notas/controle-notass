@@ -1,6 +1,6 @@
 # Fechamento da versão básica do controle-notass
 
-**Versão atual: 0.0.1, em desenvolvimento.** A regra atual do usuário autoriza
+**Publicada: 0.0.1; preparada: 0.1.0, em desenvolvimento.** A regra atual do usuário autoriza
 publicar patches após validação, sem nova pergunta, fornecendo os comandos de
 atualização. Minors acrescentam funcionalidades e exigem autorização antes de
 publicar. Ver [VERSIONAMENTO.md](VERSIONAMENTO.md). Essa regra substitui as
@@ -231,3 +231,17 @@ homônimos foi reexecutado após a suíte de backend preparar os dados fictício
 de importação necessários. O botão fixo foi conferido em 1440 px e 390 px, com
 erro e nova tentativa. A preparação usa somente PostgreSQL descartável em
 `127.0.0.1:5433`, sem acessar bancos do usuário ou da empresa.
+
+## Minor 0.1.0 — preparada, aguardando autorização
+
+Após separar e publicar o patch 0.0.1 (`9db1493`, tag `v0.0.1`), o arrasto das
+linhas do Excel foi isolado na branch `minor/0-1-0-ordem-excel`. A implementação
+de aplicação é idêntica à validada em `33a019f`; os testes do rodapé e da ordem
+foram separados em arquivos próprios. VERSION, manifests e metadados de raiz
+dos lockfiles indicam 0.1.0 somente nessa branch preparada. Não houve alteração
+das dependências. A publicação dessa minor ainda depende da autorização do usuário.
+
+Verificações após separar: código de aplicação igual ao lote original validado,
+consistência da versão 0.1.0, dependências preservadas, quatro cenários de rodapé
+e arrasto aprovados e TypeScript/Vite aprovados. A branch da minor não foi enviada
+à distribuição nem ao GitHub.

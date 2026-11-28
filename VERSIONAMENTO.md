@@ -39,11 +39,12 @@ de dados e backup continuam em uso.
 
 ## Primeira versão e lote separado
 
-Esta entrega estabelece a numeração **0.0.1** para a base atual e incorpora o
-patch de Salvar ficha sempre visível no rodapé. A documentação foi atualizada
-para a situação real do projeto.
+A entrega **0.0.1** estabeleceu a numeração inicial e incorporou o patch de Salvar
+ficha sempre visível no rodapé. Ela está publicada e identificada pela tag
+`v0.0.1`. A documentação descreve a situação de cada branch.
 
 O arrasto dos clientes no Excel é uma funcionalidade nova, classificada como
 minor. A implementação está preparada na branch
 `minor/0-1-0-ordem-excel` e depende de autorização para publicação
-como **0.1.0**. O patch do botão não depende dessa funcionalidade.
+como **0.1.0**. Nesta branch, VERSION e manifests já indicam a versão preparada.
+O patch do botão não depende dessa funcionalidade e já foi distribuído na 0.0.1.

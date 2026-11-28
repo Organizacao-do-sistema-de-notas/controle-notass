@@ -1,6 +1,9 @@
 # Controle de Notas
 
-**Versão atual: 0.0.1 · Em desenvolvimento · Versão preliminar/beta.**
+**Versão preparada: 0.1.0 · Em desenvolvimento · Aguardando autorização para publicar.**
+
+A versão publicada é **0.0.1**, em fase preliminar/beta. Esta branch prepara
+a minor de ordenação dos clientes no Excel.
 
 Sistema para acompanhar pendências mensais de clientes e contabilidades nas
 visualizações Excel e Painel, com cadastro único, fichas, avisos e históricos.
@@ -9,8 +12,9 @@ Os testes automatizados existentes fazem parte do desenvolvimento.
 
 ## Versões e publicação
 
-A versão inicial definida pelo usuário é **0.0.1**, registrada em
-[VERSION](VERSION), nos manifests de frontend/backend e nos respectivos lockfiles.
+A versão inicial definida pelo usuário é **0.0.1**. [VERSION](VERSION), os manifests
+de frontend/backend e os respectivos lockfiles indicam a versão deste checkout,
+que prepara a minor **0.1.0**.
 
 | Entrega | Exemplo | Regra combinada |
 | --- | --- | --- |
@@ -52,9 +56,10 @@ executa o comando em seu computador.
 - **Compartilhamento:** os computadores conectados à mesma API recebem atualizações,
   com proteção contra edição concorrente e preservação de rascunhos.
 
-**Minor em preparação:** arrastar as linhas de clientes no Excel, com ordem
-própria para todos os meses e computadores. A implementação está em branch
-separada e aguarda autorização para publicar na **0.1.0**.
+**Preparado nesta minor:** arrastar as linhas de clientes no Excel, com ordem
+própria para todos os meses e computadores, preservando filtros e rascunhos.
+Essa funcionalidade aguarda autorização para publicar na **0.1.0**. Detalhes e
+validação em [SALVAR_FIXO_E_ORDEM_EXCEL.md](SALVAR_FIXO_E_ORDEM_EXCEL.md).
 
 Base de conhecimento, assistente de IA e automação de instalações são etapas
 futuras. O plano está em [BASE_CONHECIMENTO_PLANO.md](BASE_CONHECIMENTO_PLANO.md).

@@ -13,6 +13,7 @@ export type EstadoExcel = {
   ordemAvisos?: string[];
   avisosExcluidos?: AvisoExtra[];
   ordemClientesPainel?: number[];
+  ordemClientesExcel?: number[];
   controleMercados?: Record<string, Partial<Record<MercadoFixo, StatusMercado>>>;
   clientesSomenteMercados?: number[];
 };
@@ -23,6 +24,7 @@ export type AlteracaoExcel =
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
   | { tipo: "ordenarAvisos"; ordem: string[]; anterior: string[] }
   | { tipo: "ordenarPainel"; ordem: number[]; anterior: number[] }
+  | { tipo: "ordenarExcel"; ordem: number[]; anterior: number[] }
   | { tipo: "excluirAviso"; aviso: AvisoExtra }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type RespostaExcel = { instancia: string | null; revisao: number; estado: EstadoExcel | null; prioridades?: Record<string, string>; prioridadesExcluidas?: string[] };

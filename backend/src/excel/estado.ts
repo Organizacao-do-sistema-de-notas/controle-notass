@@ -18,6 +18,7 @@ export type EstadoExcel = {
   ordemAvisos?: string[];
   avisosExcluidos?: AvisoExtra[];
   ordemClientesPainel?: number[];
+  ordemClientesExcel?: number[];
   controleMercados?: Record<string, Partial<Record<MercadoFixo, StatusMercado>>>;
   clientesSomenteMercados?: number[];
   registros: Record<string, Record<string, RegistroMensal>>;
@@ -29,6 +30,7 @@ export type AlteracaoExcel =
   | { tipo: "incluirClienteMes"; clienteId: number; competencia: string }
   | { tipo: "ordenarAvisos"; ordem: string[]; anterior: string[] }
   | { tipo: "ordenarPainel"; ordem: number[]; anterior: number[] }
+  | { tipo: "ordenarExcel"; ordem: number[]; anterior: number[] }
   | { tipo: "excluirAviso"; aviso: AvisoExtra }
   | { tipo: "incluirAviso"; aviso: AvisoExtra };
 export type DivergenciaExcel = { caminho: string[]; atual: unknown; local: unknown };
@@ -64,7 +66,7 @@ function validarAviso(valor: unknown): asserts valor is AvisoExtra {
 export function validarEstado(valor: unknown): EstadoExcel {
   exigir(objeto(valor));
   const raiz = ["clientesExtras", "nomesAlterados", "nomesBusca", "informacoesClientes", "avisosExtras", "registros"];
-  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos", "avisosExcluidos", "ordemClientesPainel", "controleMercados", "clientesSomenteMercados"]); exigir(raiz.every(chave => proprio(valor, chave)));
+  campos(valor, [...raiz, "vinculosClientes", "clientesInativos", "frequenciasClientes", "clientesPorCompetencia", "ordemAvisos", "avisosExcluidos", "ordemClientesPainel", "ordemClientesExcel", "controleMercados", "clientesSomenteMercados"]); exigir(raiz.every(chave => proprio(valor, chave)));
   if (proprio(valor, "clientesSomenteMercados")) exigir(listaDeIds(valor.clientesSomenteMercados));
   if (proprio(valor, "controleMercados")) {
     exigir(objeto(valor.controleMercados));
@@ -75,6 +77,7 @@ export function validarEstado(valor: unknown): EstadoExcel {
   }
   if (proprio(valor, "ordemAvisos")) exigir(listaDeChaves(valor.ordemAvisos));
   if (proprio(valor, "ordemClientesPainel")) exigir(listaDeIds(valor.ordemClientesPainel));
+  if (proprio(valor, "ordemClientesExcel")) exigir(listaDeIds(valor.ordemClientesExcel));
   if (proprio(valor, "avisosExcluidos")) {
     exigir(Array.isArray(valor.avisosExcluidos)); valor.avisosExcluidos.forEach(validarAviso);
     exigir(new Set(valor.avisosExcluidos.map(item => item.id)).size === valor.avisosExcluidos.length);
@@ -123,7 +126,7 @@ export function validarAlteracoes(valor: unknown): AlteracaoExcel[] {
       campos(op, ["tipo", "competencia", "mercado", "status", "anterior"]);
       exigir(typeof op.competencia === "string" && mesValido(op.competencia) && mercadosFixos.includes(op.mercado as MercadoFixo)
         && ["PENDENTE", "CONCLUIDO"].includes(op.status as string) && ["PENDENTE", "CONCLUIDO"].includes(op.anterior as string));
-    } else if (op.tipo === "ordenarPainel") {
+    } else if (op.tipo === "ordenarPainel" || op.tipo === "ordenarExcel") {
       campos(op, ["tipo", "ordem", "anterior"]); exigir(listaDeIds(op.ordem) && listaDeIds(op.anterior));
     } else if (op.tipo === "excluirAviso") {
       campos(op, ["tipo", "aviso"]); validarAviso(op.aviso);
@@ -208,12 +211,13 @@ export function aplicarAlteracoes(atual: EstadoExcel, alteracoes: AlteracaoExcel
       (proximo.avisosExcluidos ??= []).push(structuredClone(existente));
       proximo.avisosExtras = proximo.avisosExtras.filter(aviso => aviso.id !== op.aviso.id);
       proximo.ordemAvisos = ordemDosAvisos(proximo);
-    } else if (op.tipo === "ordenarPainel") {
-      const atual = proximo.ordemClientesPainel ?? [];
+    } else if (op.tipo === "ordenarPainel" || op.tipo === "ordenarExcel") {
+      const campo = op.tipo === "ordenarPainel" ? "ordemClientesPainel" : "ordemClientesExcel";
+      const atual = proximo[campo] ?? [];
       if (igual(atual, op.ordem)) continue;
-      if (!igual(atual, op.anterior)) throw new ConflitoExcel([["ordemClientesPainel"]]);
-      exigir(op.ordem.length === atual.length && op.ordem.every(id => atual.includes(id)), "A ordem deve preservar todos os cadastros do Painel.");
-      proximo.ordemClientesPainel = [...op.ordem];
+      if (!igual(atual, op.anterior)) throw new ConflitoExcel([[campo]]);
+      exigir(op.ordem.length === atual.length && op.ordem.every(id => atual.includes(id)), `A ordem deve preservar todos os cadastros do ${op.tipo === "ordenarPainel" ? "Painel" : "Excel"}.`);
+      proximo[campo] = [...op.ordem];
     } else if (op.tipo === "ordenarAvisos") {
       const ordemAtual = ordemDosAvisos(proximo);
       if (igual(ordemAtual, op.ordem)) continue;

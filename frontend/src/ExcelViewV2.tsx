@@ -12,6 +12,7 @@ import { definir, type AvisoExtra, type AlteracaoExcel, type RegistroMensal, typ
 import { useExcelCompartilhado } from "./useExcelCompartilhado";
 import { chaveObservacao, useObservacoesExcel } from "./useObservacoesExcel";
 import { baixarCopiaLocal } from "./excel-legado";
+import { moverNaOrdem, useArrastoCartoes } from "./useArrastoCartoes";
 import "./excel-compartilhado.css";
 import "./cadastro-unico.css";
 
@@ -107,7 +108,9 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       || (compartilhado.estado.clientesPorCompetencia?.[mes] ?? []).includes(cliente)
       || Boolean(observacoes.rascunhos[chaveObservacao(mes, cliente)]);
   }
-  const clientesDoMes = clientes.filter(cliente => estaNoMes(cliente, competencia));
+  const posicoesExcel = new Map((compartilhado.estado.ordemClientesExcel ?? []).map((id, indice) => [id, indice]));
+  const clientesDoMes = clientes.filter(cliente => estaNoMes(cliente, competencia))
+    .sort((a, b) => (posicoesExcel.get(vinculosClientes[a]) ?? Number.MAX_SAFE_INTEGER) - (posicoesExcel.get(vinculosClientes[b]) ?? Number.MAX_SAFE_INTEGER));
   const clientesParaIncluir = [...clientes].sort((a, b) => vinculosClientes[a] - vinculosClientes[b]).filter(cliente => {
     const indice = normalizar([String(vinculosClientes[cliente]), nomeExibido(cliente), ...(nomesBusca[cliente] ?? [])].join(" "));
     return normalizar(pesquisaInclusao).split(" ").filter(Boolean).every(termo => indice.includes(termo));
@@ -127,6 +130,16 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
       return termos.every((termo) => indice.includes(termo));
     });
   }, [clientesDoMes, nomesAlterados, nomesBusca, pesquisa]);
+
+  const arrastoClientes = useArrastoCartoes({
+    ids: clientesFiltrados.map(chave => String(vinculosClientes[chave])),
+    bloqueado: !disponivel || ocupado || formularioAberto || fichasAbertas || informacaoAberta !== null || exclusaoAberta,
+    aoMover: async (origem, destino, depois) => {
+      const anterior = compartilhado.estado.ordemClientesExcel ?? clientes.map(chave => vinculosClientes[chave]);
+      const ordem = moverNaOrdem(anterior, Number(origem), Number(destino), depois);
+      await compartilhado.executar([{ tipo: "ordenarExcel", ordem, anterior }]);
+    },
+  });
 
   useEffect(() => {
     setStatusAberto(null);
@@ -386,7 +399,7 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
 
           <section className="excel-table-card">
             <div className="excel-table-head"><div>Clientes</div><div>Status</div><div>Obs</div></div>
-            <div className="excel-table-body">
+            <div className="excel-table-body" ref={arrastoClientes.grupo}>
               {!compartilhado.carregado ? <div className="excel-search-empty">Aguardando os dados compartilhados...</div> : clientesFiltrados.length === 0 ? (
                 <div className="excel-search-empty">{pesquisa ? "Nenhum cliente encontrado com esse nome neste mês." : "Nenhum cliente incluído neste mês. Use Incluir Cliente para selecionar um cadastro existente."}</div>
               ) : clientesFiltrados.map((cliente) => {
@@ -394,8 +407,14 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
                 const chaveRascunho = chaveObservacao(competencia, cliente);
                 const rascunho = observacoes.rascunhos[chaveRascunho];
                 return (
-                  <div className="excel-table-row" key={cliente} data-cliente-id={vinculosClientes[cliente]} data-chave-cliente={cliente}>
+                  <div className="excel-table-row cartao-arrastavel" key={cliente} tabIndex={0}
+                    data-cliente-id={vinculosClientes[cliente]} data-chave-cliente={cliente}
+                    {...arrastoClientes.vincular(String(vinculosClientes[cliente]))}
+                    onKeyDown={evento => { if (evento.target === evento.currentTarget) arrastoClientes.teclado(evento, String(vinculosClientes[cliente])); }}>
                     <div className="excel-client-name">
+                      <button type="button" className="excel-cliente-arrastar" data-drag-handle disabled={!disponivel || ocupado}
+                        aria-label={`Ordenar cliente ${nomeExibido(cliente)} no Excel`} title="Arraste a linha para mover; ou use as setas do teclado"
+                        onKeyDown={evento => arrastoClientes.teclado(evento, String(vinculosClientes[cliente]))}>⋮⋮</button>
                       <span className="excel-client-label">{nomeExibido(cliente)}</span>
                       {vinculosClientes[cliente] && <button type="button" className="excel-ficha-atalho"
                         aria-label={`Abrir ficha de ${nomeExibido(cliente)} (#${vinculosClientes[cliente]})`}
@@ -467,6 +486,8 @@ export function ExcelViewV2({ competencia, aoPendenciasAlteradas }: ExcelViewPro
               })}
             </div>
           </section>
+          {arrastoClientes.mensagem && <p className="excel-ordem-estado" role="status">{arrastoClientes.mensagem}</p>}
+          {arrastoClientes.erro && <p className="excel-ordem-erro" role="alert">{arrastoClientes.erro}</p>}
         </section>
 
         <aside className="excel-side-column">
